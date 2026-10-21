@@ -40,7 +40,7 @@ Each element has 15 monsters, 120 in total.
 - The randomness is deliberate: it encourages collecting every monster and replaying old levels.
 
 ### Leveling
-Monsters gain experience from battles and daily training. Every defeated or captured monster gives experience to every standing monster on the team, including monsters that didn't fight. Fainted monsters don't earn it. Monster levels are separate from the player level.
+Monsters gain experience from battles and daily training. Every defeated or captured monster gives experience to every standing monster on the team, including monsters that didn't fight. Fainted monsters don't earn it. Monster levels are separate from the Shardbinder level.
 
 ## Elements
 Strong means dealing extra damage (1.5x); weak means taking extra damage. A skill hitting an element that is strong against it deals reduced damage (about 0.67x). A skill matching its user's element gets a small bonus.
@@ -113,7 +113,7 @@ Physical is neutral against everything. Psychic and Ghost deal and take extra da
 
 ## Player Progression and Base
 - The player has their own level, separate from monster levels.
-- Player levels unlock features over time, such as the shop, the arena and new base buildings. This doubles as a gradual tutorial.
+- Shardbinder levels unlock features over time, such as the shop, the arena and new base buildings. This doubles as a gradual tutorial.
 - The base stores every captured monster.
 - Base buildings provide perks such as passive income for the shop.
 - Proposed buildings: a training yard that speeds up training, and a lab or hatchery tied to synthesis.
@@ -132,7 +132,7 @@ One-time milestones with rewards.
 |---|---|
 | Complete World 1 (Plant) | Scroll of Synthesis: two Plant monsters into a Rare Plant monster |
 | First synthesis | TBD |
-| Reach player level 5 | TBD |
+| Reach Shardbinder level 5 | TBD |
 | Collect 10 unique monsters | TBD |
 | Complete each world | TBD |
 | Proposed: first capture | Capture items |
@@ -258,55 +258,87 @@ Forms are listed in evolution order. Rares evolve at level 16; Epics and Legenda
 - Capture odds are multiplied by 1.5 for a sleeping or stunned target and 1.2 for a poisoned one.
 
 ## Board Spaces
-- Wild battle, quiet path, healing spring, thorn trap, portal, **treasure chest** (coins, a Potion, Capture Orbs or a rare Loaded Die), **wandering merchant** (sells Potions, Capture Orbs and Loaded Dice at shop prices), level boss.
+- Wild battle, quiet path, healing spring, thorn trap, portal, **treasure chest** (coins, a Potion, Binding Shards or a rare Loaded Die), **wandering merchant** (sells Potions, Binding Shards and Loaded Dice at shop prices), level boss.
 - Every board has one merchant between spaces 15 and 23, a healing spring between spaces 31 and 35, and never more than three battles in a row.
 - Later levels and worlds have more battles and traps and fewer quiet paths.
 
 ## Prototype Numbers (first guesses, to tune)
 - **Evolution:** Rare, Epic and Legendary monsters evolve at level 16. Each evolution stage adds 20% to base stats. Final forms need that monster's crest.
 - **Wild rarity per monster:** Common 68%, Uncommon 30.75%, Rare 1%, Epic 0.2%, Legendary 0.05% (Rare or better about once per 40 fights).
-- **Player experience:** level clear 40 + 10 × level number (doubled on the first clear), capture 10, synthesis 25, achievement 20, finished training 15. Each player level needs 60 × current level.
-- **Player level unlocks:** 2 Shop and Quests, 3 Training Yard, 4 Shard Mine, 5 Expedition Dock, 6 Hatchery, 7 Arena.
+- **Player experience:** level clear 40 + 10 × level number (doubled on the first clear), capture 10, synthesis 25, achievement 20, finished training 15. Each Shardbinder level needs 60 × current level.
+- **Shardbinder level unlocks:** 2 Shop and Quests, 3 Training Yard, 4 Shard Mine, 5 Expedition Dock, 6 Hatchery, 7 Arena.
 - **Coins:** 4 per wild monster level after a battle win; 30 + 20 × level number for a level clear.
-- **Shop:** Potion 40, Capture Orb 60, Loaded Die 120, Perfect Orb 1,500, Epic Plant scroll 2,500, Legendary Plant scroll 6,000.
+- **Shop:** Potion 40, Binding Shard 60, Loaded Die 120, Prism Shard 1,500, Epic Plant scroll 2,500, Legendary Plant scroll 6,000.
 - **Synthesis scrolls:** Rare Plant (two Common or Uncommon Plant monsters; from the World 1 achievement), Epic Plant (two Rare Plant), Legendary Plant (two Epic Plant plus one Rare Plant). The result's level matches the highest ingredient.
-- **Training Yard:** costs 150 coins. One monster, from the team or the base, trains at a time and can keep battling while it trains. It gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 150 player experience.
+- **Training Yard:** costs 150 coins. One monster, from the team or the base, trains at a time and can keep battling while it trains. It gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 150 Shardbinder experience.
 - **Shard Mine:** costs 300, then 600 and 1,200 to upgrade. Earns 15, 30 or 50 coins per hour and holds up to 12 hours of earnings.
-- **Reward wheel:** 2 Potions, 3 Capture Orbs, 150 coins per world number, 25% of a level's experience for each team monster (based on each monster's own level, fainted ones included), or a Perfect Orb. Replays of a world's last level add a chance at a random crest for that world.
+- **Reward wheel:** 2 Potions, 3 Binding Shards, 150 coins per world number, 25% of a level's experience for each team monster (based on each monster's own level, fainted ones included), or a Prism Shard. Replays of a world's last level add a chance at a random crest for that world.
 - **World progression:** each world opens after clearing the previous world's last level. Wild levels rise by one per level, plus one more at each new world (see the Worlds table).
-- **Combination worlds (9 to 12):** Fire and Water, Electric and Psychic, Earth and Plant, Ghost and Physical, 20 levels each, mixing both elements' monsters. Clearing one gives 2,000 coins, a Perfect Orb and a crest from either element.
+- **Combination worlds (9 to 12):** Fire and Water, Electric and Psychic, Earth and Plant, Ghost and Physical, 20 levels each, mixing both elements' monsters. Clearing one gives 2,000 coins, a Prism Shard and a crest from either element.
 - **Achievements:** a clear achievement for every world (element worlds give that element's Rare scroll and a crest), a Master achievement for collecting each element's 15 monsters, and Shardkin Master for all 120.
-- **World bosses:** 12% chance per level start that one is hiding (only if none is active). It moves to a new space ahead after every roll. It's one of the world's Epics, at least 5 levels above that world's toughest wild monsters and 2 levels above your strongest team monster, with 12 times normal health. You start with 1 fight and earn 1 every 2 hours, up to 5. It leaves after 24 hours. Each fight starts with your team fully healed; you can retreat and keep the damage. Defeating it gives 1,000 coins, a Perfect Orb, a crest for that world and 150 player experience. In simulated fights a full team at the end of World 1 needed about 8 fights.
+- **World bosses:** 12% chance per level start that one is hiding (only if none is active). It moves to a new space ahead after every roll. It's one of the world's Epics, at least 5 levels above that world's toughest wild monsters and 2 levels above your strongest team monster, with 12 times normal health. You start with 1 fight and earn 1 every 2 hours, up to 5. It leaves after 24 hours. Each fight starts with your team fully healed; you can retreat and keep the damage. Defeating it gives 1,000 coins, a Prism Shard, a crest for that world and 150 Shardbinder experience. In simulated fights a full team at the end of World 1 needed about 8 fights.
 
 ## Activities Beyond the Campaign
 
 ### Quests
 - Three daily quests (reset at local midnight) and three weekly quests (reset Monday), drawn from: win battles, capture monsters, capture monsters of one element, clear levels, open chests, spin the wheel, and, once unlocked, finish expeditions, hatch eggs, clear Arena floors and synthesize.
 - Daily: 5 battles, 3 captures, 2 element captures, 2 levels and so on. Weekly targets are about five to eight times larger.
-- Daily rewards: 100 + 20 × player level coins plus 2 Potions or 3 Capture Orbs, and 15 player experience. Weekly: 500 + 50 × player level coins plus a Perfect Orb, 2 Loaded Dice or an egg, and 60 player experience.
-- Unlocks with the shop at player level 2.
+- Daily rewards: 100 + 20 × Shardbinder level coins plus 2 Potions or 3 Binding Shards, and 15 Shardbinder experience. Weekly: 500 + 50 × Shardbinder level coins plus a Prism Shard, 2 Loaded Dice or an egg, and 60 Shardbinder experience.
+- Unlocks with the shop at Shardbinder level 2.
 
 ### Arena Tower
-- Unlocks at player level 7. An endless climb of rival trainers: 2 monsters per floor, 3 from floor 10, and a 4-monster champion every tenth floor. Rival monsters are level 4 + 2 × floor, from any element.
+- Unlocks at Shardbinder level 7. An endless climb of rival trainers: 2 monsters per floor, 3 from floor 10, and a 4-monster champion every tenth floor. Rival monsters are level 4 + 2 × floor, from any element.
 - Health carries over between floors, fainted monsters stay out, and rival monsters can't be captured. Lose and the run ends.
 - Start at floor 1 or any checkpoint (11, 21, ...) up to one past your best floor.
-- Rewards: 15 × floor coins each floor; first-time milestones give a Loaded Die every 5 floors, a Perfect Orb and an egg every 10, and a crest every 25.
+- Rewards: 15 × floor coins each floor; first-time milestones give a Loaded Die every 5 floors, a Prism Shard and an egg every 10, and a crest every 25.
 
 ### Expeditions
-- Expedition Dock: player level 5, 400 coins. Up to 3 base monsters away at once, for 1, 4 or 8 hours.
-- Returns hours × (10 + level) × a rarity factor in coins, 5% of a level's experience per hour, item chances each hour (Potion 10%, Capture Orb 8%, Loaded Die 3%), and a 15% egg chance on 8-hour trips.
+- Expedition Dock: Shardbinder level 5, 400 coins. Up to 3 base monsters away at once, for 1, 4 or 8 hours.
+- Returns hours × (10 + level) × a rarity factor in coins, 5% of a level's experience per hour, item chances each hour (Potion 10%, Binding Shard 8%, Loaded Die 3%), and a 15% egg chance on 8-hour trips.
 - Monsters away can't battle, train or be used in synthesis.
 
 ### Hatchery
-- Player level 6, 500 coins for one incubator; a second costs 1,000.
+- Shardbinder level 6, 500 coins for one incubator; a second costs 1,000.
 - Eggs take 6 hours and hatch into a monster of their element: Common 50%, Uncommon 35%, Rare 12%, Epic 2.5%, Legendary 0.5%, at that element world's starting level.
 - Egg sources: treasure chests (4%), level bosses (8%), world bosses (always), 8-hour expeditions (15%), Arena milestones every 10 floors, and weekly quests.
 
 ### New achievements
 New Life (first hatch), Explorer (10 expeditions), Arena Contender (floor 10), Arena Legend (floor 50).
 
+## The Shard Theme
+
+### Story
+- **Prologue:** the Heartcrystal once held the eight elements in balance. It shattered, each shard grew a realm around itself, and the creatures born from its splinters became the Shardkin. The player is a Shardbinder, one of the few who can bind Shardkin to a team, journeying shard by shard to make the crystal whole.
+- **World names:** 1 Verdant Shard (Plant), 2 Tidal Shard (Water), 3 Ember Shard (Fire), 4 Stone Shard (Earth), 5 Storm Shard (Electric), 6 Dream Shard (Psychic), 7 Hollow Shard (Ghost), 8 Iron Shard (Physical). The combination worlds are rifts where two shards ground together: 9 Steam Rift, 10 Mindstorm Rift, 11 Overgrown Rift, 12 Phantom Rift.
+- Each world has a short intro line, shown in Levels, when it opens, and in the **Story** area of camp.
+- **Heartcrystal Restored** achievement for clearing all eight element worlds, with an epilogue that sets up the rifts. Reward: 5,000 coins and 3 Prism Shards.
+- "Player level" is now the **Shardbinder level**.
+
+### Shardborn variants
+- About 1 in 500 wild monsters is Shardborn (for example "Shardborn Mossling"): 10% stronger stats, a "Shardborn" tag, a crystal chime and an announcement when it appears.
+- Captured Shardborn stay Shardborn, including through evolution. Hatched eggs are Shardborn 1 in 250 times and synthesis results 1 in 100.
+- Defeating one drops triple shards. The collection tracks Shardborn caught out of 120.
+- Achievements: Glimmer (first Shardborn, a Prism Shard and 1,000 coins) and Crystal Collector (10 different Shardborn, 5 Prism Shards).
+- Auto-play's catch mode always tries to catch Shardborn.
+
+### Elemental shards
+- One material per element (Fire Shards, Water Shards and so on).
+- Sources: half of defeated wild monsters (1 for Common and Uncommon, 3 Rare, 5 Epic, 8 Legendary, tripled for Shardborn), level bosses (3 + world number), world bosses (20), treasure chests (2 to 4), shard storms (3 to 6), expeditions (about 1 per 2 hours), Arena floors (1 + floor ÷ 10, random element) and the Shard Mine (1 per 2 hours per mine level, random opened element).
+
+### Shard Forge
+- A building: Shardbinder level 3, 250 coins. Opens its own area in camp.
+- Forge items from any one element's shards: Potion 2, Binding Shard 3, Loaded Die 8, an egg of that element 25, Prism Shard 120.
+- **Infusion:** spend shards of a monster's own element to raise its stats 3% per infusion, up to 5 (+15%). Costs 10, 20, 30, 40 and 50.
+- Shardsmith achievement for 10 forges or infusions.
+
+### Shard storms
+- A rare board space (about one per board). Landing on it gives 3 to 6 shards of the world's element and makes Shardborn ten times more likely (1 in 50) for the rest of the level.
+
+### Item names
+- Capture Orb is now the **Binding Shard**, and Perfect Orb is now the **Prism Shard**.
+
 ## Camp Menu
-- Camp opens on a main menu showing player level, experience and items, then menu buttons in three headed groups: **Adventure** (Levels, Arena), **Monsters** (Team and base, Synthesis, Training, Expeditions, Hatchery) and **Camp** (Shop, Quests, Buildings, Achievements, Settings).
+- Camp opens on a main menu showing Shardbinder level, experience and items, then menu buttons in three headed groups: **Adventure** (Levels, Arena), **Monsters** (Team and base, Synthesis, Training, Expeditions, Hatchery) and **Camp** (Shop, Shard Forge, Quests, Buildings, Achievements, Story, Settings).
 - Each button notes its status: why it's locked, or what's waiting (quest rewards to claim, expeditions back, eggs ready, training complete, Shard Mine coins, an active world boss).
 - Choosing one opens only that area, with a Back to main menu button at the top and bottom.
 - Finishing or leaving a level returns to the Levels area. Reopening the game at camp starts on the main menu.
@@ -315,7 +347,7 @@ New Life (first hatch), Explorer (10 expeditions), Arena Contender (floor 10), A
 - Available on any level you've already cleared, from an "Auto-play" button under that level in camp.
 - The die rolls itself and battles play out normally, with skills chosen for you: the skill with the best expected damage against the current opponent, counting element strength, the same-element bonus, accuracy and a small bonus for status effects.
 - It switches monsters once per opponent when a teammate has a clearly better matchup, picks the best replacement when a monster faints, leaves the merchant without buying, never uses Loaded Dice, slips past world bosses (fight them later from camp) and spins the reward wheel.
-- Settings (in camp and on the auto-play bar while it runs): speed (slow, normal, fast), repeat the level until stopped, use Potions below 30% health, and catch monsters you don't own yet. Catch mode uses gentler skills to weaken new monsters, then throws Capture Orbs.
+- Settings (in camp and on the auto-play bar while it runs): speed (slow, normal, fast), repeat the level until stopped, use Potions below 30% health, and catch monsters you don't own yet. Catch mode uses gentler skills to weaken new monsters, then throws Binding Shards.
 - It stops when the level is complete (unless repeating), when your whole team faints, or when you press Stop. You can take over from wherever it stops. It never resumes on its own after the game is closed.
 - Accessibility: the auto-play bar stays in place while the screen updates, so focus stays on the Stop button. A short spoken summary of each step (rolls, landings, opponents, faints, wins, catches and prizes) is announced through a live region, and the full detail stays in "What happened" and the battle log. At fast speed, attack sounds are skipped so steps don't overlap.
 
@@ -332,7 +364,7 @@ All sound is synthesized in the browser, with no audio files.
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.
 3. **Collection and team** — done (prototype): base storage, team selection, leveling and the 2+2 skill unlock.
-4. **Progression** — done (prototype): player level, shop, daily training, Training Yard and Shard Mine, achievements.
+4. **Progression** — done (prototype): Shardbinder level, shop, daily training, Training Yard and Shard Mine, achievements.
 5. **Content** — done (prototype): all eight element worlds with full rosters, evolution, synthesis and status effects.
 6. **World bosses** — done (prototype).
 7. **Combination worlds** — done (prototype): four to start; more can be added.

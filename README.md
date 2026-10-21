@@ -15,6 +15,7 @@ A playable single-player campaign:
 - **Camp:** player levels, a shop, synthesis, daily training, the Shard Mine for passive income, expeditions, a hatchery, and achievements.
 - **Daily and weekly quests**, and an endless **Arena tower** of rival trainers.
 - **Auto-play** for cleared levels, with speed, repeat, potion and catching settings.
+- **Shardborn variants**, rare crystal versions of every monster, plus elemental shards, the **Shard Forge**, shard storms and the story of the Heartcrystal.
 - **Element-themed attack sounds** that change with each skill's power and name, plus a sound test in Settings.
 - **Automatic saving** in your browser.
 
