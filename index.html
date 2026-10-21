@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shardkin: Eight Realms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Chakra+Petch:wght@600;700&display=swap">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+/* Layout: one narrow column, opponent above you like a battle field, actions grouped under headings for screen reader navigation */
+:root {
+  --bg: #eceef4;
+  --surface: #ffffff;
+  --ink: #1a1c2c;
+  --muted: #565a74;
+  --line: #d3d6e3;
+  --accent: #6c34d8;
+  --accent-ink: #ffffff;
+  --focus: #6c34d8;
+  --hp-good: #23804c;
+  --hp-mid: #b57a0a;
+  --hp-low: #c2352a;
+  --el-fire: #c9411b;
+  --el-water: #1d66c7;
+  --el-earth: #84542a;
+  --el-electric: #9a7400;
+  --el-plant: #2a7f35;
+  --el-physical: #5f6072;
+  --el-psychic: #b3337f;
+  --el-ghost: #574694;
+  --font-display: "Chakra Petch", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12131d; --surface: #1c1e2c; --ink: #ecebf6; --muted: #a2a5c0; --line: #303349;
+    --accent: #ad8bff; --accent-ink: #15121f; --focus: #c9b2ff;
+    --hp-good: #4cc382; --hp-mid: #e3ae3c; --hp-low: #f0705f;
+    --el-fire: #ff8a5c; --el-water: #6eaaff; --el-earth: #d3a271; --el-electric: #f2cd4a;
+    --el-plant: #6fd27b; --el-physical: #b4b5c6; --el-psychic: #f07bbf; --el-ghost: #a897ee;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12131d; --surface: #1c1e2c; --ink: #ecebf6; --muted: #a2a5c0; --line: #303349;
+  --accent: #ad8bff; --accent-ink: #15121f; --focus: #c9b2ff;
+  --hp-good: #4cc382; --hp-mid: #e3ae3c; --hp-low: #f0705f;
+  --el-fire: #ff8a5c; --el-water: #6eaaff; --el-earth: #d3a271; --el-electric: #f2cd4a;
+  --el-plant: #6fd27b; --el-physical: #b4b5c6; --el-psychic: #f07bbf; --el-ghost: #a897ee;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--font-display); font-size: 1.75rem; line-height: 1.1; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+h1 span { display: block; font-size: 0.95rem; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
+h2 { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+section { min-width: 0; }
+p { margin: 0; }
+.result {
+  background: var(--surface); border: 2px solid var(--accent); border-radius: 10px;
+  padding: 14px 16px; font-size: 1.1rem;
+}
+.result:focus { outline: 3px solid var(--focus); outline-offset: 3px; }
+.mon { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; }
+.mon .name { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; border: 1.5px solid currentColor; }
+.plain { color: var(--muted); }
+.bar { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 5px; transition: width 0.4s ease; }
+.xpbar > i { background: var(--accent); }
+.stat { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.actions { display: grid; gap: 8px; }
+button {
+  font: inherit; color: var(--ink); background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: 8px; padding: 12px 14px;
+  text-align: left; cursor: pointer; min-height: 48px; width: 100%;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+button .sub { display: block; font-size: 0.9rem; color: var(--muted); }
+button .bn { font-weight: 700; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.primary .sub { color: var(--accent-ink); opacity: 0.85; }
+.small { width: auto; min-height: 40px; padding: 8px 12px; font-size: 0.95rem; }
+ul.clean, ol.log { margin: 0; padding-left: 1.25rem; display: grid; gap: 4px; }
+ol.log { color: var(--muted); font-size: 0.95rem; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+summary { cursor: pointer; font-weight: 700; }
+details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Shardkin: Eight Realms<span>Battle prototype · World 1, Plant</span></h1>
+    <button class="small" id="soundBtn" type="button" aria-pressed="true">Sound effects: on</button>
+  </header>
+
+  <section aria-labelledby="h-result">
+    <h2 id="h-result">What happened</h2>
+    <p class="result" id="result" tabindex="-1"></p>
+  </section>
+
+  <section aria-labelledby="h-foe">
+    <h2 id="h-foe">Opponent</h2>
+    <div id="foe"></div>
+  </section>
+
+  <section aria-labelledby="h-you">
+    <h2 id="h-you">Your monster</h2>
+    <div id="you"></div>
+  </section>
+
+  <div id="controls" style="display:grid; gap:20px;"></div>
+
+  <section aria-labelledby="h-base">
+    <h2 id="h-base">Sent to your base</h2>
+    <div id="base"></div>
+  </section>
+
+  <section aria-labelledby="h-log">
+    <h2 id="h-log">Battle log</h2>
+    <ol class="log" id="log"></ol>
+  </section>
+
+  <details>
+    <summary>How this prototype works</summary>
+    <ul>
+      <li>Each battle is against a random team of two wild monsters from the Plant world, weighted toward common ones.</li>
+      <li>Switching is free: you switch and can still act. Skills, items and capture attempts use your turn.</li>
+      <li>Capture odds rise as the target's health drops and fall with rarity. A failed throw gives the wild monster a free action.</li>
+      <li>Strong hits deal 1.5 times damage, weak hits about two thirds. A skill matching its user's element gets a small bonus.</li>
+      <li>"Next battle" keeps your team as it is, like moving on through a level, so fainted monsters stay out. "Restore team" resets everything.</li>
+      <li>Your team includes two test monsters so you can try switching. A real new player starts with Cindercub alone.</li>
+      <li>Skills 3 and 4 unlock at levels 8 and 15 for now. All numbers are first guesses for playtesting.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Elements ----------
+  const STRONG = {
+    Fire: ["Plant"], Water: ["Fire", "Earth"], Earth: ["Fire", "Electric"],
+    Electric: ["Water"], Plant: ["Water", "Earth"], Physical: [],
+    Psychic: ["Ghost"], Ghost: ["Psychic"]
+  };
+  function mult(skillEl, defEl) {
+    if (STRONG[skillEl].includes(defEl)) return 1.5;
+    if (STRONG[defEl].includes(skillEl)) return 0.67;
+    return 1;
+  }
+  function effWord(m) { return m > 1 ? "Strong" : m < 1 ? "Weak" : "Neutral"; }
+
+  // ---------- Monsters ----------
+  const SKILL_UNLOCK = [1, 1, 8, 15];
+  const SP = {
+    cindercub: { name: "Cindercub", el: "Fire", rarity: "Epic", base: { hp: 70, atk: 75, def: 55, spd: 70 },
+      skills: [["Ember Swipe", "Fire", 40, 100], ["Pounce", "Physical", 35, 100], ["Flare Burst", "Fire", 70, 90], ["Blazing Crown", "Fire", 95, 85]] },
+    pebblet: { name: "Pebblet", el: "Earth", rarity: "Common", base: { hp: 60, atk: 50, def: 70, spd: 30 },
+      skills: [["Rock Toss", "Earth", 40, 95], ["Headbutt", "Physical", 40, 100], ["Quake Stomp", "Earth", 65, 90], ["Boulder Crash", "Earth", 85, 85]] },
+    sparkit: { name: "Sparkit", el: "Electric", rarity: "Common", base: { hp: 45, atk: 55, def: 40, spd: 80 },
+      skills: [["Static Nip", "Electric", 40, 100], ["Quick Dash", "Physical", 35, 100], ["Volt Arc", "Electric", 65, 90], ["Storm Coil", "Electric", 85, 85]] },
+    mossling: { name: "Mossling", el: "Plant", rarity: "Common", base: { hp: 55, atk: 40, def: 50, spd: 35 },
+      skills: [["Vine Lash", "Plant", 40, 100], ["Tackle", "Physical", 40, 100], ["Spore Cloud", "Plant", 55, 90], ["Overgrowth", "Plant", 75, 85]] },
+    sproutle: { name: "Sproutle", el: "Plant", rarity: "Common", base: { hp: 45, atk: 50, def: 40, spd: 55 },
+      skills: [["Leaf Dart", "Plant", 40, 100], ["Seed Spit", "Plant", 30, 100], ["Razor Leaf", "Plant", 60, 90], ["Bloom Burst", "Plant", 80, 85]] },
+    fernkit: { name: "Fernkit", el: "Plant", rarity: "Common", base: { hp: 50, atk: 45, def: 45, spd: 50 },
+      skills: [["Frond Slap", "Plant", 40, 100], ["Scratch", "Physical", 35, 100], ["Fern Spiral", "Plant", 60, 90], ["Canopy Drop", "Plant", 80, 85]] },
+    thornback: { name: "Thornback", el: "Plant", rarity: "Uncommon", base: { hp: 65, atk: 60, def: 65, spd: 40 },
+      skills: [["Thorn Volley", "Plant", 55, 95], ["Shell Bash", "Physical", 45, 100], ["Briar Wall", "Plant", 70, 90], ["Spine Storm", "Plant", 90, 85]] },
+    petalwing: { name: "Petalwing", el: "Plant", rarity: "Uncommon", base: { hp: 50, atk: 60, def: 45, spd: 70 },
+      skills: [["Petal Gust", "Plant", 50, 100], ["Peck", "Physical", 40, 100], ["Pollen Dive", "Plant", 70, 90], ["Blossom Gale", "Plant", 90, 85]] },
+    bramblehorn: { name: "Bramblehorn", el: "Plant", rarity: "Rare", base: { hp: 75, atk: 75, def: 70, spd: 50 },
+      skills: [["Bramble Charge", "Plant", 65, 95], ["Root Bind", "Earth", 50, 100], ["Thicket Crush", "Plant", 80, 90], ["Ancient Grove", "Plant", 100, 85]] }
+  };
+  const WILD = {
+    Common: ["mossling", "sproutle", "fernkit"],
+    Uncommon: ["thornback", "petalwing"],
+    Rare: ["bramblehorn"]
+  };
+  // Chance per wild monster. About 1 Rare per 33 fights of two monsters.
+  const RARITY_WEIGHT = [["Common", 70], ["Uncommon", 28.5], ["Rare", 1.5]];
+  const CAPTURE_BASE = { Common: 0.8, Uncommon: 0.6, Rare: 0.45, Epic: 0.25, Legendary: 0.12 };
+  const XP_MULT = { Common: 1, Uncommon: 1.3, Rare: 1.8, Epic: 2.5, Legendary: 3.5 };
+
+  function calc(m) {
+    const b = SP[m.id].base, L = m.level;
+    m.maxHp = Math.floor(b.hp * L / 20) + L + 10;
+    m.atk = Math.floor(b.atk * L / 25) + 5;
+    m.def = Math.floor(b.def * L / 25) + 5;
+    m.spd = Math.floor(b.spd * L / 25) + 5;
+  }
+  function makeMon(id, level) {
+    const s = SP[id];
+    const m = { id, name: s.name, el: s.el, rarity: s.rarity, level, xp: 0 };
+    calc(m); m.hp = m.maxHp; return m;
+  }
+  function skillsOf(m) {
+    return SP[m.id].skills.map((s, i) => ({ name: s[0], el: s[1], power: s[2], acc: s[3], unlock: SKILL_UNLOCK[i] }));
+  }
+  function unlocked(m) { return skillsOf(m).filter(s => m.level >= s.unlock); }
+  function xpNeed(L) { return L * 15; }
+
+  // ---------- State ----------
+  let S;
+  function freshTeam() { return [makeMon("cindercub", 5), makeMon("pebblet", 5), makeMon("sparkit", 5)]; }
+  function newGame() {
+    S = { team: freshTeam(), active: 0, items: { orb: 5, perfect: 1, potion: 3 }, base: [], battle: 0 };
+    newBattle(true);
+  }
+  function pickWild() {
+    let r = Math.random() * 100, tier = "Common";
+    for (const [t, w] of RARITY_WEIGHT) { if (r < w) { tier = t; break; } r -= w; }
+    const list = WILD[tier];
+    const id = list[Math.floor(Math.random() * list.length)];
+    const lvl = tier === "Rare" ? 6 : 3 + Math.floor(Math.random() * 3);
+    return makeMon(id, lvl);
+  }
+  function newBattle(first) {
+    S.battle++;
+    S.enemies = [pickWild(), pickWild()];
+    S.over = null; S.forced = false; S.log = [];
+    if (S.team[S.active].hp <= 0) S.active = S.team.findIndex(m => m.hp > 0);
+    const e = foe();
+    const msg = `Battle ${S.battle}. A wild team of two appears. Wild ${e.name} steps forward, a ${e.rarity} ${e.el} monster at level ${e.level}. Your ${you().name} is ready.`;
+    S.result = msg; S.log.push(msg);
+    render();
+    if (!first) focusResult();
+  }
+  function you() { return S.team[S.active]; }
+  function foe() { return S.enemies.find(e => e.hp > 0 && !e.caught); }
+  function foesLeft() { return S.enemies.filter(e => e.hp > 0 && !e.caught).length; }
+
+  // ---------- Sound ----------
+  let soundOn = true, ctx = null, queue = [];
+  function sfx(n) { queue.push(n); }
+  const TONES = {
+    hit: [[330, 0.08, "square"]], strong: [[440, 0.08, "square"], [660, 0.12, "square"]],
+    weak: [[200, 0.14, "triangle"]], miss: [[150, 0.18, "sine"]],
+    faint: [[392, 0.12, "triangle"], [294, 0.12, "triangle"], [196, 0.22, "triangle"]],
+    catch: [[523, 0.1, "sine"], [659, 0.1, "sine"], [784, 0.2, "sine"]],
+    fail: [[180, 0.1, "sawtooth"], [150, 0.16, "sawtooth"]],
+    level: [[523, 0.08, "square"], [784, 0.16, "square"]],
+    heal: [[600, 0.08, "sine"], [800, 0.12, "sine"]], swap: [[500, 0.06, "sine"]],
+    win: [[523, 0.1, "square"], [659, 0.1, "square"], [784, 0.1, "square"], [1046, 0.25, "square"]],
+    lose: [[300, 0.2, "sawtooth"], [200, 0.35, "sawtooth"]]
+  };
+  function flushSound() {
+    const q = queue; queue = [];
+    if (!soundOn || !q.length) return;
+    try {
+      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === "suspended") ctx.resume();
+      let t = ctx.currentTime + 0.05;
+      for (const n of q) {
+        for (const [f, d, type] of TONES[n]) {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = type; o.frequency.value = f;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.12, t + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+          o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + d + 0.02);
+          t += d;
+        }
+        t += 0.12;
+      }
+    } catch (e) { /* sound is optional */ }
+  }
+
+  // ---------- Battle logic ----------
+  function attack(att, def, sk, isYou, msgs) {
+    const who = isYou ? `Your ${att.name}` : `Wild ${att.name}`;
+    const target = isYou ? `wild ${def.name}` : `your ${def.name}`;
+    if (Math.random() * 100 >= sk.acc) { msgs.push(`${who} used ${sk.name}, but it missed.`); sfx("miss"); return; }
+    const m = mult(sk.el, def.el);
+    const stab = sk.el === att.el ? 1.2 : 1;
+    const base = ((2 * att.level / 5 + 2) * sk.power * att.atk / def.def) / 50 + 2;
+    const dmg = Math.max(1, Math.round(base * stab * m * (0.85 + Math.random() * 0.15)));
+    def.hp = Math.max(0, def.hp - dmg);
+    let t = `${who} used ${sk.name} on ${target} for ${dmg} damage.`;
+    if (m > 1) { t += " It's strong against it."; sfx("strong"); }
+    else if (m < 1) { t += " It's weak against it."; sfx("weak"); }
+    else sfx("hit");
+    t += def.hp > 0 ? ` ${cap(target)} has ${def.hp} of ${def.maxHp} health left.` : "";
+    msgs.push(t);
+  }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function aiSkill(e, target) {
+    let best = null, score = -1;
+    for (const s of unlocked(e)) {
+      const v = s.power * mult(s.el, target.el) * (s.el === e.el ? 1.2 : 1) * (s.acc / 100) * (0.8 + Math.random() * 0.4);
+      if (v > score) { score = v; best = s; }
+    }
+    return best;
+  }
+  function foeTurn(msgs) {
+    const e = foe(), p = you();
+    if (e && p.hp > 0) attack(e, p, aiSkill(e, p), false, msgs);
+  }
+  function giveXp(amount, msgs) {
+    const p = you();
+    p.xp += amount;
+    msgs.push(`${p.name} gained ${amount} experience.`);
+    while (p.xp >= xpNeed(p.level)) {
+      p.xp -= xpNeed(p.level);
+      const oldMax = p.maxHp;
+      p.level++; calc(p);
+      if (p.hp > 0) p.hp += p.maxHp - oldMax;
+      msgs.push(`${p.name} reached level ${p.level}!`); sfx("level");
+      const learned = skillsOf(p).find(s => s.unlock === p.level);
+      if (learned) msgs.push(`${p.name} learned ${learned.name}.`);
+    }
+  }
+  function settle(msgs) {
+    // Opponent fainted?
+    const cur = S.enemies.find(e => e.hp <= 0 && !e.caught && !e.done);
+    if (cur) {
+      cur.done = true;
+      msgs.push(`Wild ${cur.name} fainted.`); sfx("faint");
+      if (you().hp > 0) giveXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity]), msgs);
+    }
+    const next = foe();
+    if (!next) { endBattle("win", msgs); return; }
+    if (cur) msgs.push(`Wild ${next.name} steps forward, a ${next.rarity} ${next.el} monster at level ${next.level}.`);
+    // Your monster fainted?
+    if (you().hp <= 0) {
+      msgs.push(`Your ${you().name} fainted.`); sfx("faint");
+      if (S.team.some(m => m.hp > 0)) { S.forced = true; msgs.push("Choose a monster to send out."); }
+      else endBattle("lose", msgs);
+    }
+  }
+  function endBattle(kind, msgs) {
+    S.over = kind;
+    if (kind === "win") { msgs.push("You won the battle!"); sfx("win"); }
+    else { msgs.push("All your monsters have fainted. You lost this battle. In the full game, this means restarting the level."); sfx("lose"); }
+  }
+  function captureChance(e, kind) {
+    if (kind === "perfect") return 1;
+    const hpFrac = e.hp / e.maxHp;
+    return Math.min(0.95, CAPTURE_BASE[e.rarity] * (1 - 0.85 * hpFrac));
+  }
+
+  function act(type, arg) {
+    if (S.over) return;
+    if (S.forced && type !== "switch") return;
+    const msgs = [];
+    if (type === "switch") {
+      if (arg === S.active || S.team[arg].hp <= 0) return;
+      S.active = arg; S.forced = false;
+      msgs.push(`You sent out ${you().name}. Switching is free, so you can still act this turn.`); sfx("swap");
+    } else if (type === "skill") {
+      const p = you(), e = foe();
+      const sk = unlocked(p)[arg], esk = aiSkill(e, p);
+      const youFirst = p.spd > e.spd || (p.spd === e.spd && Math.random() < 0.5);
+      if (youFirst) { attack(p, e, sk, true, msgs); if (e.hp > 0) attack(e, p, esk, false, msgs); }
+      else { attack(e, p, esk, false, msgs); if (p.hp > 0) attack(p, e, sk, true, msgs); }
+      settle(msgs);
+    } else if (type === "capture") {
+      const e = foe();
+      if (S.items[arg] <= 0) return;
+      S.items[arg]--;
+      const orbName = arg === "perfect" ? "Perfect Orb" : "Capture Orb";
+      const chance = captureChance(e, arg);
+      if (Math.random() < chance) {
+        e.caught = true;
+        S.base.push({ name: e.name, el: e.el, rarity: e.rarity, level: e.level });
+        msgs.push(`You threw a ${orbName}. Success! You captured wild ${e.name}. It was sent to your base.`); sfx("catch");
+        giveXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs);
+        const next = foe();
+        if (!next) endBattle("win", msgs);
+        else msgs.push(`Wild ${next.name} steps forward, a ${next.rarity} ${next.el} monster at level ${next.level}.`);
+      } else {
+        msgs.push(`You threw a ${orbName}, but wild ${e.name} broke free.`); sfx("fail");
+        foeTurn(msgs); settle(msgs);
+      }
+    } else if (type === "potion") {
+      const p = you();
+      if (S.items.potion <= 0 || p.hp >= p.maxHp) return;
+      S.items.potion--;
+      const heal = Math.min(p.maxHp - p.hp, Math.ceil(p.maxHp / 2));
+      p.hp += heal;
+      msgs.push(`You used a Potion. ${p.name} recovered ${heal} health and now has ${p.hp} of ${p.maxHp}.`); sfx("heal");
+      foeTurn(msgs); settle(msgs);
+    }
+    finish(msgs);
+  }
+  function finish(msgs) {
+    S.result = msgs.join(" ");
+    S.log.push(S.result);
+    render();
+    focusResult();
+    flushSound();
+  }
+  function focusResult() { const r = document.getElementById("result"); r.focus(); }
+
+  // ---------- Rendering ----------
+  function chip(el) { return `<span class="chip" style="color: var(--el-${el.toLowerCase()})">${el}</span>`; }
+  function hpColor(f) { return f > 0.5 ? "var(--hp-good)" : f > 0.2 ? "var(--hp-mid)" : "var(--hp-low)"; }
+  function monCard(m, wild, extra) {
+    const f = m.hp / m.maxHp;
+    return `<div class="mon">
+      <p class="name">${wild ? "Wild " : ""}${m.name}</p>
+      <p class="tags">${chip(m.el)}<span class="chip plain">${m.rarity}</span><span class="chip plain">Level ${m.level}</span></p>
+      <p class="stat">Health ${m.hp} of ${m.maxHp}</p>
+      <div class="bar" aria-hidden="true"><i style="width:${(f * 100).toFixed(1)}%; background:${hpColor(f)}"></i></div>
+      ${extra || ""}
+    </div>`;
+  }
+  function render() {
+    document.getElementById("result").textContent = S.result;
+    const e = foe();
+    const shownFoe = e || S.enemies[S.enemies.length - 1];
+    document.getElementById("foe").innerHTML = monCard(shownFoe, true,
+      `<p class="muted">Opponent team: ${S.enemies.length} monsters, ${foesLeft()} still standing.</p>`);
+    const p = you();
+    document.getElementById("you").innerHTML = monCard(p, false,
+      `<p class="stat muted">Experience ${p.xp} of ${xpNeed(p.level)} to level ${p.level + 1}</p>
+       <div class="bar xpbar" aria-hidden="true"><i style="width:${(p.xp / xpNeed(p.level) * 100).toFixed(1)}%"></i></div>`);
+
+    let html = "";
+    if (S.over) {
+      html += `<section aria-labelledby="h-over"><h2 id="h-over">Battle over</h2><div class="actions">`;
+      if (S.over === "win") html += btn("next", "", "Next battle", "Your team stays as it is, like moving through a level", true);
+      html += btn("restore", "", "Restore team and items", "Heals everyone and refills your items, then starts a new battle", S.over === "lose");
+      html += `</div></section>`;
+    } else {
+      // Skills
+      html += `<section aria-labelledby="h-skills"><h2 id="h-skills">Skills</h2><div class="actions">`;
+      if (S.forced) {
+        html += `<p>${p.name} has fainted. Choose a monster under Switch monster.</p>`;
+      } else {
+        unlocked(p).forEach((s, i) => {
+          html += btn("skill", i, s.name, `${s.el} · Power ${s.power} · Accuracy ${s.acc}% · ${effWord(mult(s.el, e.el))} against ${e.name}`);
+        });
+        const locked = skillsOf(p).filter(s => p.level < s.unlock);
+        if (locked.length) html += `<ul class="clean muted">${locked.map(s => `<li>Locked: ${s.name}, unlocks at level ${s.unlock}</li>`).join("")}</ul>`;
+      }
+      html += `</div></section>`;
+      // Switch
+      html += `<section aria-labelledby="h-switch"><h2 id="h-switch">Switch monster (free)</h2><div class="actions">`;
+      let any = false;
+      S.team.forEach((m, i) => {
+        if (i === S.active) return;
+        if (m.hp <= 0) { html += `<p class="muted">${m.name} has fainted.</p>`; return; }
+        any = true;
+        const vs = e ? ` · ${effWord(bestMult(m, e))} matchup` : "";
+        html += btn("switch", i, `Send out ${m.name}`, `${m.el} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${vs}`, S.forced);
+      });
+      if (!any && !S.team.some((m, i) => i !== S.active && m.hp <= 0)) html += `<p class="muted">No other monsters on your team.</p>`;
+      html += `</div></section>`;
+      // Items
+      if (!S.forced) {
+        html += `<section aria-labelledby="h-items"><h2 id="h-items">Capture and items</h2><div class="actions">`;
+        const pct = Math.round(captureChance(e, "orb") * 100);
+        html += S.items.orb > 0 ? btn("capture", "orb", "Throw Capture Orb", `${S.items.orb} left · ${pct}% chance on ${e.name} · Uses your turn`) : `<p class="muted">No Capture Orbs left.</p>`;
+        html += S.items.perfect > 0 ? btn("capture", "perfect", "Throw Perfect Orb", `${S.items.perfect} left · 100% chance · Rare late-game item`) : `<p class="muted">No Perfect Orbs left.</p>`;
+        if (S.items.potion > 0 && p.hp < p.maxHp) html += btn("potion", "", `Use Potion on ${p.name}`, `${S.items.potion} left · Heals half of its health · Uses your turn`);
+        else html += `<p class="muted">Potions: ${S.items.potion} left${p.hp >= p.maxHp ? ", and " + p.name + " is at full health" : ""}.</p>`;
+        html += `</div></section>`;
+      }
+    }
+    document.getElementById("controls").innerHTML = html;
+
+    document.getElementById("base").innerHTML = S.base.length
+      ? `<ul class="clean">${S.base.map(m => `<li>${m.name}, ${m.rarity} ${m.el}, level ${m.level}</li>`).join("")}</ul>`
+      : `<p class="muted">Nothing captured yet. Lower a wild monster's health, then throw a Capture Orb.</p>`;
+    document.getElementById("log").innerHTML = S.log.map(l => `<li>${l}</li>`).join("");
+  }
+  function bestMult(m, e) {
+    // How well this monster's skills hit the current foe, ignoring defense.
+    return Math.max(...unlocked(m).map(s => mult(s.el, e.el)));
+  }
+  function btn(action, arg, label, sub, primary) {
+    return `<button type="button" class="${primary ? "primary" : ""}" data-a="${action}" data-arg="${arg}"><span class="bn">${label}</span><span class="sub">${sub}</span></button>`;
+  }
+
+  document.getElementById("controls").addEventListener("click", ev => {
+    const b = ev.target.closest("button[data-a]");
+    if (!b) return;
+    const a = b.dataset.a, arg = b.dataset.arg;
+    if (a === "next") { newBattle(false); return; }
+    if (a === "restore") {
+      S.team = freshTeam(); S.active = 0; S.items = { orb: 5, perfect: 1, potion: 3 };
+      newBattle(false); return;
+    }
+    act(a, a === "skill" || a === "switch" ? Number(arg) : arg);
+  });
+  const soundBtn = document.getElementById("soundBtn");
+  soundBtn.addEventListener("click", () => {
+    soundOn = !soundOn;
+    soundBtn.textContent = `Sound effects: ${soundOn ? "on" : "off"}`;
+    soundBtn.setAttribute("aria-pressed", String(soundOn));
+  });
+
+  newGame();
+})();
+</script>
+</body>
+</html>
