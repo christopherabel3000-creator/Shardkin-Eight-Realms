@@ -305,6 +305,12 @@ Forms are listed in evolution order. Rares evolve at level 16; Epics and Legenda
 ### New achievements
 New Life (first hatch), Explorer (10 expeditions), Arena Contender (floor 10), Arena Legend (floor 50).
 
+## Camp Menu
+- Camp opens on a main menu showing player level, experience and items, then menu buttons in three headed groups: **Adventure** (Levels, Arena), **Monsters** (Team and base, Synthesis, Training, Expeditions, Hatchery) and **Camp** (Shop, Quests, Buildings, Achievements, Settings).
+- Each button notes its status: why it's locked, or what's waiting (quest rewards to claim, expeditions back, eggs ready, training complete, Shard Mine coins, an active world boss).
+- Choosing one opens only that area, with a Back to main menu button at the top and bottom.
+- Finishing or leaving a level returns to the Levels area. Reopening the game at camp starts on the main menu.
+
 ## Auto-play
 - Available on any level you've already cleared, from an "Auto-play" button under that level in camp.
 - The die rolls itself and battles play out normally, with skills chosen for you: the skill with the best expected damage against the current opponent, counting element strength, the same-element bonus, accuracy and a small bonus for status effects.

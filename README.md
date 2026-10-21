@@ -19,7 +19,7 @@ A playable single-player campaign:
 - **Automatic saving** in your browser.
 
 ## Accessibility
-Every screen section has a heading (for example What happened, Level board, Look ahead, Opponent, Skills, Switch monster), and all actions are buttons. After each action, focus moves to "What happened" so the results of the turn are read aloud right away.
+Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; each area opens on its own with a Back to main menu button. Every screen section has a heading (for example What happened, Level board, Look ahead, Opponent, Skills, Switch monster), and all actions are buttons. After each action, focus moves to "What happened" so the results of the turn are read aloud right away.
 
 ## Files
 - `index.html` — the game (plain HTML, CSS and JavaScript, no build step)

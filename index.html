@@ -145,7 +145,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   <details>
     <summary>How to play this prototype</summary>
     <ul>
-      <li>Camp has a menu: Levels, Team and base, Shop, Synthesis, Buildings, Training and Achievements. New areas unlock as your player level rises.</li>
+      <li>Camp opens on the main menu, grouped into Adventure, Monsters and Camp. Choose an area to open just that area, then use Back to main menu to return. Each menu button notes anything waiting for you, like quest rewards or eggs ready to hatch. New areas unlock as your player level rises.</li>
       <li>Pick up to four monsters for your team, then choose a level. Your team is locked once the level starts. Clearing a world's last level unlocks the next world. After the eight element worlds come combination worlds that mix two elements.</li>
       <li>On the board, roll the die to move along 36 spaces: wild battles, healing springs, thorn traps, portals, treasure chests, a wandering merchant and quiet paths. Look ahead lists the next six. A Loaded Die lets you pick your roll.</li>
       <li>Rolling past the end lands you on the boss space. Level bosses must be defeated, not captured, and then you spin the reward wheel.</li>
@@ -491,11 +491,11 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       prog: { 1: { unlocked: 1, cleared: [] }, 2: { unlocked: 1, cleared: [] } },
       screen: "camp", level: null, battle: null, wheel: null, confirm: null, sound: true, result: "",
       player: { level: 1, xp: 0 }, pxpLife: 0, dex: [], stats: { caught: 0, evolved: 0, synth: 0, trained: 0, wbKills: 0 }, ach: [],
-      yard: false, mine: null, training: { mode: "time", session: null }, campTab: "levels", dieChoose: false, synth: null,
+      yard: false, mine: null, training: { mode: "time", session: null }, campTab: null, dieChoose: false, synth: null,
       wboss: null, wfights: null, notices: [] };
     ensureExtras();
     addMon(makeMon("cindercub", 5), true);
-    S.result = "Welcome to Shardkin. Your starter, Cindercub, is a level 5 Epic Fire monster, strong against the Plant world. Choose Level 1 to begin.";
+    S.result = "Welcome to Shardkin. Your starter, Cindercub, is a level 5 Epic Fire monster, strong against the Plant world. Open Levels and choose Level 1 to begin.";
   }
   function addMon(m, toTeam) {
     m.uid = "m" + (S.uid++);
@@ -1480,8 +1480,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   }
   function monLine(m) { return `${m.el} · ${m.rarity} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${statusText(m)}`; }
   function itemsLine() {
-    const crests = Object.entries(S.items.crests).filter(([, n]) => n > 0).map(([c, n]) => `${n} ${c}`);
-    return [`${S.coins} coins`, `${S.items.orb} Capture Orbs`, `${S.items.perfect} Perfect Orbs`, `${S.items.potion} Potions`, `${S.items.die} Loaded Dice`, `${eggCount()} eggs`, ...crests].join(" · ");
+    const pl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const crests = Object.entries(S.items.crests).filter(([, n]) => n > 0).map(([c, n]) => pl(n, c, c + "s"));
+    return [pl(S.coins, "coin", "coins"), pl(S.items.orb, "Capture Orb", "Capture Orbs"), pl(S.items.perfect, "Perfect Orb", "Perfect Orbs"), pl(S.items.potion, "Potion", "Potions"), pl(S.items.die, "Loaded Die", "Loaded Dice"), pl(eggCount(), "egg", "eggs"), ...crests].join(" · ");
   }
 
   const TABS = [
@@ -1499,23 +1500,55 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (t === "hatch") return S.hatch ? "" : "needs the Hatchery";
     return "";
   }
+  // The main menu groups every camp area; opening one shows only that area, with a way back.
+  const MENU = [
+    ["Adventure", ["levels", "arena"]],
+    ["Monsters", ["team", "synth", "train", "exped", "hatch"]],
+    ["Camp", ["shop", "quests", "build", "ach", "save"]]
+  ];
+  function tabLabel(id) { return TABS.find(t => t[0] === id)[1]; }
+  // A short note on each menu button, so you can see what needs attention without opening it.
+  function tabNote(id) {
+    const lock = tabLocked(id);
+    if (lock) return `Locked: ${lock}`;
+    if (id === "levels") {
+      const w = highestOpen(), notes = [`Up to World ${w}, ${world(w).name}`];
+      if (S.wboss) notes.push(`World boss active, ${S.wfights.count} fight${S.wfights.count === 1 ? "" : "s"} ready`);
+      return notes.join(" · ");
+    }
+    if (id === "arena") return `Best floor ${S.arena.best}`;
+    if (id === "team") return `${S.team.length} of 4 on your team · ${Object.keys(S.mons).length - S.team.length} in your base`;
+    if (id === "synth") return `${S.items.scrolls.length} scroll${S.items.scrolls.length === 1 ? "" : "s"}`;
+    if (id === "train") { const st = trainingStatus(); return !st ? "Nothing training" : st.done ? "Training complete, ready to finish" : `${S.mons[S.training.session.uid].name} is training`; }
+    if (id === "exped") { const back = S.exped.list.filter(x => expLeft(x) <= 0).length; return back ? `${back} back and waiting` : `${S.exped.list.length} of ${DOCK.slots} away`; }
+    if (id === "hatch") { const ready = S.hatch.incub.filter(x => hatchLeft(x) <= 0).length; return ready ? `${ready} egg${ready === 1 ? "" : "s"} ready to hatch` : `${S.hatch.incub.length} of ${S.hatch.slots} incubating · ${eggCount()} eggs waiting`; }
+    if (id === "shop") return `${S.coins} coins`;
+    if (id === "quests") { ensureQuests(); const ready = [...S.quests.daily, ...S.quests.weekly].filter(q => !q.claimed && questProgress(q) >= q.n).length; return ready ? `${ready} reward${ready === 1 ? "" : "s"} ready to claim` : "No rewards ready yet"; }
+    if (id === "build") { const p = minePending(); return p > 0 ? `${p} coins ready at the Shard Mine` : ""; }
+    if (id === "ach") return `${S.ach.length} of ${ACH.length} earned`;
+    if (id === "save") return "Sound test and saved game";
+    return "";
+  }
   function renderCamp() {
     const P = S.player;
-    let h = sec("h-camp", "Camp", `<div class="actions">
-      <p>Player level ${P.level}. ${P.xp} of ${pNeed(P.level)} experience to level ${P.level + 1}.</p>
-      <div class="bar xpbar" aria-hidden="true"><i style="width:${(P.xp / pNeed(P.level) * 100).toFixed(1)}%"></i></div>
-      <p class="muted">${itemsLine()}</p></div>`);
-    let nav = `<div class="pair">`;
-    for (const [id, lab] of TABS) {
-      const lock = tabLocked(id);
-      nav += btn("tab", id, lab + (S.campTab === id ? " (open)" : ""), lock ? `Locked: ${lock}` : "", S.campTab === id, S.campTab === id);
+    if (S.campTab && !TABS.some(t => t[0] === S.campTab)) S.campTab = null;
+    if (!S.campTab) {
+      let h = sec("h-camp", "Main menu", `<div class="actions">
+        <p>Player level ${P.level}. ${P.xp} of ${pNeed(P.level)} experience to level ${P.level + 1}.</p>
+        <div class="bar xpbar" aria-hidden="true"><i style="width:${(P.xp / pNeed(P.level) * 100).toFixed(1)}%"></i></div>
+        <p class="muted">${itemsLine()}</p></div>`);
+      for (const [group, ids] of MENU) {
+        let nav = `<div class="pair">`;
+        for (const id of ids) nav += btn("tab", id, tabLabel(id), tabNote(id), false);
+        h += sec("h-menu-" + group.toLowerCase(), group, nav + `</div>`);
+      }
+      return h;
     }
-    h += sec("h-menu", "Camp menu", nav + `</div>`);
-    const lock = tabLocked(S.campTab);
-    const lab = TABS.find(t => t[0] === S.campTab)[1];
-    if (lock) return h + sec("h-tab", lab, `<p class="muted">${lab} is locked: it ${lock}.</p>`);
-    const body = { levels: tabLevels, team: tabTeam, quests: tabQuests, arena: tabArena, shop: tabShop, synth: tabSynth, build: tabBuild, train: tabTrain, exped: tabExped, hatch: tabHatch, ach: tabAch, save: tabSave }[S.campTab]();
-    return h + sec("h-tab", lab, body);
+    const lab = tabLabel(S.campTab), lock = tabLocked(S.campTab);
+    const back = `<div class="actions">${btn("menu", "", "Back to main menu", "")}</div>`;
+    const body = lock ? `<p class="muted">${lab} is locked: it ${lock}.</p>`
+      : { levels: tabLevels, team: tabTeam, quests: tabQuests, arena: tabArena, shop: tabShop, synth: tabSynth, build: tabBuild, train: tabTrain, exped: tabExped, hatch: tabHatch, ach: tabAch, save: tabSave }[S.campTab]();
+    return back + sec("h-tab", lab, body) + back;
   }
   function wbPanel() {
     if (!S.wboss) return "";
@@ -1874,7 +1907,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     document.getElementById("result").textContent = S.result;
     const L = S.level, B = S.battle;
     const where = L ? `World ${L.w}, ${world(L.w).name} · Level ${L.n}` : "";
-    const sub = { camp: "Camp", level: where, battle: B && B.wboss ? "World boss fight" : B && B.arena ? `Arena · Floor ${B.floor}` : `${where} · Battle`, wheel: `${where} complete` };
+    const sub = { camp: S.campTab ? `Camp · ${tabLabel(S.campTab)}` : "Camp · Main menu", level: where, battle: B && B.wboss ? "World boss fight" : B && B.arena ? `Arena · Floor ${B.floor}` : `${where} · Battle`, wheel: `${where} complete` };
     document.getElementById("subtitle").textContent = sub[S.screen];
     const r = { camp: renderCamp, level: renderLevel, battle: renderBattle, wheel: renderWheel };
     document.getElementById("screen").innerHTML = r[S.screen]();
@@ -1908,7 +1941,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (S.wboss) { const t = []; wbTick(t); if (t.length && S.screen === "camp") msgs = t; }
     switch (a) {
       // Camp
-      case "tab": S.campTab = arg; S.confirm = null; msgs = (msgs || []).concat([`${TABS.find(t => t[0] === arg)[1]} is open.`]); break;
+      case "tab": S.campTab = arg; S.confirm = null; S.synth = null; msgs = (msgs || []).concat([`${tabLabel(arg)}.`]); break;
+      case "menu": S.campTab = null; S.confirm = null; S.synth = null; msgs = (msgs || []).concat(["Main menu."]); break;
       case "level": { const [w, n] = arg.split("-").map(Number); if (S.team.length && worldOpen(w) && n <= prog(w).unlocked) msgs = startLevel(w, n); break; }
       case "world": { const w = Number(arg); if (worldOpen(w)) { S.worldView = w; msgs = [`World ${w}: ${world(w).name}. ${prog(w).cleared.length} of ${world(w).levels} levels cleared.`]; } break; }
       case "claim": { const [k, i] = arg.split("-"); msgs = claimQuest(k, Number(i)); break; }
@@ -2125,6 +2159,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   let autoWasOn = false;
   if (S) {
     ensureExtras();
+    if (S.screen === "camp") S.campTab = null;
     if (S.auto) { autoWasOn = true; S.auto = null; }
     S.confirm = null;
     S.result = { camp: "Welcome back. You're at camp.", level: "Welcome back. Your level is waiting where you left it.", battle: "Welcome back. Your battle is waiting where you left it.", wheel: "Welcome back. Your reward wheel is waiting." }[S.screen] || "Welcome back.";
