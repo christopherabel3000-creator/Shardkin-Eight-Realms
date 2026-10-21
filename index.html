@@ -131,12 +131,13 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     <summary>How to play this prototype</summary>
     <ul>
       <li>Camp has a menu: Levels, Team and base, Shop, Synthesis, Buildings, Training and Achievements. New areas unlock as your player level rises.</li>
-      <li>Pick up to four monsters for your team, then choose a level. Your team is locked once the level starts.</li>
-      <li>On the board, roll the die to move along 36 spaces: wild battles, healing springs, thorn traps, portals and quiet paths. Look ahead lists the next six. A Loaded Die from the shop lets you pick your roll.</li>
-      <li>Healing springs and thorn traps affect your lead monster. Rolling past the end lands you on the boss space. Bosses must be defeated, not captured, and then you spin the reward wheel.</li>
+      <li>Pick up to four monsters for your team, then choose a level. Your team is locked once the level starts. Clearing a world's last level unlocks the next world.</li>
+      <li>On the board, roll the die to move along 36 spaces: wild battles, healing springs, thorn traps, portals, treasure chests, a wandering merchant and quiet paths. Look ahead lists the next six. A Loaded Die lets you pick your roll.</li>
+      <li>Rolling past the end lands you on the boss space. Level bosses must be defeated, not captured, and then you spin the reward wheel.</li>
       <li>Fainted monsters stay out for the rest of the level. If your whole team faints, the level fails, but you keep your captures and experience.</li>
-      <li>Switching is free in battle. Skills, items and capture attempts use your turn. Capture chance is 1 minus current health divided by max health, times a rarity factor.</li>
-      <li>Every defeat or capture gives experience to each standing monster on your team. Rare, Epic and Legendary monsters evolve at level 16. Epics and Legendaries reach a final form with their own crest item.</li>
+      <li>Some skills can put a monster to sleep, stun it or poison it. Sleeping or stunned monsters lose their turns, and poison deals damage each round. Status effects raise capture odds.</li>
+      <li>Rarely, a world boss hides on an ordinary-looking space and moves every roll. When you find it, fight now (ending that level attempt) or ignore it and fight later from camp. Its damage carries over between fights, you earn one fight every 2 hours (up to 5), and it leaves after 24 hours.</li>
+      <li>Every defeat or capture gives experience to each standing monster on your team. Rare, Epic and Legendary monsters evolve at level 16. Epics and Legendaries reach a final form with their own crest.</li>
       <li>Progress saves automatically in this browser on this device.</li>
     </ul>
   </details>
@@ -161,58 +162,92 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
 
   // ---------- Monsters ----------
   // forms: names by stage. Stage 1 comes at EVOLVE_LEVEL; stage 2 (Epic/Legendary) needs that monster's crest.
+  // skills: [name, element, power, accuracy, optional [status, chance %]]
   const SKILL_UNLOCK = [1, 1, 8, 15];
   const EVOLVE_LEVEL = 16;
   const SP = {
     cindercub: { el: "Fire", rarity: "Epic", forms: ["Cindercub", "Blazefang", "Infernox"], base: { hp: 70, atk: 75, def: 55, spd: 70 },
-      skills: [["Ember Swipe", "Fire", 40, 100], ["Pounce", "Physical", 35, 100], ["Flare Burst", "Fire", 70, 90], ["Blazing Crown", "Fire", 95, 85]] },
-    // Plant commons
+      skills: [["Ember Swipe", "Fire", 40, 100], ["Pounce", "Physical", 35, 100, ["stun", 25]], ["Flare Burst", "Fire", 70, 90], ["Blazing Crown", "Fire", 95, 85]] },
+    // ----- Plant -----
     mossling: { el: "Plant", rarity: "Common", forms: ["Mossling"], base: { hp: 55, atk: 40, def: 50, spd: 35 },
-      skills: [["Vine Lash", "Plant", 40, 100], ["Tackle", "Physical", 40, 100], ["Spore Cloud", "Plant", 55, 90], ["Overgrowth", "Plant", 75, 85]] },
+      skills: [["Vine Lash", "Plant", 40, 100], ["Tackle", "Physical", 40, 100], ["Spore Cloud", "Plant", 35, 90, ["sleep", 40]], ["Overgrowth", "Plant", 75, 85]] },
     sproutle: { el: "Plant", rarity: "Common", forms: ["Sproutle"], base: { hp: 45, atk: 50, def: 40, spd: 55 },
-      skills: [["Leaf Dart", "Plant", 40, 100], ["Seed Spit", "Plant", 30, 100], ["Razor Leaf", "Plant", 60, 90], ["Bloom Burst", "Plant", 80, 85]] },
+      skills: [["Leaf Dart", "Plant", 40, 100], ["Seed Spit", "Plant", 30, 100, ["poison", 30]], ["Razor Leaf", "Plant", 60, 90], ["Bloom Burst", "Plant", 80, 85]] },
     fernkit: { el: "Plant", rarity: "Common", forms: ["Fernkit"], base: { hp: 50, atk: 45, def: 45, spd: 50 },
       skills: [["Frond Slap", "Plant", 40, 100], ["Scratch", "Physical", 35, 100], ["Fern Spiral", "Plant", 60, 90], ["Canopy Drop", "Plant", 80, 85]] },
     budlet: { el: "Plant", rarity: "Common", forms: ["Budlet"], base: { hp: 50, atk: 42, def: 48, spd: 45 },
       skills: [["Bud Bop", "Plant", 40, 100], ["Nuzzle", "Physical", 35, 100], ["Petal Pop", "Plant", 60, 90], ["Full Bloom", "Plant", 80, 85]] },
     twiglet: { el: "Plant", rarity: "Common", forms: ["Twiglet"], base: { hp: 42, atk: 52, def: 38, spd: 58 },
-      skills: [["Twig Jab", "Plant", 40, 100], ["Quick Poke", "Physical", 35, 100], ["Bark Snap", "Plant", 60, 90], ["Splinter Rain", "Plant", 80, 85]] },
-    // Plant uncommons
+      skills: [["Twig Jab", "Plant", 40, 100], ["Quick Poke", "Physical", 35, 100, ["stun", 20]], ["Bark Snap", "Plant", 60, 90], ["Splinter Rain", "Plant", 80, 85]] },
     thornback: { el: "Plant", rarity: "Uncommon", forms: ["Thornback"], base: { hp: 65, atk: 60, def: 65, spd: 40 },
-      skills: [["Thorn Volley", "Plant", 55, 95], ["Shell Bash", "Physical", 45, 100], ["Briar Wall", "Plant", 70, 90], ["Spine Storm", "Plant", 90, 85]] },
+      skills: [["Thorn Volley", "Plant", 55, 95, ["poison", 25]], ["Shell Bash", "Physical", 45, 100], ["Briar Wall", "Plant", 70, 90], ["Spine Storm", "Plant", 90, 85]] },
     petalwing: { el: "Plant", rarity: "Uncommon", forms: ["Petalwing"], base: { hp: 50, atk: 60, def: 45, spd: 70 },
       skills: [["Petal Gust", "Plant", 50, 100], ["Peck", "Physical", 40, 100], ["Pollen Dive", "Plant", 70, 90], ["Blossom Gale", "Plant", 90, 85]] },
     mushwick: { el: "Plant", rarity: "Uncommon", forms: ["Mushwick"], base: { hp: 70, atk: 50, def: 60, spd: 30 },
-      skills: [["Spore Puff", "Plant", 45, 100], ["Cap Slam", "Physical", 45, 100], ["Mycelium Grip", "Earth", 60, 90], ["Fungal Bloom", "Plant", 85, 85]] },
+      skills: [["Spore Puff", "Plant", 40, 100, ["sleep", 30]], ["Cap Slam", "Physical", 45, 100], ["Mycelium Grip", "Earth", 60, 90], ["Fungal Bloom", "Plant", 85, 85]] },
     briarfox: { el: "Plant", rarity: "Uncommon", forms: ["Briarfox"], base: { hp: 55, atk: 65, def: 45, spd: 72 },
       skills: [["Briar Bite", "Plant", 50, 100], ["Swift Claw", "Physical", 45, 100], ["Thorn Dash", "Plant", 70, 90], ["Wild Hunt", "Physical", 85, 85]] },
-    // Plant rares (evolve once)
     bramblehorn: { el: "Plant", rarity: "Rare", forms: ["Bramblehorn", "Elderhorn"], base: { hp: 75, atk: 75, def: 70, spd: 50 },
-      skills: [["Bramble Charge", "Plant", 65, 95], ["Root Bind", "Earth", 50, 100], ["Thicket Crush", "Plant", 80, 90], ["Ancient Grove", "Plant", 100, 85]] },
+      skills: [["Bramble Charge", "Plant", 65, 95], ["Root Bind", "Earth", 50, 100, ["stun", 25]], ["Thicket Crush", "Plant", 80, 90], ["Ancient Grove", "Plant", 100, 85]] },
     lilypaw: { el: "Plant", rarity: "Rare", forms: ["Lilypaw", "Lotuslynx"], base: { hp: 65, atk: 70, def: 60, spd: 75 },
       skills: [["Lily Swipe", "Plant", 55, 100], ["Dew Splash", "Water", 50, 100], ["Lotus Pounce", "Plant", 75, 90], ["Tidal Bloom", "Water", 85, 85]] },
     cactling: { el: "Plant", rarity: "Rare", forms: ["Cactling", "Saguardian"], base: { hp: 65, atk: 72, def: 82, spd: 35 },
-      skills: [["Needle Shot", "Plant", 55, 100], ["Sand Jab", "Earth", 50, 100], ["Spine Barrage", "Plant", 75, 90], ["Desert Crown", "Earth", 85, 85]] },
-    // Plant epics (evolve twice, final needs crest)
+      skills: [["Needle Shot", "Plant", 55, 100, ["poison", 25]], ["Sand Jab", "Earth", 50, 100], ["Spine Barrage", "Plant", 75, 90], ["Desert Crown", "Earth", 85, 85]] },
     seedrake: { el: "Plant", rarity: "Epic", forms: ["Seedrake", "Grovedrake", "Sylvanwyrm"], base: { hp: 75, atk: 80, def: 65, spd: 65 },
       skills: [["Seed Breath", "Plant", 60, 100], ["Tail Whip", "Physical", 50, 100], ["Grove Fang", "Plant", 80, 90], ["Verdant Roar", "Plant", 100, 85]] },
     mothbloom: { el: "Plant", rarity: "Epic", forms: ["Mothbloom", "Moonmoth", "Eclipse Moth"], base: { hp: 65, atk: 78, def: 60, spd: 85 },
-      skills: [["Pollen Wing", "Plant", 60, 100], ["Dream Dust", "Psychic", 55, 100], ["Moonpetal", "Plant", 80, 90], ["Eclipse Veil", "Psychic", 95, 85]] },
-    // Plant legendary
+      skills: [["Pollen Wing", "Plant", 60, 100], ["Dream Dust", "Psychic", 50, 100, ["sleep", 40]], ["Moonpetal", "Plant", 80, 90], ["Eclipse Veil", "Psychic", 95, 85]] },
     saplord: { el: "Plant", rarity: "Legendary", forms: ["Saplord", "Oakenreign", "Worldroot"], base: { hp: 95, atk: 90, def: 90, spd: 60 },
-      skills: [["Root Strike", "Plant", 70, 100], ["Stone Grip", "Earth", 60, 100], ["Ancient Bloom", "Plant", 90, 90], ["Worldroot Wrath", "Plant", 110, 85]] }
+      skills: [["Root Strike", "Plant", 70, 100], ["Stone Grip", "Earth", 60, 100, ["stun", 25]], ["Ancient Bloom", "Plant", 90, 90], ["Worldroot Wrath", "Plant", 110, 85]] },
+    // ----- Water -----
+    puddlepup: { el: "Water", rarity: "Common", forms: ["Puddlepup"], base: { hp: 55, atk: 45, def: 45, spd: 45 },
+      skills: [["Splash Bite", "Water", 40, 100], ["Tackle", "Physical", 40, 100], ["Puddle Pounce", "Water", 60, 90], ["Rain Howl", "Water", 80, 85]] },
+    bubblet: { el: "Water", rarity: "Common", forms: ["Bubblet"], base: { hp: 45, atk: 40, def: 50, spd: 55 },
+      skills: [["Bubble Pop", "Water", 40, 100], ["Bubble Lull", "Water", 30, 95, ["sleep", 40]], ["Foam Burst", "Water", 60, 90], ["Bubble Storm", "Water", 80, 85]] },
+    driftling: { el: "Water", rarity: "Common", forms: ["Driftling"], base: { hp: 50, atk: 42, def: 48, spd: 50 },
+      skills: [["Drift Slap", "Water", 40, 100], ["Nudge", "Physical", 35, 100], ["Current Spin", "Water", 60, 90], ["Undertow", "Water", 80, 85]] },
+    shellkin: { el: "Water", rarity: "Common", forms: ["Shellkin"], base: { hp: 60, atk: 40, def: 62, spd: 30 },
+      skills: [["Shell Smack", "Physical", 40, 100], ["Brine Squirt", "Water", 40, 100], ["Pearl Shot", "Water", 60, 90], ["Clam Crush", "Physical", 80, 85]] },
+    splashrat: { el: "Water", rarity: "Common", forms: ["Splashrat"], base: { hp: 42, atk: 52, def: 38, spd: 62 },
+      skills: [["Wet Nip", "Water", 40, 100], ["Gnaw", "Physical", 35, 100, ["stun", 20]], ["Spray Dash", "Water", 60, 90], ["Flash Flood", "Water", 80, 85]] },
+    tidecrab: { el: "Water", rarity: "Uncommon", forms: ["Tidecrab"], base: { hp: 65, atk: 60, def: 70, spd: 35 },
+      skills: [["Tide Pinch", "Water", 50, 100, ["stun", 20]], ["Claw Bash", "Physical", 45, 100], ["Surf Slam", "Water", 70, 90], ["Crab Hammer", "Water", 90, 85]] },
+    reefwing: { el: "Water", rarity: "Uncommon", forms: ["Reefwing"], base: { hp: 52, atk: 60, def: 45, spd: 72 },
+      skills: [["Reef Dive", "Water", 50, 100], ["Venom Dart", "Physical", 40, 100, ["poison", 30]], ["Coral Gust", "Water", 70, 90], ["Reef Tempest", "Water", 90, 85]] },
+    mistnewt: { el: "Water", rarity: "Uncommon", forms: ["Mistnewt"], base: { hp: 55, atk: 58, def: 52, spd: 60 },
+      skills: [["Mist Lick", "Water", 50, 100], ["Haze Daze", "Psychic", 40, 100, ["sleep", 30]], ["Fog Lash", "Water", 70, 90], ["Mire Wave", "Water", 90, 85]] },
+    coralhound: { el: "Water", rarity: "Uncommon", forms: ["Coralhound"], base: { hp: 62, atk: 64, def: 55, spd: 55 },
+      skills: [["Coral Fang", "Water", 50, 100], ["Pack Rush", "Physical", 45, 100], ["Reef Howl", "Water", 70, 90], ["Abyss Bite", "Water", 90, 85]] },
+    rippleray: { el: "Water", rarity: "Rare", forms: ["Rippleray", "Stormray"], base: { hp: 65, atk: 70, def: 60, spd: 75 },
+      skills: [["Ripple Glide", "Water", 65, 95], ["Shock Tail", "Electric", 50, 100, ["stun", 30]], ["Wave Cutter", "Water", 80, 90], ["Storm Surge", "Electric", 95, 85]] },
+    frostfin: { el: "Water", rarity: "Rare", forms: ["Frostfin", "Glacierfin"], base: { hp: 70, atk: 72, def: 65, spd: 55 },
+      skills: [["Chill Fin", "Water", 65, 95], ["Frost Bite", "Physical", 50, 100, ["stun", 25]], ["Glacial Rush", "Water", 80, 90], ["Frozen Deep", "Water", 100, 85]] },
+    kelpling: { el: "Water", rarity: "Rare", forms: ["Kelpling", "Kelpwarden"], base: { hp: 75, atk: 65, def: 75, spd: 45 },
+      skills: [["Kelp Whip", "Water", 60, 100], ["Seaweed Snare", "Plant", 50, 100, ["poison", 30]], ["Tidal Coil", "Water", 80, 90], ["Kelp Forest", "Plant", 90, 85]] },
+    tidalisk: { el: "Water", rarity: "Epic", forms: ["Tidalisk", "Torrentisk", "Abyssalisk"], base: { hp: 75, atk: 82, def: 65, spd: 65 },
+      skills: [["Torrent Fang", "Water", 60, 100], ["Coil Crush", "Physical", 50, 100, ["stun", 25]], ["Riptide", "Water", 80, 90], ["Abyssal Torrent", "Water", 100, 85]] },
+    pearlcalf: { el: "Water", rarity: "Epic", forms: ["Pearlcalf", "Pearlwhale", "Leviathal"], base: { hp: 90, atk: 70, def: 75, spd: 45 },
+      skills: [["Pearl Spout", "Water", 60, 100], ["Whale Song", "Psychic", 50, 100, ["sleep", 40]], ["Breach Slam", "Water", 80, 90], ["Deep Leviathan", "Water", 100, 85]] },
+    deepcrown: { el: "Water", rarity: "Legendary", forms: ["Deepcrown", "Tidemonarch", "Oceanheart"], base: { hp: 95, atk: 90, def: 88, spd: 65 },
+      skills: [["Crown Wave", "Water", 70, 100], ["Pressure Bind", "Physical", 60, 100, ["stun", 25]], ["Sovereign Tide", "Water", 90, 90], ["Ocean's Heart", "Water", 110, 85]] }
   };
   function crestName(id) { return `${SP[id].forms[2]} Crest`; }
-  const PLANT = { Common: ["mossling", "sproutle", "fernkit", "budlet", "twiglet"], Uncommon: ["thornback", "petalwing", "mushwick", "briarfox"],
-    Rare: ["bramblehorn", "lilypaw", "cactling"], Epic: ["seedrake", "mothbloom"], Legendary: ["saplord"] };
-  const PLANT_IDS = Object.values(PLANT).flat();
-  const PLANT_CRESTS = [...PLANT.Epic, ...PLANT.Legendary];
+  const POOLS = {
+    Plant: { Common: ["mossling", "sproutle", "fernkit", "budlet", "twiglet"], Uncommon: ["thornback", "petalwing", "mushwick", "briarfox"],
+      Rare: ["bramblehorn", "lilypaw", "cactling"], Epic: ["seedrake", "mothbloom"], Legendary: ["saplord"] },
+    Water: { Common: ["puddlepup", "bubblet", "driftling", "shellkin", "splashrat"], Uncommon: ["tidecrab", "reefwing", "mistnewt", "coralhound"],
+      Rare: ["rippleray", "frostfin", "kelpling"], Epic: ["tidalisk", "pearlcalf"], Legendary: ["deepcrown"] }
+  };
+  const WORLDS = [{ el: "Plant", levels: 5 }, { el: "Water", levels: 5 }];
+  function poolIds(el) { return Object.values(POOLS[el]).flat(); }
+  function crestSpecies(el) { return [...POOLS[el].Epic, ...POOLS[el].Legendary]; }
+  function world(w) { return WORLDS[w - 1]; }
   // Chance per wild monster. Rare or better is about 1 in 40 fights of two monsters.
   const RARITY_WEIGHT = [["Common", 68], ["Uncommon", 30.75], ["Rare", 1], ["Epic", 0.2], ["Legendary", 0.05]];
   const CAPTURE_MULT = { Common: 1, Uncommon: 0.75, Rare: 0.5, Epic: 0.3, Legendary: 0.15 };
+  const STATUS_CAPTURE = { sleep: 1.5, stun: 1.5, poison: 1.2 };
   const XP_MULT = { Common: 1, Uncommon: 1.3, Rare: 1.8, Epic: 2.5, Legendary: 3.5 };
-  const LEVELS = 5;
-  function wildRange(n) { return [2 + n, 3 + n]; }
+  function wildRange(w, n) { const lo = 2 + n + (w - 1) * 7; return [lo, lo + 1]; }
 
   function calc(m) {
     const b = SP[m.id].base, L = m.level, k = 1 + 0.2 * (m.stage || 0);
@@ -223,11 +258,13 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   }
   function makeMon(id, level) {
     const s = SP[id];
-    const m = { id, name: s.forms[0], el: s.el, rarity: s.rarity, level, xp: 0, stage: 0 };
+    const m = { id, name: s.forms[0], el: s.el, rarity: s.rarity, level, xp: 0, stage: 0, status: null };
     if (s.forms.length > 1 && level >= EVOLVE_LEVEL) { m.stage = 1; m.name = s.forms[1]; }
     calc(m); m.hp = m.maxHp; return m;
   }
-  function skillsOf(m) { return SP[m.id].skills.map((s, i) => ({ name: s[0], el: s[1], power: s[2], acc: s[3], unlock: SKILL_UNLOCK[i] })); }
+  function skillsOf(m) {
+    return SP[m.id].skills.map((s, i) => ({ name: s[0], el: s[1], power: s[2], acc: s[3], unlock: SKILL_UNLOCK[i], st: s[4] ? s[4][0] : null, stc: s[4] ? s[4][1] : 0 }));
+  }
   function unlocked(m) { return skillsOf(m).filter(s => m.level >= s.unlock); }
   function xpNeed(L) { return 10 * L + 3 * L * L; }
   function rand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
@@ -239,7 +276,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     return list[0][0];
   }
 
-  // ---------- Player, shop, recipes, buildings ----------
+  // ---------- Player, shop, recipes, buildings, world bosses ----------
   function pNeed(L) { return 60 * L; }
   const UNLOCK_TEXT = { 2: "The Shop is now open at camp.", 3: "You can now build the Training Yard.", 4: "You can now build the Shard Mine for passive income." };
   const SHOP = [
@@ -248,17 +285,19 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     { id: "die", name: "Loaded Die", price: 120, desc: "Choose your roll on the board" },
     { id: "perfect", name: "Perfect Orb", price: 1500, desc: "100% capture chance" }
   ];
-  const RECIPES = {
-    plantRare: { name: "Scroll of Synthesis: Rare Plant", desc: "Combine two Common or Uncommon Plant monsters into a random Rare Plant monster.",
-      slots: [["Common", "Uncommon"], ["Common", "Uncommon"]], result: "Rare", price: 0 },
-    plantEpic: { name: "Scroll of Synthesis: Epic Plant", desc: "Combine two Rare Plant monsters into a random Epic Plant monster.",
-      slots: [["Rare"], ["Rare"]], result: "Epic", price: 2500 },
-    plantLegend: { name: "Scroll of Synthesis: Legendary Plant", desc: "Combine two Epic Plant monsters and one Rare Plant monster into Saplord, the Legendary Plant monster.",
-      slots: [["Epic"], ["Epic"], ["Rare"]], result: "Legendary", price: 6000 }
-  };
+  const RECIPES = {};
+  for (const W of WORLDS) {
+    const el = W.el;
+    RECIPES[el + "Rare"] = { el, name: `Scroll of Synthesis: Rare ${el}`, desc: `Combine two Common or Uncommon ${el} monsters into a random Rare ${el} monster.`, slots: [["Common", "Uncommon"], ["Common", "Uncommon"]], result: "Rare", price: 0 };
+    RECIPES[el + "Epic"] = { el, name: `Scroll of Synthesis: Epic ${el}`, desc: `Combine two Rare ${el} monsters into a random Epic ${el} monster.`, slots: [["Rare"], ["Rare"]], result: "Epic", price: 2500 };
+    const leg = SP[POOLS[el].Legendary[0]].forms[0];
+    RECIPES[el + "Legendary"] = { el, name: `Scroll of Synthesis: Legendary ${el}`, desc: `Combine two Epic ${el} monsters and one Rare ${el} monster into ${leg}, the Legendary ${el} monster.`, slots: [["Epic"], ["Epic"], ["Rare"]], result: "Legendary", price: 6000 };
+  }
   const YARD = { unlock: 3, cost: 150 };
   const MINE = { unlock: 4, cost: [300, 600, 1200], rate: [0, 15, 30, 50], capHours: 12 };
   const TRAIN = { hours: 3, pxp: 150 };
+  const HOUR = 3600000;
+  const WB = { chance: 0.12, hpMult: 12, levelBonus: 5, levelOverTeam: 2, maxFights: 5, fightEvery: 2 * HOUR, lifetime: 24 * HOUR };
 
   // ---------- Save ----------
   const SAVE_KEY = "shardkin-save-v1";
@@ -270,41 +309,55 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       if (!t) return null;
       const d = JSON.parse(t);
       if (!d || !d.mons) return null;
-      if (d.v === 1) migrate(d);
-      return d.v === 2 ? d : null;
+      if (d.v === 1) migrate1(d);
+      if (d.v === 2) migrate2(d);
+      return d.v === 3 ? d : null;
     } catch (e) { return null; }
   }
-  function migrate(d) {
+  function migrate1(d) {
     d.v = 2;
     for (const id in d.mons) { const m = d.mons[id]; m.stage = 0; if (SP[m.id].forms.length > 1 && m.level >= EVOLVE_LEVEL) { m.stage = 1; m.name = SP[m.id].forms[1]; } calc(m); m.hp = Math.min(m.hp, m.maxHp); }
-    Object.assign(d, freshExtras());
+    Object.assign(d, { player: { level: 1, xp: 0 }, pxpLife: 0, stats: { caught: Object.keys(d.mons).length - 1, evolved: 0, synth: 0, trained: 0 }, ach: [],
+      yard: false, mine: null, training: { mode: "time", session: null }, campTab: "levels", dieChoose: false, synth: null });
     d.items.die = 0; d.items.crests = {}; d.items.scrolls = [];
     d.dex = [...new Set(Object.values(d.mons).map(m => m.id))];
-    d.stats.caught = Object.keys(d.mons).length - 1;
-    // Credit player experience for levels already cleared.
     let px = 0; for (const n of d.cleared) px += (40 + 10 * n) * 2;
-    d.player = { level: 1, xp: 0 }; d.pxpLife = 0; d._pendingPxp = px;
+    d._pendingPxp = px;
   }
-  function freshExtras() {
-    return { player: { level: 1, xp: 0 }, pxpLife: 0, dex: [], stats: { caught: 0, evolved: 0, synth: 0, trained: 0 }, ach: [],
-      yard: false, mine: null, training: { mode: "time", session: null }, campTab: "levels", dieChoose: false, synth: null };
+  function migrate2(d) {
+    d.v = 3;
+    d.prog = { 1: { unlocked: d.unlocked || 1, cleared: d.cleared || [] }, 2: { unlocked: 1, cleared: [] } };
+    delete d.unlocked; delete d.cleared;
+    d.items.scrolls = d.items.scrolls.map(s => ({ plantRare: "PlantRare", plantEpic: "PlantEpic", plantLegend: "PlantLegendary" }[s] || s));
+    for (const id in d.mons) { const m = d.mons[id]; m.status = null; calc(m); m.hp = Math.min(m.hp, m.maxHp); }
+    if (d.level) { d.level.w = 1; d.level.wb = null; d.level.shopOpen = false; d.level.encounter = false; }
+    if (d.battle) d.battle.enemies.forEach(e => { e.status = null; });
+    d.stats.wbKills = 0;
+    d.wboss = null; d.wfights = null; d.notices = [];
   }
   function newGame() {
-    S = Object.assign({ v: 2, uid: 1, mons: {}, team: [], items: { orb: 5, perfect: 1, potion: 3, die: 0, crests: {}, scrolls: [] }, coins: 0,
-      unlocked: 1, cleared: [], screen: "camp", level: null, battle: null, wheel: null, confirm: null, sound: true, result: "" }, freshExtras());
+    S = { v: 3, uid: 1, mons: {}, team: [], items: { orb: 5, perfect: 1, potion: 3, die: 0, crests: {}, scrolls: [] }, coins: 0,
+      prog: { 1: { unlocked: 1, cleared: [] }, 2: { unlocked: 1, cleared: [] } },
+      screen: "camp", level: null, battle: null, wheel: null, confirm: null, sound: true, result: "",
+      player: { level: 1, xp: 0 }, pxpLife: 0, dex: [], stats: { caught: 0, evolved: 0, synth: 0, trained: 0, wbKills: 0 }, ach: [],
+      yard: false, mine: null, training: { mode: "time", session: null }, campTab: "levels", dieChoose: false, synth: null,
+      wboss: null, wfights: null, notices: [] };
     addMon(makeMon("cindercub", 5), true);
     S.result = "Welcome to Shardkin. Your starter, Cindercub, is a level 5 Epic Fire monster, strong against the Plant world. Choose Level 1 to begin.";
   }
   function addMon(m, toTeam) {
     m.uid = "m" + (S.uid++);
+    m.status = null;
     S.mons[m.uid] = m;
     if (!S.dex.includes(m.id)) S.dex.push(m.id);
     if (toTeam && S.team.length < 4) S.team.push(m.uid);
     return m;
   }
-  function restoreAll() { for (const id in S.mons) S.mons[id].hp = S.mons[id].maxHp; }
+  function restoreAll() { for (const id in S.mons) { S.mons[id].hp = S.mons[id].maxHp; S.mons[id].status = null; } }
   function teamMons() { return S.team.map(id => S.mons[id]); }
   function inTraining(uid) { return S.training.session && S.training.session.uid === uid; }
+  function worldCleared(w) { return S.prog[w].cleared.includes(world(w).levels); }
+  function worldOpen(w) { return w === 1 || worldCleared(w - 1); }
 
   function givePxp(n, msgs) {
     const P = S.player;
@@ -317,21 +370,25 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   }
 
   // ---------- Achievements ----------
+  function addCrest(c) { S.items.crests[c] = (S.items.crests[c] || 0) + 1; }
+  function giveCrest(el, msgs) { const c = crestName(pickFrom(crestSpecies(el))); addCrest(c); msgs.push(`You received the ${c}.`); }
   const ACH = [
     { id: "catch1", name: "First Catch", desc: "Capture your first monster.", test: () => S.stats.caught >= 1, reward: "3 Capture Orbs", give: () => { S.items.orb += 3; } },
-    { id: "clear1", name: "First Steps", desc: "Clear Level 1.", test: () => S.cleared.includes(1), reward: "2 Potions", give: () => { S.items.potion += 2; } },
+    { id: "clear1", name: "First Steps", desc: "Clear Level 1.", test: () => S.prog[1].cleared.includes(1), reward: "2 Potions", give: () => { S.items.potion += 2; } },
     { id: "dex5", name: "Growing Collection", desc: "Collect 5 different monsters.", test: () => S.dex.length >= 5, reward: "100 coins", give: () => { S.coins += 100; } },
     { id: "evolve1", name: "New Form", desc: "Evolve a monster for the first time.", test: () => S.stats.evolved >= 1, reward: "150 coins", give: () => { S.coins += 150; } },
     { id: "plv5", name: "Rising Tamer", desc: "Reach player level 5.", test: () => S.player.level >= 5, reward: "2 Loaded Dice", give: () => { S.items.die += 2; } },
     { id: "dex10", name: "Collector", desc: "Collect 10 different monsters.", test: () => S.dex.length >= 10, reward: "300 coins", give: () => { S.coins += 300; } },
-    { id: "world1", name: "Plant World Cleared", desc: "Complete World 1 by clearing Level 5.", test: () => S.cleared.includes(LEVELS),
-      reward: "Scroll of Synthesis: Rare Plant, plus a random Plant final-form crest",
-      give: msgs => { if (!S.items.scrolls.includes("plantRare")) S.items.scrolls.push("plantRare"); const c = crestName(pickFrom(PLANT_CRESTS)); addCrest(c); msgs.push(`You received the ${c}.`); } },
+    { id: "world1", name: "Plant World Cleared", desc: "Complete World 1 by clearing its Level 5.", test: () => worldCleared(1),
+      reward: "Scroll of Synthesis: Rare Plant, plus a random Plant final-form crest", give: msgs => { if (!S.items.scrolls.includes("PlantRare")) S.items.scrolls.push("PlantRare"); giveCrest("Plant", msgs); } },
+    { id: "world2", name: "Water World Cleared", desc: "Complete World 2 by clearing its Level 5.", test: () => worldCleared(2),
+      reward: "Scroll of Synthesis: Rare Water, plus a random Water final-form crest", give: msgs => { if (!S.items.scrolls.includes("WaterRare")) S.items.scrolls.push("WaterRare"); giveCrest("Water", msgs); } },
     { id: "synth1", name: "Synthesist", desc: "Synthesize a monster for the first time.", test: () => S.stats.synth >= 1, reward: "200 coins", give: () => { S.coins += 200; } },
     { id: "train1", name: "Hard Work", desc: "Finish your first training session.", test: () => S.stats.trained >= 1, reward: "100 coins", give: () => { S.coins += 100; } },
-    { id: "allplant", name: "Plant Master", desc: "Collect all 15 Plant monsters.", test: () => PLANT_IDS.every(id => S.dex.includes(id)), reward: "a Perfect Orb and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } }
+    { id: "wb1", name: "Giant Slayer", desc: "Defeat a world boss.", test: () => S.stats.wbKills >= 1, reward: "2 Loaded Dice and 300 coins", give: () => { S.items.die += 2; S.coins += 300; } },
+    { id: "allplant", name: "Plant Master", desc: "Collect all 15 Plant monsters.", test: () => poolIds("Plant").every(id => S.dex.includes(id)), reward: "a Perfect Orb and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } },
+    { id: "allwater", name: "Water Master", desc: "Collect all 15 Water monsters.", test: () => poolIds("Water").every(id => S.dex.includes(id)), reward: "a Perfect Orb and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } }
   ];
-  function addCrest(c) { S.items.crests[c] = (S.items.crests[c] || 0) + 1; }
   function checkAch(msgs) {
     for (let pass = 0; pass < 3; pass++) {
       let got = false;
@@ -365,7 +422,10 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     portal: [[300, 0.06, "sine"], [450, 0.06, "sine"], [675, 0.06, "sine"], [1000, 0.12, "sine"]],
     ambush: [[260, 0.07, "square"], [260, 0.07, "square"], [390, 0.14, "square"]],
     boss: [[196, 0.15, "sawtooth"], [185, 0.15, "sawtooth"], [175, 0.3, "sawtooth"]],
+    giant: [[110, 0.25, "sawtooth"], [98, 0.25, "sawtooth"], [82, 0.5, "sawtooth"]],
+    status: [[880, 0.05, "triangle"], [660, 0.05, "triangle"], [880, 0.08, "triangle"]],
     coin: [[988, 0.05, "square"], [1319, 0.12, "square"]],
+    chest: [[659, 0.06, "sine"], [880, 0.06, "sine"], [1175, 0.16, "sine"]],
     tick: [[1200, 0.02, "square"]]
   };
   function flushSound() {
@@ -390,7 +450,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     } catch (e) { /* sound is optional */ }
   }
 
-  // ---------- Evolution ----------
+  // ---------- Evolution and experience ----------
   function evolve(m, msgs) {
     const forms = SP[m.id].forms, old = m.name, oldMax = m.maxHp;
     m.stage++; m.name = forms[m.stage]; calc(m);
@@ -412,22 +472,34 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     }
   }
   // Every standing monster on the team gets the experience, even ones that didn't fight.
-  // The reward wheel passes everyone = true so fainted monsters share its prize too.
+  // everyone = true (reward wheel, world boss) includes fainted monsters too.
   function teamXp(amount, msgs, everyone) {
     const team = teamMons().filter(m => everyone || m.hp > 0);
-    if (!team.length) return;
+    if (!team.length || amount <= 0) return;
     const who = everyone ? "Each monster on your team" : "Each standing monster on your team";
     msgs.push(team.length > 1 ? `${who} gained ${amount} experience.` : `${team[0].name} gained ${amount} experience.`);
     for (const m of team) levelCheck(m, amount, msgs);
   }
 
   // ---------- Board ----------
-  const SPACE = { start: "Start", path: "Quiet path", heal: "Healing spring", trap: "Thorn trap", portal: "Portal", battle: "Wild battle", boss: "Level boss" };
+  const SPACE = { start: "Start", path: "Quiet path", heal: "Healing spring", trap: "Thorn trap", portal: "Portal", battle: "Wild battle",
+    chest: "Treasure chest", merchant: "Wandering merchant", boss: "Level boss" };
   const BOARD_SIZE = 36;
-  function genBoard() {
-    const weights = [["battle", 40], ["path", 28], ["heal", 12], ["trap", 12], ["portal", 8]];
+  // Boards get busier and more dangerous as levels go up. Every board has one merchant mid-way,
+  // a healing spring in the last stretch before the boss, and never more than three battles in a row.
+  function genBoard(w, n) {
+    const step = n + (w - 1) * 2;
+    const weights = [["battle", 34 + 2 * step], ["path", 28 - 2 * step], ["heal", 11], ["trap", 8 + step], ["portal", 7], ["chest", 7]];
     const b = ["start"];
-    for (let i = 1; i < BOARD_SIZE - 1; i++) b.push(pickWeighted(weights));
+    let streak = 0;
+    for (let i = 1; i < BOARD_SIZE - 1; i++) {
+      let t = pickWeighted(weights);
+      if (t === "battle" && streak >= 3) t = "path";
+      streak = t === "battle" ? streak + 1 : 0;
+      b.push(t);
+    }
+    b[rand(14, 22)] = "merchant";
+    b[rand(30, 34)] = "heal";
     b.push("boss");
     return b;
   }
@@ -440,12 +512,15 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     S.level.lead = next.uid;
     return true;
   }
-  function startLevel(n) {
+  function startLevel(w, n) {
     restoreAll();
-    S.level = { n, board: genBoard(), pos: 0, used: Array(BOARD_SIZE).fill(false), lead: S.team[0], failed: false, replay: S.cleared.includes(n) };
+    S.level = { w, n, board: genBoard(w, n), pos: 0, used: Array(BOARD_SIZE).fill(false), lead: S.team[0], failed: false,
+      replay: S.prog[w].cleared.includes(n), wb: null, shopOpen: false, encounter: false };
+    // A hidden world boss can lurk here if none is active. It moves every roll.
+    if (!S.wboss && Math.random() < WB.chance) S.level.wb = rand(3, BOARD_SIZE - 3);
     S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "level";
-    const [lo, hi] = wildRange(n);
-    return [`Level ${n} begins. You're on space 1 of ${BOARD_SIZE}, and the level boss waits on space ${BOARD_SIZE}. Wild monsters here are level ${lo} to ${hi}. ${leadMon().name} leads your team.`];
+    const [lo, hi] = wildRange(w, n);
+    return [`World ${w}, Level ${n} begins. You're on space 1 of ${BOARD_SIZE}, and the level boss waits on space ${BOARD_SIZE}. Wild ${world(w).el} monsters here are level ${lo} to ${hi}. ${leadMon().name} leads your team.`];
   }
   function roll(chosen) {
     const L = S.level, msgs = [];
@@ -456,7 +531,11 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     msgs.push(chosen ? `You used a Loaded Die and chose ${r}.` : `You rolled a ${r}.`);
     if (target > BOARD_SIZE - 1) msgs.push("You rolled past the end, so you land on the boss space.");
     L.pos = pos;
+    if (L.wb !== null && pos === L.wb) { wbEncounter(msgs); return msgs; }
     landOn(pos, msgs, true);
+    // The hidden boss slips away to a new spot ahead of you.
+    if (L.wb !== null && S.screen === "level") L.wb = L.pos < BOARD_SIZE - 3 ? rand(L.pos + 1, BOARD_SIZE - 2) : null;
+    else if (L.wb !== null && S.screen === "battle") L.wb = L.pos < BOARD_SIZE - 3 ? rand(L.pos + 1, BOARD_SIZE - 2) : null;
     return msgs;
   }
   function landOn(p, msgs, allowPortal) {
@@ -479,6 +558,17 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
         if (fixLead()) msgs.push(`${leadMon().name} is now your lead monster.`);
         else failLevel(msgs);
       }
+    } else if (type === "chest") {
+      L.used[p] = true;
+      sfx("chest");
+      const prize = pickWeighted([["coins", 45], ["potion", 25], ["orb", 22], ["die", 8]]);
+      if (prize === "coins") { const c = rand(20, 40) * L.w; S.coins += c; msgs.push(`You open the chest and find ${c} coins.`); }
+      else if (prize === "potion") { S.items.potion++; msgs.push("You open the chest and find a Potion."); }
+      else if (prize === "orb") { const c = rand(1, 2); S.items.orb += c; msgs.push(`You open the chest and find ${c} Capture Orb${c > 1 ? "s" : ""}.`); }
+      else { S.items.die++; msgs.push("You open the chest and find a Loaded Die!"); }
+    } else if (type === "merchant") {
+      L.shopOpen = true;
+      msgs.push(`A wandering merchant waves you over. You have ${S.coins} coins. Buy what you need, then leave the merchant to keep rolling.`);
     } else if (type === "portal") {
       if (!allowPortal) { msgs.push("The portal flickers but stays quiet."); return; }
       let dest = p;
@@ -500,19 +590,80 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     sfx("lose");
   }
 
-  // ---------- Battle ----------
-  function pickWild(n) {
-    const tier = pickWeighted(RARITY_WEIGHT);
-    const [lo, hi] = wildRange(n);
-    return makeMon(pickFrom(PLANT[tier]), tier === "Common" || tier === "Uncommon" ? rand(lo, hi) : hi + 1);
+  // ---------- World bosses ----------
+  function wbTick(msgs) {
+    if (!S.wboss || (S.battle && S.battle.wboss && !S.battle.over)) return;
+    if (now() >= S.wboss.expires) {
+      msgs.push(`The world boss ${S.wboss.name} has left. It wasn't defeated in time.`);
+      S.wboss = null; S.wfights = null;
+      return;
+    }
+    const F = S.wfights;
+    const gained = Math.floor((now() - F.last) / WB.fightEvery);
+    if (gained > 0) {
+      F.count = Math.min(WB.maxFights, F.count + gained);
+      F.last = F.count >= WB.maxFights ? now() : F.last + gained * WB.fightEvery;
+    }
   }
-  function pickBoss(n) {
+  function wbEncounter(msgs) {
+    const L = S.level, el = world(L.w).el;
+    const id = pickFrom(crestSpecies(el).slice(0, 2));
+    // At least 5 levels above the world's toughest wild monsters, and always above your strongest team monster.
+    const top = Math.max(...teamMons().map(x => x.level));
+    const m = makeMon(id, Math.max(wildRange(L.w, world(L.w).levels)[1] + WB.levelBonus, top + WB.levelOverTeam));
+    S.wboss = { id, name: m.name, el: m.el, rarity: m.rarity, level: m.level, stage: m.stage, maxHp: m.maxHp * WB.hpMult, hp: m.maxHp * WB.hpMult, expires: now() + WB.lifetime, world: L.w };
+    S.wfights = { count: 1, last: now() };
+    L.wb = null; L.encounter = true;
+    sfx("giant");
+    msgs.push(`Space ${L.pos + 1} looked ordinary, but a world boss was hiding here! ${m.name}, a towering level ${m.level} ${m.el} monster with ${S.wboss.maxHp} health. It stays for 24 hours. Fight it now, which ends this level attempt, or ignore it and fight it later from camp.`);
+  }
+  function wbBattle(fromLevel) {
+    const W = S.wboss;
+    const e = makeMon(W.id, W.level);
+    e.maxHp = W.maxHp; e.hp = W.hp; e.name = W.name;
+    S.wfights.count--;
+    if (S.wfights.count === WB.maxFights - 1) S.wfights.last = now();
+    S.battle = { boss: true, wboss: true, enemies: [e], active: fromLevel ? S.level.lead : S.team[0], forced: false, over: null, log: [], startHp: W.hp, fromLevel };
+    if (!fromLevel) { restoreAll(); S.level = null; }
+    S.screen = "battle";
+    sfx("giant");
+    return [`You challenge the world boss ${W.name}. It has ${W.hp} of ${W.maxHp} health. Every point of damage you deal carries over to your next fight.`, `Your ${you().name} is ready.`];
+  }
+  function wbFinish(msgs, retreated) {
+    const B = S.battle, e = B.enemies[0];
+    S.wboss.hp = e.hp;
+    const dealt = B.startHp - e.hp;
+    if (retreated) msgs.push("You pulled your team back from the fight.");
+    msgs.push(`You dealt ${dealt} damage this fight. The world boss has ${e.hp} of ${S.wboss.maxHp} health left.`);
+    teamXp(Math.round(dealt / 8), msgs, true);
+    B.over = "wbdone";
+  }
+  function wbVictory(msgs) {
+    const W = S.wboss;
+    msgs.push(`You defeated the world boss ${W.name}! Reward: 1000 coins, a Perfect Orb and a ${world(W.world).el} final-form crest.`);
+    S.coins += 1000; S.items.perfect++;
+    giveCrest(world(W.world).el, msgs);
+    teamXp(Math.round(W.maxHp / 6), msgs, true);
+    givePxp(150, msgs);
+    S.stats.wbKills++;
+    S.wboss = null; S.wfights = null;
+    S.battle.over = "wbwin";
+    sfx("win");
+  }
+
+  // ---------- Battle ----------
+  function pickWild(w, n) {
+    const tier = pickWeighted(RARITY_WEIGHT);
+    const [lo, hi] = wildRange(w, n);
+    return makeMon(pickFrom(POOLS[world(w).el][tier]), tier === "Common" || tier === "Uncommon" ? rand(lo, hi) : hi + 1);
+  }
+  function pickBoss(w, n) {
     const tier = Math.random() < 0.2 ? "Rare" : "Uncommon";
-    return makeMon(pickFrom(PLANT[tier]), wildRange(n)[1] + 2);
+    return makeMon(pickFrom(POOLS[world(w).el][tier]), wildRange(w, n)[1] + 2);
   }
   function startBattle(boss, msgs) {
-    const n = S.level.n;
-    S.battle = { boss, enemies: boss ? [pickBoss(n)] : [pickWild(n), pickWild(n)], active: S.level.lead, forced: false, over: null, log: [] };
+    const { w, n } = S.level;
+    S.battle = { boss, enemies: boss ? [pickBoss(w, n)] : [pickWild(w, n), pickWild(w, n)], active: S.level.lead, forced: false, over: null, log: [] };
     S.screen = "battle";
     const e = foe();
     if (boss) { sfx("boss"); msgs.push(`The level boss appears: ${e.name}, a ${e.rarity} ${e.el} monster at level ${e.level}. Bosses must be defeated, not captured.`); }
@@ -527,11 +678,22 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   function foe() { return S.battle.enemies.find(e => e.hp > 0 && !e.caught); }
   function foesLeft() { return S.battle.enemies.filter(e => e.hp > 0 && !e.caught).length; }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function foeWord() { return S.battle.wboss ? "World boss" : S.battle.boss ? "Boss" : "Wild"; }
+  function label(m, isYou) { return isYou ? `your ${m.name}` : `${foeWord().toLowerCase()} ${m.name}`; }
+  const STATUS_WORD = { sleep: "asleep", stun: "stunned", poison: "poisoned" };
 
+  // Returns false if the monster loses its turn to sleep or stun.
+  function canAct(m, isYou, msgs) {
+    const st = m.status;
+    if (!st || st.type === "poison") return true;
+    st.turns--;
+    if (st.type === "sleep") msgs.push(`${cap(label(m, isYou))} is fast asleep.`);
+    else msgs.push(`${cap(label(m, isYou))} is stunned and can't move.`);
+    if (st.turns <= 0) { m.status = null; msgs.push(st.type === "sleep" ? `${cap(label(m, isYou))} woke up.` : `${cap(label(m, isYou))} shook off the stun.`); }
+    return false;
+  }
   function attack(att, def, sk, isYou, msgs) {
-    const foeWord = S.battle.boss ? "Boss" : "Wild";
-    const who = isYou ? `Your ${att.name}` : `${foeWord} ${att.name}`;
-    const target = isYou ? `${foeWord.toLowerCase()} ${def.name}` : `your ${def.name}`;
+    const who = cap(label(att, isYou)), target = label(def, !isYou);
     if (Math.random() * 100 >= sk.acc) { msgs.push(`${who} used ${sk.name}, but it missed.`); sfx("miss"); return; }
     const m = mult(sk.el, def.el);
     const stab = sk.el === att.el ? 1.2 : 1;
@@ -544,25 +706,42 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     else sfx("hit");
     if (def.hp > 0) t += ` ${cap(target)} has ${def.hp} of ${def.maxHp} health left.`;
     msgs.push(t);
+    if (def.hp > 0 && sk.st && !def.status && Math.random() * 100 < sk.stc) {
+      const bossy = !isYou ? false : S.battle.boss;
+      const turns = sk.st === "sleep" ? (bossy ? 1 : rand(1, 3)) : 1;
+      def.status = { type: sk.st, turns };
+      msgs.push(`${cap(target)} is now ${STATUS_WORD[sk.st]}!`); sfx("status");
+    }
+  }
+  function poisonTick(msgs) {
+    for (const [m, isYou] of [[you(), true], [foe(), false]]) {
+      if (!m || m.hp <= 0 || !m.status || m.status.type !== "poison") continue;
+      const dmg = Math.max(1, Math.floor(m.maxHp / (S.battle.wboss && !isYou ? 60 : 10)));
+      m.hp = Math.max(0, m.hp - dmg);
+      msgs.push(`Poison hurts ${label(m, isYou)} for ${dmg} damage.` + (m.hp > 0 ? ` It has ${m.hp} of ${m.maxHp} left.` : ""));
+    }
   }
   function aiSkill(e, target) {
     let best = null, score = -1;
     for (const s of unlocked(e)) {
-      const v = s.power * mult(s.el, target.el) * (s.el === e.el ? 1.2 : 1) * (s.acc / 100) * (0.8 + Math.random() * 0.4);
+      let v = s.power * mult(s.el, target.el) * (s.el === e.el ? 1.2 : 1) * (s.acc / 100) * (0.8 + Math.random() * 0.4);
+      if (s.st && !target.status) v *= 1 + s.stc / 100;
       if (v > score) { score = v; best = s; }
     }
     return best;
   }
   function foeTurn(msgs) {
     const e = foe(), p = you();
-    if (e && p.hp > 0) attack(e, p, aiSkill(e, p), false, msgs);
+    if (e && p.hp > 0 && canAct(e, false, msgs)) attack(e, p, aiSkill(e, p), false, msgs);
   }
   function settle(msgs) {
     const B = S.battle;
+    if (B.over) return;
     const cur = B.enemies.find(e => e.hp <= 0 && !e.caught && !e.done);
     if (cur) {
       cur.done = true;
-      msgs.push(`${B.boss ? "Boss" : "Wild"} ${cur.name} fainted.`); sfx("faint");
+      if (B.wboss) { wbVictory(msgs); return; }
+      msgs.push(`${foeWord()} ${cur.name} fainted.`); sfx("faint");
       teamXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss ? 2 : 1)), msgs);
     }
     const next = foe();
@@ -571,35 +750,39 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     if (you().hp <= 0) {
       msgs.push(`Your ${you().name} fainted.`); sfx("faint");
       if (teamMons().some(m => m.hp > 0)) { B.forced = true; msgs.push("Choose a monster to send out."); }
+      else if (B.wboss) { msgs.push("Your whole team has fainted."); wbFinish(msgs, false); }
       else endBattle("lose", msgs);
     }
   }
   function endBattle(kind, msgs) {
     const B = S.battle;
     B.over = kind;
+    for (const m of teamMons()) m.status = null;
     if (kind === "win") {
       sfx("win");
       if (B.boss) {
-        const n = S.level.n, first = !S.cleared.includes(n);
-        if (first) S.cleared.push(n);
-        S.unlocked = Math.max(S.unlocked, Math.min(LEVELS, n + 1));
-        const coins = 30 + 20 * n;
+        const { w, n } = S.level, P = S.prog[w], first = !P.cleared.includes(n);
+        if (first) P.cleared.push(n);
+        P.unlocked = Math.max(P.unlocked, Math.min(world(w).levels, n + 1));
+        const coins = 30 + 20 * n + 40 * (w - 1);
         S.coins += coins;
-        msgs.push(`You defeated the level boss! Level ${n} complete.` + (first && n < LEVELS ? ` Level ${n + 1} is unlocked.` : "") + ` You earned ${coins} coins.`);
-        givePxp((40 + 10 * n) * (first ? 2 : 1), msgs);
+        let t = `You defeated the level boss! World ${w}, Level ${n} complete.`;
+        if (first && n < world(w).levels) t += ` Level ${n + 1} is unlocked.`;
+        if (first && n === world(w).levels && WORLDS[w]) t += ` World ${w + 1}, ${WORLDS[w].el}, is now open!`;
+        msgs.push(t + ` You earned ${coins} coins.`);
+        givePxp((40 + 10 * n + 50 * (w - 1)) * (first ? 2 : 1), msgs);
         msgs.push("Spin the reward wheel.");
       } else {
         const coins = B.enemies.reduce((s, e) => s + e.level * 4, 0);
         S.coins += coins; sfx("coin");
         msgs.push(`You won the battle and earned ${coins} coins! Continue on the board when ready.`);
       }
-    } else {
-      failLevel(msgs);
-    }
+    } else failLevel(msgs);
   }
   function captureChance(e, kind) {
     if (kind === "perfect") return 1;
-    return (1 - e.hp / e.maxHp) * CAPTURE_MULT[e.rarity];
+    const st = e.status ? STATUS_CAPTURE[e.status.type] : 1;
+    return Math.min(1, (1 - e.hp / e.maxHp) * CAPTURE_MULT[e.rarity] * st);
   }
   function act(type, arg) {
     const B = S.battle;
@@ -611,13 +794,17 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       if (!m || arg === B.active || m.hp <= 0) return null;
       B.active = arg; B.forced = false;
       msgs.push(`You sent out ${m.name}. Switching is free, so you can still act this turn.`); sfx("swap");
-    } else if (type === "skill") {
+      return msgs;
+    }
+    if (type === "retreat") { if (!B.wboss) return null; wbFinish(msgs, true); return msgs; }
+    if (type === "skill") {
       const p = you(), e = foe();
       const sk = unlocked(p)[arg], esk = aiSkill(e, p);
       const youFirst = p.spd > e.spd || (p.spd === e.spd && Math.random() < 0.5);
-      if (youFirst) { attack(p, e, sk, true, msgs); if (e.hp > 0) attack(e, p, esk, false, msgs); }
-      else { attack(e, p, esk, false, msgs); if (p.hp > 0) attack(p, e, sk, true, msgs); }
-      settle(msgs);
+      const yourMove = () => { if (canAct(p, true, msgs)) attack(p, e, sk, true, msgs); };
+      const theirMove = () => { if (canAct(e, false, msgs)) attack(e, p, esk, false, msgs); };
+      if (youFirst) { yourMove(); if (e.hp > 0 && p.hp > 0) theirMove(); }
+      else { theirMove(); if (p.hp > 0 && e.hp > 0) yourMove(); }
     } else if (type === "capture") {
       const e = foe();
       if (B.boss || S.items[arg] <= 0) return null;
@@ -634,15 +821,16 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
         const next = foe();
         if (!next) endBattle("win", msgs);
         else msgs.push(`Wild ${next.name} steps forward, a ${next.rarity} ${next.el} monster at level ${next.level}.`);
-      } else {
-        msgs.push(`You threw a ${orbName}, but wild ${e.name} broke free.`); sfx("fail");
-        foeTurn(msgs); settle(msgs);
+        return msgs;
       }
+      msgs.push(`You threw a ${orbName}, but wild ${e.name} broke free.`); sfx("fail");
+      foeTurn(msgs);
     } else if (type === "potion") {
-      const p = you();
-      if (!usePotion(p, msgs)) return null;
-      foeTurn(msgs); settle(msgs);
+      if (!usePotion(you(), msgs)) return null;
+      foeTurn(msgs);
     }
+    if (you().hp > 0 && foe() && foe().hp > 0) poisonTick(msgs);
+    settle(msgs);
     return msgs;
   }
   function usePotion(m, msgs) {
@@ -659,17 +847,17 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     const list = [
       { w: 25, label: "2 Potions", give: () => { S.items.potion += 2; } },
       { w: 25, label: "3 Capture Orbs", give: () => { S.items.orb += 3; } },
-      { w: 25, label: "150 coins", give: () => { S.coins += 150; } },
-      { w: 20, label: "30 experience for each team monster", give: msgs => { teamXp(30, msgs, true); } },
+      { w: 25, label: `${150 * S.level.w} coins`, give: () => { S.coins += 150 * S.level.w; } },
+      { w: 20, label: `${30 * S.level.w} experience for each team monster`, give: msgs => { teamXp(30 * S.level.w, msgs, true); } },
       { w: 5, label: "a Perfect Orb", give: () => { S.items.perfect += 1; } }
     ];
     // Replaying the last level of a completed world adds a chance at a final-form crest.
-    if (S.level && S.level.n === LEVELS && S.level.replay) list.push({ w: 8, label: "a random Plant final-form crest", give: msgs => { const c = crestName(pickFrom(PLANT_CRESTS)); addCrest(c); msgs.push(`It's the ${c}.`); } });
+    const L = S.level;
+    if (L.n === world(L.w).levels && L.replay) list.push({ w: 8, label: `a random ${world(L.w).el} final-form crest`, give: msgs => giveCrest(world(L.w).el, msgs) });
     return list;
   }
   function spin() {
-    const list = prizes();
-    const prize = pickWeighted(list.map(p => [p, p.w]));
+    const prize = pickWeighted(prizes().map(p => [p, p.w]));
     const msgs = [];
     for (let i = 0; i < 8; i++) sfx("tick");
     msgs.push(`The wheel spins, slows, and stops on ${prize.label}!`);
@@ -680,28 +868,27 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   }
 
   // ---------- Synthesis ----------
-  function slotsMatch(slots, mons) {
-    if (mons.length !== slots.length) return false;
+  function slotsMatch(R, mons) {
+    if (mons.length !== R.slots.length) return false;
     const perms = a => a.length <= 1 ? [a] : a.flatMap((x, i) => perms([...a.slice(0, i), ...a.slice(i + 1)]).map(p => [x, ...p]));
-    return perms(mons).some(order => order.every((m, i) => m.el === "Plant" && slots[i].includes(m.rarity)));
+    return perms(mons).some(order => order.every((m, i) => m.el === R.el && R.slots[i].includes(m.rarity)));
   }
-  function synthEligible(recipe) {
-    const rar = new Set(RECIPES[recipe].slots.flat());
-    return Object.values(S.mons).filter(m => m.el === "Plant" && rar.has(m.rarity) && !inTraining(m.uid));
+  function synthEligible(R) {
+    const rar = new Set(R.slots.flat());
+    return Object.values(S.mons).filter(m => m.el === R.el && rar.has(m.rarity) && !inTraining(m.uid));
   }
   function doSynth() {
     const R = RECIPES[S.synth.recipe], picks = S.synth.picks.map(id => S.mons[id]);
-    if (!slotsMatch(R.slots, picks)) return ["Those monsters don't match the recipe yet."];
+    if (!slotsMatch(R, picks)) return ["Those monsters don't match the recipe yet."];
     if (S.team.every(id => S.synth.picks.includes(id))) return ["Keep at least one monster on your team. Add another monster to your team first, or choose different ingredients."];
     const level = Math.max(...picks.map(m => m.level));
     for (const m of picks) { delete S.mons[m.uid]; S.team = S.team.filter(id => id !== m.uid); }
-    const isNew = id => !S.dex.includes(id);
-    const id = pickFrom(PLANT[R.result]);
-    const fresh = isNew(id);
+    const id = pickFrom(POOLS[R.el][R.result]);
+    const fresh = !S.dex.includes(id);
     const m = addMon(makeMon(id, level), false);
     S.stats.synth++; S.synth.picks = [];
     sfx("evolve");
-    const msgs = [`${picks.map(p => p.name).join(" and ")} combined into ${m.name}, a ${m.rarity} Plant monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It was sent to your base.`];
+    const msgs = [`${picks.map(p => p.name).join(" and ")} combined into ${m.name}, a ${m.rarity} ${m.el} monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It was sent to your base.`];
     givePxp(25, msgs);
     return msgs;
   }
@@ -714,14 +901,14 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   }
   function minePending() {
     if (!S.mine) return 0;
-    const hrs = Math.min(MINE.capHours, (now() - S.mine.last) / 3600000);
+    const hrs = Math.min(MINE.capHours, (now() - S.mine.last) / HOUR);
     return Math.floor(hrs * MINE.rate[S.mine.lvl]);
   }
   function trainingStatus() {
     const s = S.training.session;
     if (!s) return null;
     if (S.training.mode === "time") {
-      const left = s.start + TRAIN.hours * 3600000 - now();
+      const left = s.start + TRAIN.hours * HOUR - now();
       return { done: left <= 0, text: left <= 0 ? "Training is complete." : `${dur(left)} left.` };
     }
     const left = s.pxpAt + TRAIN.pxp - S.pxpLife;
@@ -735,10 +922,11 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     const f = m.hp / m.maxHp;
     return `<div class="bar" aria-hidden="true"><i style="width:${(f * 100).toFixed(1)}%; background:${hpColor(f)}"></i></div>`;
   }
+  function statusText(m) { return m.status ? ` · ${cap(STATUS_WORD[m.status.type])}` : ""; }
   function monCard(m, prefix, extra) {
     return `<div class="mon">
       <p class="name">${prefix}${m.name}</p>
-      <p class="tags">${chip(m.el)}<span class="chip plain">${m.rarity}</span><span class="chip plain">Level ${m.level}</span></p>
+      <p class="tags">${chip(m.el)}<span class="chip plain">${m.rarity}</span><span class="chip plain">Level ${m.level}</span>${m.status ? `<span class="chip" style="color: var(--hp-mid)">${cap(STATUS_WORD[m.status.type])}</span>` : ""}</p>
       <p class="stat">Health ${m.hp} of ${m.maxHp}</p>
       ${hpBar(m)}
       ${extra || ""}
@@ -753,12 +941,13 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     return `<button type="button" class="${primary ? "primary" : ""}" data-a="${action}" data-arg="${arg}"${ap}><span class="bn">${label}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</button>`;
   }
   function sec(id, title, inner) { return `<section aria-labelledby="${id}"><h2 id="${id}">${title}</h2>${inner}</section>`; }
+  function sub3(text, top) { return `<h3 class="muted" style="margin:${top ? 16 : 0}px 0 8px;font-size:1rem">${text}</h3>`; }
   function nextForm(m) {
     const f = SP[m.id].forms;
     if (m.stage + 1 >= f.length) return "";
     return m.stage === 0 ? ` · Evolves into ${f[1]} at level ${EVOLVE_LEVEL}` : ` · Final form ${f[2]} needs the ${crestName(m.id)}`;
   }
-  function monLine(m) { return `${m.el} · ${m.rarity} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}`; }
+  function monLine(m) { return `${m.el} · ${m.rarity} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${statusText(m)}`; }
   function itemsLine() {
     const crests = Object.entries(S.items.crests).filter(([, n]) => n > 0).map(([c, n]) => `${n} ${c}`);
     return [`${S.coins} coins`, `${S.items.orb} Capture Orbs`, `${S.items.perfect} Perfect Orbs`, `${S.items.potion} Potions`, `${S.items.die} Loaded Dice`, ...crests].join(" · ");
@@ -782,29 +971,43 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       <div class="bar xpbar" aria-hidden="true"><i style="width:${(P.xp / pNeed(P.level) * 100).toFixed(1)}%"></i></div>
       <p class="muted">${itemsLine()}</p></div>`);
     let nav = `<div class="pair">`;
-    for (const [id, label] of TABS) {
+    for (const [id, lab] of TABS) {
       const lock = tabLocked(id);
-      nav += btn("tab", id, label + (S.campTab === id ? " (open)" : ""), lock ? `Locked: ${lock}` : "", S.campTab === id, S.campTab === id);
+      nav += btn("tab", id, lab + (S.campTab === id ? " (open)" : ""), lock ? `Locked: ${lock}` : "", S.campTab === id, S.campTab === id);
     }
-    nav += `</div>`;
-    h += sec("h-menu", "Camp menu", nav);
+    h += sec("h-menu", "Camp menu", nav + `</div>`);
     const lock = tabLocked(S.campTab);
-    const label = TABS.find(t => t[0] === S.campTab)[1];
-    if (lock) return h + sec("h-tab", label, `<p class="muted">${label} is locked: it ${lock}.</p>`);
+    const lab = TABS.find(t => t[0] === S.campTab)[1];
+    if (lock) return h + sec("h-tab", lab, `<p class="muted">${lab} is locked: it ${lock}.</p>`);
     const body = { levels: tabLevels, team: tabTeam, shop: tabShop, synth: tabSynth, build: tabBuild, train: tabTrain, ach: tabAch, save: tabSave }[S.campTab]();
-    return h + sec("h-tab", label, body);
+    return h + sec("h-tab", lab, body);
+  }
+  function wbPanel() {
+    if (!S.wboss) return "";
+    const W = S.wboss, F = S.wfights;
+    let t = `<div class="row"><p class="nm">World boss: ${W.name}</p>
+      <p>${W.el} · Level ${W.level} · Health ${W.hp} of ${W.maxHp} · Leaves in ${dur(W.expires - now())}</p>
+      ${hpBar(W)}
+      <p class="muted">Fights available: ${F.count} of ${WB.maxFights}${F.count < WB.maxFights ? ` · Next fight in ${dur(F.last + WB.fightEvery - now())}` : ""}</p>`;
+    t += F.count > 0 ? btn("wbfight", "", `Fight ${W.name}`, "Your team starts fully healed. Damage carries over.", true) : btn("refresh", "", "Check again", "Updates fights available");
+    return t + `</div>`;
   }
   function tabLevels() {
-    let lv = `<div class="actions"><p class="muted">World 1: Plant</p>`;
-    for (let n = 1; n <= LEVELS; n++) {
-      const [lo, hi] = wildRange(n);
-      if (n <= S.unlocked) lv += btn("level", n, `Play Level ${n}`, `Wild monsters level ${lo} to ${hi}${S.cleared.includes(n) ? " · Cleared" : ""}${n === LEVELS && S.cleared.includes(n) ? " · Replays can win a final-form crest" : ""}`, n === S.unlocked && !S.cleared.includes(n));
-      else lv += `<p class="muted">Level ${n}: locked. Clear Level ${n - 1} first.</p>`;
-    }
+    let lv = `<div class="actions">` + wbPanel();
+    WORLDS.forEach((W, i) => {
+      const w = i + 1;
+      lv += sub3(`World ${w}: ${W.el}`, i > 0 || S.wboss);
+      if (!worldOpen(w)) { lv += `<p class="muted">Locked. Clear World ${w - 1} first.</p>`; return; }
+      for (let n = 1; n <= W.levels; n++) {
+        const [lo, hi] = wildRange(w, n), P = S.prog[w], done = P.cleared.includes(n);
+        if (n <= P.unlocked) lv += btn("level", `${w}-${n}`, `Play World ${w}, Level ${n}`, `Wild monsters level ${lo} to ${hi}${done ? " · Cleared" : ""}${n === W.levels && done ? " · Replays can win a final-form crest" : ""}`, n === P.unlocked && !done);
+        else lv += `<p class="muted">Level ${n}: locked. Clear Level ${n - 1} first.</p>`;
+      }
+    });
     return lv + `</div>`;
   }
   function tabTeam() {
-    let tm = `<h3 class="muted" style="margin:0 0 8px;font-size:1rem">Your team (${S.team.length} of 4)</h3><div class="actions">`;
+    let tm = sub3(`Your team (${S.team.length} of 4)`) + `<div class="actions">`;
     teamMons().forEach((m, i) => {
       tm += `<div class="row"><p class="nm">${i === 0 ? "Lead: " : ""}${m.name}${inTraining(m.uid) ? " (training)" : ""}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>`;
       const b = [];
@@ -816,7 +1019,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     });
     tm += `</div>`;
     const base = Object.values(S.mons).filter(m => !S.team.includes(m.uid));
-    tm += `<h3 class="muted" style="margin:16px 0 8px;font-size:1rem">Your base (${base.length})</h3>`;
+    tm += sub3(`Your base (${base.length})`, true);
     if (!base.length) tm += `<p class="muted">Nothing here yet. Monsters you capture are sent to your base.</p>`;
     else {
       tm += `<div class="actions">`;
@@ -831,22 +1034,28 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       }
       tm += `</div>`;
     }
-    tm += `<p class="muted" style="margin-top:12px">Collection: ${S.dex.length} different monsters, ${PLANT_IDS.filter(id => S.dex.includes(id)).length} of 15 Plant.</p>`;
-    return tm;
+    const counts = WORLDS.map(W => `${poolIds(W.el).filter(id => S.dex.includes(id)).length} of 15 ${W.el}`).join(", ");
+    return tm + `<p class="muted" style="margin-top:12px">Collection: ${S.dex.length} different monsters. ${counts}.</p>`;
   }
   function crestBtns(m) {
     if (m.stage !== 1 || SP[m.id].forms.length < 3) return [];
     const c = crestName(m.id);
     return (S.items.crests[c] || 0) > 0 ? [btn("crest", m.uid, `Use the ${c} on ${m.name}`, `Evolves it into ${SP[m.id].forms[2]}`, true)] : [];
   }
-  function tabShop() {
-    let s = `<div class="actions"><p>You have ${S.coins} coins.</p>`;
-    for (const it of SHOP) {
+  function shopButtons(ids) {
+    let s = "";
+    for (const it of SHOP.filter(x => !ids || ids.includes(x.id))) {
       const have = S.items[it.id];
       s += S.coins >= it.price ? btn("buy", it.id, `Buy ${it.name} for ${it.price} coins`, `${it.desc} · You have ${have}`) : `<p class="muted">${it.name}: ${it.price} coins. ${it.desc}. You have ${have}. Not enough coins.</p>`;
     }
+    return s;
+  }
+  function tabShop() {
+    let s = `<div class="actions"><p>You have ${S.coins} coins.</p>` + shopButtons();
     for (const [rid, r] of Object.entries(RECIPES)) {
       if (!r.price || S.items.scrolls.includes(rid)) continue;
+      const wIdx = WORLDS.findIndex(W => W.el === r.el) + 1;
+      if (!worldOpen(wIdx)) continue;
       s += S.coins >= r.price ? btn("buyscroll", rid, `Buy ${r.name} for ${r.price} coins`, r.desc + " Scrolls are never used up.") : `<p class="muted">${r.name}: ${r.price} coins. ${r.desc} Not enough coins.</p>`;
     }
     return s + `</div>`;
@@ -855,17 +1064,18 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     let s = `<div class="actions"><p class="muted">Ingredient monsters are used up and merge into the new monster. Scrolls are never used up. The new monster's level matches the highest ingredient and it goes to your base.</p>`;
     for (const rid of S.items.scrolls) {
       const R = RECIPES[rid], open = S.synth && S.synth.recipe === rid;
+      if (!R) continue;
       s += btn("scroll", rid, R.name + (open ? " (open)" : ""), R.desc, open, open);
       if (!open) continue;
-      const picks = S.synth.picks.map(id => S.mons[id]);
-      const elig = synthEligible(rid);
+      const picks = S.synth.picks.map(id => S.mons[id]).filter(Boolean);
+      const elig = synthEligible(R);
       s += `<div class="row"><p class="nm">Choose ${R.slots.length} ingredients</p><p class="muted">Selected: ${picks.length ? picks.map(p => p.name).join(", ") : "none"}.</p>`;
       if (!elig.length) s += `<p class="muted">You don't have any monsters that fit this recipe yet.</p>`;
       for (const m of elig) {
         const sel = S.synth.picks.includes(m.uid);
         s += btn("pick", m.uid, `${sel ? "Selected: " : "Select "}${m.name}`, `${m.rarity} · Level ${m.level}${S.team.includes(m.uid) ? " · On your team" : ""}`, false, sel);
       }
-      if (slotsMatch(R.slots, picks)) s += btn("synth", rid, "Synthesize", `Combine ${picks.map(p => p.name).join(" and ")} into a ${R.result} Plant monster`, true);
+      if (slotsMatch(R, picks)) s += btn("synth", rid, "Synthesize", `Combine ${picks.map(p => p.name).join(" and ")} into a ${R.result} ${R.el} monster`, true);
       s += `</div>`;
     }
     return s + `</div>`;
@@ -875,8 +1085,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     s += `<div class="row"><p class="nm">Training Yard</p><p class="muted">Train one monster at a time, from your team or base, for a full level's worth of experience. It can still battle while training.</p>`;
     if (S.yard) s += `<p>Built. Open the Training tab to use it.</p>`;
     else s += S.coins >= YARD.cost ? btn("buildyard", "", `Build for ${YARD.cost} coins`, "", true) : `<p class="muted">Costs ${YARD.cost} coins. You have ${S.coins}.</p>`;
-    s += `</div>`;
-    s += `<div class="row"><p class="nm">Shard Mine</p><p class="muted">Earns coins over time, even while you're away. Holds up to ${MINE.capHours} hours of earnings.</p>`;
+    s += `</div><div class="row"><p class="nm">Shard Mine</p><p class="muted">Earns coins over time, even while you're away. Holds up to ${MINE.capHours} hours of earnings.</p>`;
     if (S.player.level < MINE.unlock) s += `<p class="muted">Unlocks at player level ${MINE.unlock}.</p>`;
     else if (!S.mine) s += S.coins >= MINE.cost[0] ? btn("buildmine", "", `Build for ${MINE.cost[0]} coins`, `Earns ${MINE.rate[1]} coins per hour`, true) : `<p class="muted">Costs ${MINE.cost[0]} coins. You have ${S.coins}.</p>`;
     else {
@@ -886,8 +1095,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       if (lv < 3) s += S.coins >= MINE.cost[lv] ? btn("upmine", "", `Upgrade to level ${lv + 1} for ${MINE.cost[lv]} coins`, `Earns ${MINE.rate[lv + 1]} coins per hour`) : `<p class="muted">Upgrade to level ${lv + 1}: ${MINE.cost[lv]} coins.</p>`;
       s += btn("refresh", "", "Check again", "Updates coins ready to collect");
     }
-    s += `</div>`;
-    return s + `</div>`;
+    return s + `</div></div>`;
   }
   function tabTrain() {
     const T = S.training, st = trainingStatus();
@@ -921,11 +1129,18 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     const L = S.level, lead = leadMon();
     let h = "";
     if (L.failed) return sec("h-board", `Level ${L.n} failed`, `<div class="actions">${btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true)}</div>`);
+    if (L.encounter) {
+      return sec("h-wbfound", "World boss found", `<div class="actions">${monCard(S.wboss, "World boss ", `<p class="muted">Fights available: ${S.wfights.count}. You earn one more every 2 hours, up to ${WB.maxFights}.</p>`)}
+        ${btn("wbnow", "", "Fight it now", "Uses a fight and ends this level attempt", true)}
+        ${btn("wbignore", "", "Ignore it for now", "Finish this level, then fight it from camp within 24 hours")}</div>`);
+    }
     let track = `<div class="track" aria-hidden="true">`;
     for (let i = 0; i < BOARD_SIZE; i++) track += `<i class="${i === L.pos ? "here" : L.used[i] ? "done" : ""} ${i === BOARD_SIZE - 1 ? "boss" : ""}"></i>`;
     track += `</div>`;
     let rollBtns;
-    if (S.dieChoose) {
+    if (L.shopOpen) {
+      rollBtns = `<p>The wandering merchant is waiting. Buy below, then leave to keep rolling.</p>`;
+    } else if (S.dieChoose) {
       rollBtns = `<p>Choose your roll.</p><div class="pair">`;
       for (let r = 1; r <= 6; r++) rollBtns += btn("dieroll", r, `Move ${r}`, `Land on space ${Math.min(BOARD_SIZE, L.pos + r + 1)}: ${spaceLabel(Math.min(BOARD_SIZE - 1, L.pos + r))}`);
       rollBtns += `</div>${btn("diecancel", "", "Cancel", "Keep your Loaded Die")}`;
@@ -933,13 +1148,13 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       rollBtns = btn("roll", "", "Roll the die", `${lead.name} leads · Health ${lead.hp} of ${lead.maxHp}`, true);
       if (S.items.die > 0) rollBtns += btn("die", "", "Use a Loaded Die", `${S.items.die} left · Choose your roll`);
     }
-    h += sec("h-board", `Level ${L.n} board`, `<div class="actions">
+    h += sec("h-board", `World ${L.w}, Level ${L.n} board`, `<div class="actions">
       <p class="stat">Space ${L.pos + 1} of ${BOARD_SIZE}. The boss is ${BOARD_SIZE - 1 - L.pos} spaces away.</p>
       ${track}${rollBtns}</div>`);
+    if (L.shopOpen) h += sec("h-merchant", "Wandering merchant", `<div class="actions"><p>You have ${S.coins} coins.</p>${shopButtons(["potion", "orb", "die"])}${btn("merchleave", "", "Leave the merchant", "Back to the board", true)}</div>`);
     let ahead = `<ol class="clean">`;
     for (let i = L.pos + 1; i <= Math.min(BOARD_SIZE - 1, L.pos + 6); i++) ahead += `<li>Space ${i + 1}: ${spaceLabel(i)}</li>`;
     h += sec("h-ahead", "Look ahead", ahead + `</ol>`);
-
     let tm = `<div class="actions">`;
     for (const m of teamMons()) {
       tm += `<div class="row"><p class="nm">${m.uid === L.lead ? "Lead: " : ""}${m.name}${m.hp <= 0 ? " (fainted)" : ""}</p><p class="muted">${monLine(m)}</p>${hpBar(m)}`;
@@ -960,20 +1175,22 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   function renderBattle() {
     const B = S.battle, e = foe(), p = you();
     const shownFoe = e || B.enemies[B.enemies.length - 1];
-    let h = sec("h-foe", B.boss ? "Level boss" : "Opponent", monCard(shownFoe, B.boss ? "Boss " : "Wild ",
+    const heading = B.wboss ? "World boss" : B.boss ? "Level boss" : "Opponent";
+    let h = sec("h-foe", heading, monCard(shownFoe, foeWord() + " ",
       B.boss ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`));
     h += sec("h-you", "Your monster", monCard(p, "", xpLine(p)));
     if (B.over) {
       let o = `<div class="actions">`;
       if (B.over === "win" && B.boss) o += btn("towheel", "", "Go to the reward wheel", "", true);
       else if (B.over === "win") o += btn("continue", "", "Continue on the board", `Space ${S.level.pos + 1} of ${BOARD_SIZE}`, true);
+      else if (B.over === "wbdone" || B.over === "wbwin") o += btn("camp", "", "Return to camp", "Your team is restored", true);
       else o += btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true);
-      return h + sec("h-over", "Battle over", o + `</div>`);
+      return h + sec("h-over", B.wboss ? "Fight over" : "Battle over", o + `</div>`);
     }
     let sk = `<div class="actions">`;
     if (B.forced) sk += `<p>${p.name} has fainted. Choose a monster under Switch monster.</p>`;
     else {
-      unlocked(p).forEach((s, i) => { sk += btn("skill", i, s.name, `${s.el} · Power ${s.power} · Accuracy ${s.acc}% · ${effWord(mult(s.el, e.el))} against ${e.name}`); });
+      unlocked(p).forEach((s, i) => { sk += btn("skill", i, s.name, `${s.el} · Power ${s.power} · Accuracy ${s.acc}%${s.st ? ` · ${s.stc}% chance to ${s.st === "sleep" ? "put it to sleep" : s.st}` : ""} · ${effWord(mult(s.el, e.el))} against ${e.name}`); });
       const locked = skillsOf(p).filter(s => p.level < s.unlock);
       if (locked.length) sk += `<ul class="clean muted">${locked.map(s => `<li>Locked: ${s.name}, unlocks at level ${s.unlock}</li>`).join("")}</ul>`;
     }
@@ -983,20 +1200,21 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       if (m.uid === B.active) continue;
       others++;
       if (m.hp <= 0) { sw += `<p class="muted">${m.name} has fainted.</p>`; continue; }
-      sw += btn("switch", m.uid, `Send out ${m.name}`, `${m.el} · Level ${m.level} · Health ${m.hp} of ${m.maxHp} · ${effWord(Math.max(...unlocked(m).map(s => mult(s.el, e.el))))} matchup`, B.forced);
+      sw += btn("switch", m.uid, `Send out ${m.name}`, `${m.el} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${statusText(m)} · ${effWord(Math.max(...unlocked(m).map(s => mult(s.el, e.el))))} matchup`, B.forced);
     }
     if (!others) sw += `<p class="muted">No other monsters on your team.</p>`;
     h += sec("h-switch", "Switch monster (free)", sw + `</div>`);
     if (!B.forced) {
       let it = `<div class="actions">`;
-      if (B.boss) it += `<p class="muted">Level bosses can't be captured. Defeat it to finish the level.</p>`;
+      if (B.boss) it += `<p class="muted">${B.wboss ? "World bosses" : "Level bosses"} can't be captured.</p>`;
       else {
         const pct = Math.round(captureChance(e, "orb") * 100);
-        it += S.items.orb > 0 ? btn("capture", "orb", "Throw Capture Orb", `${S.items.orb} left · ${pct}% chance on ${e.name} · Uses your turn`) : `<p class="muted">No Capture Orbs left.</p>`;
+        it += S.items.orb > 0 ? btn("capture", "orb", "Throw Capture Orb", `${S.items.orb} left · ${pct}% chance on ${e.name}${e.status ? ` (boosted, it's ${STATUS_WORD[e.status.type]})` : ""} · Uses your turn`) : `<p class="muted">No Capture Orbs left.</p>`;
         it += S.items.perfect > 0 ? btn("capture", "perfect", "Throw Perfect Orb", `${S.items.perfect} left · 100% chance`) : `<p class="muted">No Perfect Orbs left.</p>`;
       }
       if (S.items.potion > 0 && p.hp < p.maxHp) it += btn("potion", "", `Use Potion on ${p.name}`, `${S.items.potion} left · Heals half of its health · Uses your turn`);
       else it += `<p class="muted">Potions: ${S.items.potion} left${p.hp >= p.maxHp ? `, and ${p.name} is at full health` : ""}.</p>`;
+      if (B.wboss) it += btn("retreat", "", "Retreat", "End this fight now and keep the damage you've dealt");
       h += sec("h-items", B.boss ? "Items" : "Capture and items", it + `</div>`);
     }
     return h + sec("h-log", "Battle log", `<ol class="log">${B.log.map(l => `<li>${l}</li>`).join("")}</ol>`);
@@ -1016,8 +1234,9 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
 
   function render() {
     document.getElementById("result").textContent = S.result;
-    const ln = S.level && S.level.n;
-    const sub = { camp: "World 1, Plant · Camp", level: `World 1, Plant · Level ${ln}`, battle: `World 1, Plant · Level ${ln} · Battle`, wheel: `World 1, Plant · Level ${ln} complete` };
+    const L = S.level, B = S.battle;
+    const where = L ? `World ${L.w}, ${world(L.w).el} · Level ${L.n}` : "";
+    const sub = { camp: "Camp", level: where, battle: B && B.wboss ? "World boss fight" : `${where} · Battle`, wheel: `${where} complete` };
     document.getElementById("subtitle").textContent = sub[S.screen];
     const r = { camp: renderCamp, level: renderLevel, battle: renderBattle, wheel: renderWheel };
     document.getElementById("screen").innerHTML = r[S.screen]();
@@ -1028,6 +1247,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   }
   function finish(msgs) {
     if (!msgs) return;
+    wbTick(msgs);
     checkAch(msgs);
     S.result = msgs.join(" ");
     if (S.screen === "battle" && S.battle && S.battle.log) S.battle.log.push(S.result);
@@ -1043,10 +1263,11 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     if (!b) return;
     const a = b.dataset.a, arg = b.dataset.arg;
     let msgs = null;
+    if (S.wboss) { const t = []; wbTick(t); if (t.length && S.screen === "camp") msgs = t; }
     switch (a) {
       // Camp
-      case "tab": S.campTab = arg; S.confirm = null; msgs = [`${TABS.find(t => t[0] === arg)[1]} is open.`]; break;
-      case "level": if (S.team.length) msgs = startLevel(Number(arg)); break;
+      case "tab": S.campTab = arg; S.confirm = null; msgs = (msgs || []).concat([`${TABS.find(t => t[0] === arg)[1]} is open.`]); break;
+      case "level": { const [w, n] = arg.split("-").map(Number); if (S.team.length && worldOpen(w) && n <= S.prog[w].unlocked) msgs = startLevel(w, n); break; }
       case "makefirst": S.team = [arg, ...S.team.filter(id => id !== arg)]; msgs = [`${S.mons[arg].name} will lead your team.`]; break;
       case "remove": if (S.team.length > 1) { S.team = S.team.filter(id => id !== arg); msgs = [`${S.mons[arg].name} was sent to your base. Your team has ${S.team.length} of 4.`]; } break;
       case "add": if (S.team.length < 4 && !S.team.includes(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
@@ -1054,16 +1275,17 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       case "buy": { const it = SHOP.find(x => x.id === arg); if (it && S.coins >= it.price) { S.coins -= it.price; S.items[arg]++; sfx("coin"); msgs = [`You bought a ${it.name} for ${it.price} coins. You have ${S.items[arg]} now and ${S.coins} coins left.`]; } break; }
       case "buyscroll": { const r = RECIPES[arg]; if (r && S.coins >= r.price && !S.items.scrolls.includes(arg)) { S.coins -= r.price; S.items.scrolls.push(arg); sfx("coin"); msgs = [`You bought the ${r.name}. Find it under Synthesis.`]; } break; }
       case "scroll": S.synth = S.synth && S.synth.recipe === arg ? null : { recipe: arg, picks: [] }; msgs = [S.synth ? `${RECIPES[arg].name} is open. ${RECIPES[arg].desc} Choose your ingredients.` : "Scroll closed."]; break;
-      case "pick": { const P = S.synth.picks, m = S.mons[arg]; if (P.includes(arg)) { S.synth.picks = P.filter(x => x !== arg); msgs = [`Removed ${m.name}. ${S.synth.picks.length} selected.`]; } else if (P.length < RECIPES[S.synth.recipe].slots.length) { P.push(arg); msgs = [`Selected ${m.name}. ${P.length} of ${RECIPES[S.synth.recipe].slots.length} selected.` + (slotsMatch(RECIPES[S.synth.recipe].slots, P.map(id => S.mons[id])) ? " Ready to synthesize." : "")]; } else msgs = ["You've already chosen enough ingredients. Unselect one first."]; break; }
+      case "pick": { const R = RECIPES[S.synth.recipe], P = S.synth.picks, m = S.mons[arg]; if (P.includes(arg)) { S.synth.picks = P.filter(x => x !== arg); msgs = [`Removed ${m.name}. ${S.synth.picks.length} selected.`]; } else if (P.length < R.slots.length) { P.push(arg); msgs = [`Selected ${m.name}. ${P.length} of ${R.slots.length} selected.` + (slotsMatch(R, P.map(id => S.mons[id])) ? " Ready to synthesize." : "")]; } else msgs = ["You've already chosen enough ingredients. Unselect one first."]; break; }
       case "synth": msgs = doSynth(); break;
       case "buildyard": if (!S.yard && S.coins >= YARD.cost) { S.coins -= YARD.cost; S.yard = true; sfx("coin"); msgs = ["You built the Training Yard. Open the Training tab to train a monster."]; } break;
       case "buildmine": if (!S.mine && S.coins >= MINE.cost[0]) { S.coins -= MINE.cost[0]; S.mine = { lvl: 1, last: now() }; sfx("coin"); msgs = [`You built the Shard Mine. It earns ${MINE.rate[1]} coins per hour.`]; } break;
       case "upmine": { const lv = S.mine.lvl; if (lv < 3 && S.coins >= MINE.cost[lv]) { const p = minePending(); S.coins -= MINE.cost[lv]; S.coins += p; S.mine = { lvl: lv + 1, last: now() }; sfx("coin"); msgs = [`Shard Mine upgraded to level ${lv + 1}. It now earns ${MINE.rate[lv + 1]} coins per hour.` + (p ? ` ${p} waiting coins were collected.` : "")]; } break; }
       case "collect": { const p = minePending(); S.coins += p; S.mine.last = now(); if (p) sfx("coin"); msgs = [p ? `You collected ${p} coins. You have ${S.coins} coins.` : "No coins ready yet. Check back later."]; break; }
-      case "refresh": msgs = ["Updated."]; break;
+      case "refresh": msgs = (msgs || []).concat(["Updated."]); break;
       case "mode": if (!S.training.session) { S.training.mode = S.training.mode === "time" ? "xp" : "time"; msgs = [`Training mode is now ${S.training.mode === "time" ? "time-based" : "experience-based"}.`]; } break;
       case "train": if (!S.training.session && S.mons[arg]) { S.training.session = { uid: arg, start: now(), pxpAt: S.pxpLife }; msgs = [`${S.mons[arg].name} started training. ${trainingStatus().text}`]; } break;
       case "trainclaim": { const s = S.training.session, st = trainingStatus(); if (s && st.done) { const m = S.mons[s.uid], amt = xpNeed(m.level); msgs = [`${m.name} finished training and gained ${amt} experience.`]; S.training.session = null; S.stats.trained++; levelCheck(m, amt, msgs); givePxp(15, msgs); } break; }
+      case "wbfight": if (S.wboss && S.wfights.count > 0 && S.screen === "camp") msgs = wbBattle(false); break;
       case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
       case "resetyes": newGame(); msgs = [S.result]; break;
       case "cancel": S.confirm = null; msgs = ["Okay, nothing changed."]; break;
@@ -1072,6 +1294,9 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       case "die": S.dieChoose = true; msgs = ["Choose a roll from 1 to 6. Each choice says where you'd land."]; break;
       case "diecancel": S.dieChoose = false; msgs = ["You kept your Loaded Die."]; break;
       case "dieroll": if (S.items.die > 0) { S.items.die--; S.dieChoose = false; msgs = roll(Number(arg)); } break;
+      case "merchleave": S.level.shopOpen = false; S.level.used[S.level.pos] = true; msgs = ["You wave goodbye to the merchant. Roll when ready."]; break;
+      case "wbnow": if (S.level && S.level.encounter) { S.level.encounter = false; msgs = wbBattle(true); } break;
+      case "wbignore": if (S.level && S.level.encounter) { S.level.encounter = false; msgs = [`You slip past ${S.wboss.name} for now. It will wait at camp for 24 hours. Roll when ready.`]; } break;
       case "lead": S.level.lead = arg; msgs = [`${S.mons[arg].name} is now your lead monster.`]; break;
       case "potionboard": { const m = []; if (usePotion(S.mons[arg], m)) msgs = m; break; }
       case "leave": S.confirm = "leave"; msgs = ["Leave the level? Choose Yes, leave, or Keep playing."]; break;
@@ -1079,13 +1304,15 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       case "continue": S.battle = null; S.screen = "level"; fixLead(); msgs = [`Back on the board at space ${S.level.pos + 1} of ${BOARD_SIZE}. ${leadMon().name} leads. Roll when ready.`]; break;
       case "towheel": S.battle = null; S.wheel = { spun: false }; S.screen = "wheel"; msgs = ["Spin the reward wheel to claim your prize."]; break;
       case "spin": if (!S.wheel.spun) msgs = spin(); break;
-      case "camp": msgs = backToCamp("Back at camp. Your team is fully restored."); break;
+      case "camp": msgs = backToCamp(S.battle && S.battle.wboss && S.battle.fromLevel ? "Back at camp. That level attempt has ended, and your team is fully restored." : "Back at camp. Your team is fully restored."); break;
       // Battle
       case "skill": msgs = act("skill", Number(arg)); break;
       case "switch": msgs = act("switch", arg); break;
       case "capture": msgs = act("capture", arg); break;
       case "potion": msgs = act("potion"); break;
+      case "retreat": msgs = act("retreat"); break;
     }
+    if (msgs && S.screen === "level" && S.level && S.level.shopOpen && a !== "buy") S.dieChoose = false;
     finish(msgs);
   });
   document.getElementById("soundBtn").addEventListener("click", () => { S.sound = !S.sound; render(); });
@@ -1093,10 +1320,12 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   S = load();
   if (S) {
     S.confirm = null;
-    S.result = { camp: "Welcome back. You're at camp.", level: `Welcome back. You're on space ${S.level ? S.level.pos + 1 : 1} of Level ${S.level ? S.level.n : 1}.`, battle: "Welcome back. Your battle is waiting where you left it.", wheel: "Welcome back. Your reward wheel is waiting." }[S.screen] || "Welcome back.";
+    S.result = { camp: "Welcome back. You're at camp.", level: "Welcome back. Your level is waiting where you left it.", battle: "Welcome back. Your battle is waiting where you left it.", wheel: "Welcome back. Your reward wheel is waiting." }[S.screen] || "Welcome back.";
     const extra = [];
     if (S._pendingPxp) { givePxp(S._pendingPxp, extra); delete S._pendingPxp; }
+    wbTick(extra);
     checkAch(extra);
+    if (S.wboss) extra.push(`World boss ${S.wboss.name} is active with ${S.wfights.count} fight${S.wfights.count === 1 ? "" : "s"} available.`);
     if (S.screen === "camp" && S.mine && minePending() > 0) extra.push(`Your Shard Mine has ${minePending()} coins ready.`);
     if (S.training.session && trainingStatus().done) extra.push("A monster has finished training.");
     if (extra.length) S.result += " " + extra.join(" ");

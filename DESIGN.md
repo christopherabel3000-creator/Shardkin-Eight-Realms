@@ -161,6 +161,28 @@ Every new player gets the same Epic Fire starter, Cindercub, one of the Fire ele
 
 Starter: Cindercub → Blazefang → Infernox (Fire Epic; Infernox Crest comes from World 3).
 
+## World 2 Roster (Water)
+
+| Rarity | Monsters |
+|---|---|
+| Common | Puddlepup, Bubblet, Driftling, Shellkin, Splashrat |
+| Uncommon | Tidecrab, Reefwing, Mistnewt, Coralhound |
+| Rare | Rippleray → Stormray, Frostfin → Glacierfin, Kelpling → Kelpwarden |
+| Epic | Tidalisk → Torrentisk → Abyssalisk; Pearlcalf → Pearlwhale → Leviathal |
+| Legendary | Deepcrown → Tidemonarch → Oceanheart |
+
+## Status Effects
+- **Sleep:** the monster loses 1 to 3 turns (bosses only 1).
+- **Stun:** the monster loses its next turn.
+- **Poison:** the monster loses a tenth of its max health each round until the battle ends (much less for world bosses).
+- A monster can have one status at a time. Statuses come as a chance on certain skills.
+- Capture odds are multiplied by 1.5 for a sleeping or stunned target and 1.2 for a poisoned one.
+
+## Board Spaces
+- Wild battle, quiet path, healing spring, thorn trap, portal, **treasure chest** (coins, a Potion, Capture Orbs or a rare Loaded Die), **wandering merchant** (sells Potions, Capture Orbs and Loaded Dice at shop prices), level boss.
+- Every board has one merchant between spaces 15 and 23, a healing spring between spaces 31 and 35, and never more than three battles in a row.
+- Later levels and worlds have more battles and traps and fewer quiet paths.
+
 ## Prototype Numbers (first guesses, to tune)
 - **Evolution:** Rare, Epic and Legendary monsters evolve at level 16. Each evolution stage adds 20% to base stats. Final forms need that monster's crest.
 - **Wild rarity per monster:** Common 68%, Uncommon 30.75%, Rare 1%, Epic 0.2%, Legendary 0.05% (Rare or better about once per 40 fights).
@@ -171,15 +193,17 @@ Starter: Cindercub → Blazefang → Infernox (Fire Epic; Infernox Crest comes f
 - **Synthesis scrolls:** Rare Plant (two Common or Uncommon Plant monsters; from the World 1 achievement), Epic Plant (two Rare Plant), Legendary Plant (two Epic Plant plus one Rare Plant). The result's level matches the highest ingredient.
 - **Training Yard:** costs 150 coins. One monster, from the team or the base, trains at a time and can keep battling while it trains. It gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 150 player experience.
 - **Shard Mine:** costs 300, then 600 and 1,200 to upgrade. Earns 15, 30 or 50 coins per hour and holds up to 12 hours of earnings.
-- **Reward wheel:** 2 Potions, 3 Capture Orbs, 150 coins, 30 experience per team monster, or a Perfect Orb. Replays of Level 5 add a chance at a random Plant crest.
+- **Reward wheel:** 2 Potions, 3 Capture Orbs, 150 coins per world number, 30 experience per world number for each team monster, or a Perfect Orb. Replays of a world's last level add a chance at a random crest for that world.
+- **World progression:** World 2 opens after clearing World 1, Level 5. Wild levels start at 3 to 4 in World 1, Level 1 and rise by one per level, with World 2 starting at 9 to 10.
+- **World bosses:** 12% chance per level start that one is hiding (only if none is active). It moves to a new space ahead after every roll. It's one of the world's Epics, at least 5 levels above that world's toughest wild monsters and 2 levels above your strongest team monster, with 12 times normal health. You start with 1 fight and earn 1 every 2 hours, up to 5. It leaves after 24 hours. Each fight starts with your team fully healed; you can retreat and keep the damage. Defeating it gives 1,000 coins, a Perfect Orb, a crest for that world and 150 player experience. In simulated fights a full team at the end of World 1 needed about 8 fights.
 
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.
 3. **Collection and team** — done (prototype): base storage, team selection, leveling and the 2+2 skill unlock.
 4. **Progression** — done (prototype): player level, shop, daily training, Training Yard and Shard Mine, achievements.
-5. **Content:** World 1's full roster, evolution and synthesis are done (prototype); worlds 2 through 8 are next.
-6. **World bosses.**
+5. **Content:** Worlds 1 and 2 with full rosters, evolution, synthesis and status effects are done (prototype); worlds 3 through 8 are next.
+6. **World bosses** — done (prototype).
 7. **Combination worlds.**
 8. **Multiplayer:** co-op, then PvP and base raids.
 
