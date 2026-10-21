@@ -137,7 +137,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       <li>Fainted monsters stay out for the rest of the level. If your whole team faints, the level fails, but you keep your captures and experience.</li>
       <li>Switching is free in battle. Skills, items and capture attempts use your turn. A failed capture gives the wild monster a free action.</li>
       <li>Capture chance for a Common is 1 minus its current health divided by its maximum. Uncommons are three quarters of that, Rares half.</li>
-      <li>Every defeat or capture gives experience to your whole team, even monsters that didn't fight.</li>
+      <li>Every defeat or capture gives experience to every standing monster on your team, even ones that didn't fight. Fainted monsters miss out.</li>
       <li>Progress saves automatically in this browser on this device.</li>
     </ul>
   </details>
@@ -415,10 +415,13 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     const e = foe(), p = you();
     if (e && p.hp > 0) attack(e, p, aiSkill(e, p), false, msgs);
   }
-  // Every monster on the team gets the experience, including ones that didn't fight or have fainted.
-  function teamXp(amount, msgs) {
-    const team = teamMons();
-    msgs.push(team.length > 1 ? `Each monster on your team gained ${amount} experience.` : `${team[0].name} gained ${amount} experience.`);
+  // Every standing monster on the team gets the experience, even ones that didn't fight.
+  // The reward wheel passes everyone = true so fainted monsters share its prize too.
+  function teamXp(amount, msgs, everyone) {
+    const team = teamMons().filter(m => everyone || m.hp > 0);
+    if (!team.length) return;
+    const who = everyone ? "Each monster on your team" : "Each standing monster on your team";
+    msgs.push(team.length > 1 ? `${who} gained ${amount} experience.` : `${team[0].name} gained ${amount} experience.`);
     for (const m of team) levelCheck(m, amount, msgs);
   }
   function levelCheck(p, amount, msgs) {
@@ -524,7 +527,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     { w: 25, label: "2 Potions", give: () => { S.items.potion += 2; } },
     { w: 25, label: "3 Capture Orbs", give: () => { S.items.orb += 3; } },
     { w: 25, label: "150 coins", give: () => { S.coins += 150; } },
-    { w: 20, label: "30 experience for each team monster", give: msgs => { teamXp(30, msgs); } },
+    { w: 20, label: "30 experience for each team monster", give: msgs => { teamXp(30, msgs, true); } },
     { w: 5, label: "a Perfect Orb", give: () => { S.items.perfect += 1; } }
   ];
   function spin() {
