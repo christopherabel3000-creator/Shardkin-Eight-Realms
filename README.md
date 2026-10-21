@@ -14,6 +14,7 @@ A playable single-player campaign:
 - **Battles** with element strengths, sleep, stun and poison, free switching, capturing and team-wide experience.
 - **Camp:** player levels, a shop, synthesis, daily training, the Shard Mine for passive income, expeditions, a hatchery, and achievements.
 - **Daily and weekly quests**, and an endless **Arena tower** of rival trainers.
+- **Auto-play** for cleared levels, with speed, repeat, potion and catching settings.
 - **Element-themed attack sounds** that change with each skill's power and name, plus a sound test in Settings.
 - **Automatic saving** in your browser.
 

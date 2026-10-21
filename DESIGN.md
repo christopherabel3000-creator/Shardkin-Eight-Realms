@@ -305,6 +305,14 @@ Forms are listed in evolution order. Rares evolve at level 16; Epics and Legenda
 ### New achievements
 New Life (first hatch), Explorer (10 expeditions), Arena Contender (floor 10), Arena Legend (floor 50).
 
+## Auto-play
+- Available on any level you've already cleared, from an "Auto-play" button under that level in camp.
+- The die rolls itself and battles play out normally, with skills chosen for you: the skill with the best expected damage against the current opponent, counting element strength, the same-element bonus, accuracy and a small bonus for status effects.
+- It switches monsters once per opponent when a teammate has a clearly better matchup, picks the best replacement when a monster faints, leaves the merchant without buying, never uses Loaded Dice, slips past world bosses (fight them later from camp) and spins the reward wheel.
+- Settings (in camp and on the auto-play bar while it runs): speed (slow, normal, fast), repeat the level until stopped, use Potions below 30% health, and catch monsters you don't own yet. Catch mode uses gentler skills to weaken new monsters, then throws Capture Orbs.
+- It stops when the level is complete (unless repeating), when your whole team faints, or when you press Stop. You can take over from wherever it stops. It never resumes on its own after the game is closed.
+- Accessibility: the auto-play bar stays in place while the screen updates, so focus stays on the Stop button. A short spoken summary of each step (rolls, landings, opponents, faints, wins, catches and prizes) is announced through a live region, and the full detail stays in "What happened" and the battle log. At fast speed, attack sounds are skipped so steps don't overlap.
+
 ## Sound
 All sound is synthesized in the browser, with no audio files.
 - **Element attack sounds:** Fire roars and crackles, Water bloops and splashes, Earth thumps and rumbles, Electric zaps and buzzes, Plant whips and rustles, Physical whooshes and punches, Psychic shimmers with a rising warble, Ghost wails downward.

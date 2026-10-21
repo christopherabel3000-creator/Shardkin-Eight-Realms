@@ -125,6 +125,21 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     <p class="result" id="result" tabindex="-1"></p>
   </section>
 
+  <section id="autobar" aria-labelledby="h-auto" hidden>
+    <h2 id="h-auto">Auto-play</h2>
+    <div class="actions">
+      <p id="autostatus"></p>
+      <p id="autolive" class="result" role="status" aria-live="polite"></p>
+      <button type="button" id="autostop" class="primary"><span class="bn">Stop auto-play</span><span class="sub">You can take over from wherever it stops</span></button>
+      <div class="pair">
+        <button type="button" data-p="speed" id="ap-speed"></button>
+        <button type="button" data-p="repeat" id="ap-repeat"></button>
+        <button type="button" data-p="potions" id="ap-potions"></button>
+        <button type="button" data-p="capture" id="ap-capture"></button>
+      </div>
+    </div>
+  </section>
+
   <div id="screen"></div>
 
   <details>
@@ -138,6 +153,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       <li>Some skills can put a monster to sleep, stun it or poison it. Sleeping or stunned monsters lose their turns, and poison deals damage each round. Status effects raise capture odds.</li>
       <li>Rarely, a world boss hides on an ordinary-looking space and moves every roll. When you find it, fight now (ending that level attempt) or ignore it and fight later from camp. Its damage carries over between fights, you earn one fight every 2 hours (up to 5), and it leaves after 24 hours.</li>
       <li>Every defeat or capture gives experience to each standing monster on your team. Rare, Epic and Legendary monsters evolve at level 16. Epics and Legendaries reach a final form with their own crest.</li>
+      <li>Cleared levels can be auto-played. The die rolls itself and skills are picked for you, choosing the strongest matchup. Settings let you change the speed, repeat the level, use Potions and catch monsters you don't have yet.</li>
       <li>Progress saves automatically in this browser on this device.</li>
     </ul>
   </details>
@@ -782,9 +798,10 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     }
     return t - t0;
   }
-  function flushSound() {
-    const q = queue; queue = [];
-    if (!S.sound || !q.length) return;
+  function flushSound(skipAttacks) {
+    let q = queue; queue = [];
+    if (skipAttacks) q = q.filter(n => !(n && n.atk));
+    if (!S.sound || !q.length) return 0;
     try {
       if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -793,8 +810,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         master.connect(comp).connect(ctx.destination);
       }
       if (ctx.state === "suspended") ctx.resume();
-      playQueue(ctx, master, q, ctx.currentTime + 0.05);
-    } catch (e) { /* sound is optional */ }
+      return playQueue(ctx, master, q, ctx.currentTime + 0.05);
+    } catch (e) { return 0; /* sound is optional */ }
   }
   function demoSkill(el, heavy) {
     const sp = SP[heavy ? POOLS[el].Legendary[0] : POOLS[el].Common[0]];
@@ -887,7 +904,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const fresh = !S.dex.includes(id);
     const m = addMon(makeMon(id, wildRange(elementWorld(x.el), 1)[0]), false);
     bump("hatches"); sfx("evolve");
-    return [`The ${x.el} egg hatched into ${m.name}, a ${m.rarity} ${m.el} monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It's in your base.`];
+    return [`The ${x.el} egg hatched into ${m.name}, ${an(m.rarity)} ${m.el} monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It's in your base.`];
   }
 
   // ---------- Quests ----------
@@ -963,7 +980,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     S.screen = "battle";
     const B = S.battle, e = foe();
     sfx(floor % 10 === 0 ? "boss" : "ambush");
-    return [`Arena floor ${floor}${floor % 10 === 0 ? ", a champion floor" : ""}. ${B.rival} sends out ${e.name}, a ${e.rarity} ${e.el} monster at level ${e.level}. They have ${B.enemies.length} monsters.`, `Your ${you().name} is ready.`];
+    return [`Arena floor ${floor}${floor % 10 === 0 ? ", a champion floor" : ""}. ${B.rival} sends out ${e.name}, ${an(e.rarity)} ${e.el} monster at level ${e.level}. They have ${B.enemies.length} monsters.`, `Your ${you().name} is ready.`];
   }
   function arenaWin(msgs) {
     const B = S.battle, f = B.floor;
@@ -1168,17 +1185,18 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     S.battle = { boss, enemies: boss ? [pickBoss(w, n)] : [pickWild(w, n), pickWild(w, n)], active: S.level.lead, forced: false, over: null, log: [] };
     S.screen = "battle";
     const e = foe();
-    if (boss) { sfx("boss"); msgs.push(`The level boss appears: ${e.name}, a ${e.rarity} ${e.el} monster at level ${e.level}. Bosses must be defeated, not captured.`); }
+    if (boss) { sfx("boss"); msgs.push(`The level boss appears: ${e.name}, ${an(e.rarity)} ${e.el} monster at level ${e.level}. Bosses must be defeated, not captured.`); }
     else {
-      sfx("ambush"); msgs.push(`A wild team of two ambushes you. Wild ${e.name} steps forward, a ${e.rarity} ${e.el} monster at level ${e.level}.`);
+      sfx("ambush"); msgs.push(`A wild team of two ambushes you. Wild ${e.name} steps forward, ${an(e.rarity)} ${e.el} monster at level ${e.level}.`);
       const rare = S.battle.enemies.find(x => ["Rare", "Epic", "Legendary"].includes(x.rarity));
-      if (rare) msgs.push(`Something rare is on this team: ${rare.name}, a ${rare.rarity} monster!`);
+      if (rare) msgs.push(`Something rare is on this team: ${rare.name}, ${an(rare.rarity)} monster!`);
     }
     msgs.push(`Your ${you().name} is ready.`);
   }
   function you() { return S.mons[S.battle.active]; }
   function foe() { return S.battle.enemies.find(e => e.hp > 0 && !e.caught); }
   function foesLeft() { return S.battle.enemies.filter(e => e.hp > 0 && !e.caught).length; }
+  function an(word) { return (/^[AEIOU]/i.test(word) ? "an " : "a ") + word; }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
   function foeWord() { return S.battle.wboss ? "World boss" : S.battle.arena ? "Rival" : S.battle.boss ? "Boss" : "Wild"; }
   function label(m, isYou) { return isYou ? `your ${m.name}` : `${foeWord().toLowerCase()} ${m.name}`; }
@@ -1248,7 +1266,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     }
     const next = foe();
     if (!next) { endBattle("win", msgs); return; }
-    if (cur) msgs.push(B.arena ? `${B.rival} sends out ${next.name}, a ${next.rarity} ${next.el} monster at level ${next.level}.` : `Wild ${next.name} steps forward, a ${next.rarity} ${next.el} monster at level ${next.level}.`);
+    if (cur) msgs.push(B.arena ? `${B.rival} sends out ${next.name}, ${an(next.rarity)} ${next.el} monster at level ${next.level}.` : `Wild ${next.name} steps forward, ${an(next.rarity)} ${next.el} monster at level ${next.level}.`);
     if (you().hp <= 0) {
       msgs.push(`Your ${you().name} fainted.`); sfx("faint");
       if (teamMons().some(m => m.hp > 0)) { B.forced = true; msgs.push("Choose a monster to send out."); }
@@ -1327,7 +1345,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         givePxp(10, msgs);
         const next = foe();
         if (!next) endBattle("win", msgs);
-        else msgs.push(`Wild ${next.name} steps forward, a ${next.rarity} ${next.el} monster at level ${next.level}.`);
+        else msgs.push(`Wild ${next.name} steps forward, ${an(next.rarity)} ${next.el} monster at level ${next.level}.`);
         return msgs;
       }
       msgs.push(`You threw a ${orbName}, but wild ${e.name} broke free.`); sfx("fail");
@@ -1401,7 +1419,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const m = addMon(makeMon(id, level), false);
     S.stats.synth++; S.synth.picks = []; bump("synths");
     sfx("evolve");
-    const msgs = [`${picks.map(p => p.name).join(" and ")} combined into ${m.name}, a ${m.rarity} ${m.el} monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It was sent to your base.`];
+    const msgs = [`${picks.map(p => p.name).join(" and ")} combined into ${m.name}, ${an(m.rarity)} ${m.el} monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It was sent to your base.`];
     givePxp(25, msgs);
     return msgs;
   }
@@ -1524,8 +1542,20 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     lv += sub3(`World ${w}: ${W.name}`, true);
     for (let n = 1; n <= W.levels; n++) {
       const [lo, hi] = wildRange(w, n), done = P.cleared.includes(n);
-      if (n <= P.unlocked) lv += btn("level", `${w}-${n}`, `Play World ${w}, Level ${n}`, `Wild monsters level ${lo} to ${hi}${done ? " · Cleared" : ""}${n === W.levels && done ? " · Replays can win a final-form crest" : ""}`, n === P.unlocked && !done);
+      if (n <= P.unlocked) {
+        lv += btn("level", `${w}-${n}`, `Play World ${w}, Level ${n}`, `Wild monsters level ${lo} to ${hi}${done ? " · Cleared" : ""}${n === W.levels && done ? " · Replays can win a final-form crest" : ""}`, n === P.unlocked && !done);
+        if (done) lv += btn("autolevel", `${w}-${n}`, `Auto-play World ${w}, Level ${n}`, `Rolls and fights for you${prefs().repeat ? " · Repeats until stopped" : ""}`);
+      }
       else { lv += `<p class="muted">Levels ${n} to ${W.levels}: locked. Clear Level ${n - 1} first.</p>`; break; }
+    }
+    if (P.cleared.length) {
+      const A = prefs();
+      lv += sub3("Auto-play settings", true) + `<p class="muted">Auto-play works on levels you've cleared. You can also change these while it runs.</p><div class="pair">`;
+      lv += btn("autopref", "speed", `Speed: ${SPEED_NAME[A.speed]}`, "Slow, normal or fast");
+      lv += btn("autopref", "repeat", `Repeat the level: ${A.repeat ? "on" : "off"}`, "Start the level again after each clear", false, A.repeat);
+      lv += btn("autopref", "potions", `Use Potions: ${A.potions ? "on" : "off"}`, "When a monster drops below 30% health", false, A.potions);
+      lv += btn("autopref", "capture", `Catch new monsters: ${A.capture ? "on" : "off"}`, "Throws Capture Orbs at monsters you don't have yet", false, A.capture);
+      lv += `</div>`;
     }
     return lv + `</div>`;
   }
@@ -1729,6 +1759,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const L = S.level, lead = leadMon();
     let h = "";
     if (L.failed) return sec("h-board", `Level ${L.n} failed`, `<div class="actions">${btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true)}</div>`);
+    if (L.encounter && autoOn()) return sec("h-wbfound", "World boss found", `<div class="actions">${monCard(S.wboss, "World boss ", "")}<p>Auto-play will slip past it. Fight it from camp within 24 hours.</p></div>`);
     if (L.encounter) {
       return sec("h-wbfound", "World boss found", `<div class="actions">${monCard(S.wboss, "World boss ", `<p class="muted">Fights available: ${S.wfights.count}. You earn one more every 2 hours, up to ${WB.maxFights}.</p>`)}
         ${btn("wbnow", "", "Fight it now", "Uses a fight and ends this level attempt", true)}
@@ -1740,6 +1771,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     let rollBtns;
     if (L.shopOpen) {
       rollBtns = `<p>The wandering merchant is waiting. Buy below, then leave to keep rolling.</p>`;
+    } else if (autoOn()) {
+      rollBtns = `<p class="muted">Auto-play is rolling for you.</p>`;
     } else if (S.dieChoose) {
       rollBtns = `<p>Choose your roll.</p><div class="pair">`;
       for (let r = 1; r <= 6; r++) rollBtns += btn("dieroll", r, `Move ${r}`, `Land on space ${Math.min(BOARD_SIZE, L.pos + r + 1)}: ${spaceLabel(Math.min(BOARD_SIZE - 1, L.pos + r))}`);
@@ -1751,7 +1784,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     h += sec("h-board", `World ${L.w}, Level ${L.n} board`, `<div class="actions">
       <p class="stat">Space ${L.pos + 1} of ${BOARD_SIZE}. The boss is ${BOARD_SIZE - 1 - L.pos} spaces away.</p>
       ${track}${rollBtns}</div>`);
-    if (L.shopOpen) h += sec("h-merchant", "Wandering merchant", `<div class="actions"><p>You have ${S.coins} coins.</p>${shopButtons(["potion", "orb", "die"])}${btn("merchleave", "", "Leave the merchant", "Back to the board", true)}</div>`);
+    if (L.shopOpen && !autoOn()) h += sec("h-merchant", "Wandering merchant", `<div class="actions"><p>You have ${S.coins} coins.</p>${shopButtons(["potion", "orb", "die"])}${btn("merchleave", "", "Leave the merchant", "Back to the board", true)}</div>`);
     let ahead = `<ol class="clean">`;
     for (let i = L.pos + 1; i <= Math.min(BOARD_SIZE - 1, L.pos + 6); i++) ahead += `<li>Space ${i + 1}: ${spaceLabel(i)}</li>`;
     h += sec("h-ahead", "Look ahead", ahead + `</ol>`);
@@ -1759,6 +1792,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     for (const m of teamMons()) {
       tm += `<div class="row"><p class="nm">${m.uid === L.lead ? "Lead: " : ""}${m.name}${m.hp <= 0 ? " (fainted)" : ""}</p><p class="muted">${monLine(m)}</p>${hpBar(m)}`;
       const b = [];
+      if (autoOn()) { tm += `</div>`; continue; }
       if (m.hp > 0 && m.uid !== L.lead) b.push(btn("lead", m.uid, `Make ${m.name} the lead`));
       if (m.hp > 0 && m.hp < m.maxHp && S.items.potion > 0) b.push(btn("potionboard", m.uid, `Use Potion on ${m.name}`, `${S.items.potion} left`));
       if (b.length) tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div>`;
@@ -1766,6 +1800,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     }
     h += sec("h-lteam", "Your team", tm + `</div>`);
     h += sec("h-bag", "Bag", `<p>${itemsLine()}</p>`);
+    if (autoOn()) return h;
     let lv;
     if (S.confirm === "leave") lv = `<div class="actions"><p>Leave the level? It counts as a failed attempt, but you keep captures and experience.</p><div class="pair">${btn("leaveyes", "", "Yes, leave")}${btn("cancel", "", "Keep playing", "", true)}</div></div>`;
     else lv = `<div class="actions">${btn("leave", "", "Leave level", "Return to camp without finishing")}</div>`;
@@ -1779,6 +1814,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     let h = sec("h-foe", heading, monCard(shownFoe, foeWord() + " ",
       B.boss && !B.arena ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`));
     h += sec("h-you", "Your monster", monCard(p, "", xpLine(p)));
+    if (autoOn()) return h + sec("h-log", "Battle log", `<ol class="log">${B.log.map(l => `<li>${l}</li>`).join("")}</ol>`);
     if (B.over) {
       let o = `<div class="actions">`;
       if (B.over === "win" && B.boss) o += btn("towheel", "", "Go to the reward wheel", "", true);
@@ -1826,10 +1862,10 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     let w = `<div class="actions">`;
     if (!S.wheel.spun) {
       w += `<p>Possible prizes: ${prizes().map(p => p.label).join(", ")}.</p>`;
-      w += btn("spin", "", "Spin the wheel", "", true);
+      if (!autoOn()) w += btn("spin", "", "Spin the wheel", "", true);
     } else {
       w += `<p>You won ${S.wheel.prize}.</p>`;
-      w += btn("camp", "", "Return to camp", "Your team is restored for the next level", true);
+      if (!autoOn()) w += btn("camp", "", "Return to camp", "Your team is restored for the next level", true);
     }
     return sec("h-wheel", "Reward wheel", w + `</div>`);
   }
@@ -1847,25 +1883,28 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     sb.setAttribute("aria-pressed", String(S.sound));
     save();
   }
-  function finish(msgs) {
-    if (!msgs) return;
+  function finish(msgs, quiet) {
+    if (!msgs) return 0;
     wbTick(msgs);
     ensureQuests();
     checkAch(msgs);
     S.result = msgs.join(" ");
     if (S.screen === "battle" && S.battle && S.battle.log) S.battle.log.push(S.result);
     render();
-    document.getElementById("result").focus();
-    flushSound();
+    if (quiet) { const sm = autoSummary(msgs); if (sm) document.getElementById("autolive").textContent = sm; updateAutobar(); }
+    else document.getElementById("result").focus();
+    return flushSound(quiet && prefs().speed === "fast");
   }
 
   // ---------- Input ----------
   function backToCamp(text) { restoreAll(); S.level = null; S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "camp"; S.campTab = "levels"; return [text]; }
   document.getElementById("screen").addEventListener("click", ev => {
     const b = ev.target.closest("button[data-a]");
-    if (!b) return;
-    const a = b.dataset.a, arg = b.dataset.arg;
-    let msgs = null;
+    if (!b || autoOn()) return;
+    doAction(b.dataset.a, b.dataset.arg, false);
+  });
+  function doAction(a, arg, quiet) {
+    let msgs = null, beginAuto = false;
     if (S.wboss) { const t = []; wbTick(t); if (t.length && S.screen === "camp") msgs = t; }
     switch (a) {
       // Camp
@@ -1890,6 +1929,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         else { atkSfx({ name: "Tackle", el: "Physical", power: 40 }, true, arg); msgs = [{ strong: "A strong hit.", weak: "A weak hit.", miss: "A missed attack." }[arg]]; }
         break;
       }
+      case "autolevel": { const [w, n] = arg.split("-").map(Number); if (S.team.length && prog(w).cleared.includes(n)) { msgs = ["Auto-play started."].concat(startLevel(w, n)); S.auto = { on: true, w, n, runs: 1, coins0: S.coins, caps0: S.counts.caps || 0 }; beginAuto = true; } break; }
+      case "autorepeat": if (S.auto) { S.auto.runs++; backToCamp(""); msgs = [`Run ${S.auto.runs} begins.`].concat(startLevel(S.auto.w, S.auto.n)); } break;
+      case "autopref": msgs = [togglePref(arg)]; break;
       case "makefirst": S.team = [arg, ...S.team.filter(id => id !== arg)]; msgs = [`${S.mons[arg].name} will lead your team.`]; break;
       case "remove": if (S.team.length > 1) { S.team = S.team.filter(id => id !== arg); msgs = [`${S.mons[arg].name} was sent to your base. Your team has ${S.team.length} of 4.`]; } break;
       case "add": if (S.team.length < 4 && !S.team.includes(arg) && !onExped(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
@@ -1935,13 +1977,155 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       case "retreat": msgs = act("retreat"); break;
     }
     if (msgs && S.screen === "level" && S.level && S.level.shopOpen && a !== "buy") S.dieChoose = false;
-    finish(msgs);
+    const len = finish(msgs, quiet);
+    if (beginAuto) autoBegin();
+    return len;
+  }
+
+  // ---------- Auto-play ----------
+  // Rolls the die and picks skills on cleared levels. Every action goes through doAction, exactly as if the player chose it.
+  const AUTO_SPEED = { slow: 3500, normal: 2000, fast: 700 };
+  const SPEED_NAME = { slow: "Slow", normal: "Normal", fast: "Fast" };
+  let autoTimer = null;
+  function autoOn() { return !!(S.auto && S.auto.on); }
+  function prefs() { if (!S.autoPrefs) S.autoPrefs = { speed: "normal", repeat: false, potions: false, capture: false }; return S.autoPrefs; }
+  function togglePref(k) {
+    const A = prefs();
+    if (k === "speed") { A.speed = { slow: "normal", normal: "fast", fast: "slow" }[A.speed]; return `Auto-play speed: ${SPEED_NAME[A.speed]}.`; }
+    A[k] = !A[k];
+    return { repeat: "Repeat the level", potions: "Use Potions", capture: "Catch new monsters" }[k] + `: ${A[k] ? "on" : "off"}.`;
+  }
+  function bestMult(m, e) { return Math.max(...unlocked(m).map(s => mult(s.el, e.el))); }
+  function autoSkill(p, e) {
+    let bi = 0, bv = -1;
+    unlocked(p).forEach((s, i) => {
+      let v = s.power * mult(s.el, e.el) * (s.el === p.el ? 1.2 : 1) * s.acc / 100;
+      if (s.st && !e.status) v *= 1 + s.stc / 200;
+      if (v > bv) { bv = v; bi = i; }
+    });
+    return bi;
+  }
+  // Expected damage, matching the battle formula without the random spread.
+  function estDmg(att, def, sk) {
+    const base = ((2 * att.level / 5 + 2) * sk.power * att.atk / def.def) / 50 + 2;
+    return base * (sk.el === att.el ? 1.2 : 1) * mult(sk.el, def.el) * 0.93;
+  }
+  // When trying to catch a monster: the hardest-hitting skill that should leave it standing, or the softest one.
+  function gentleSkill(p, e) {
+    const sk = unlocked(p).map((s, i) => [i, estDmg(p, e, s)]);
+    const safe = sk.filter(x => x[1] < e.hp * 0.8).sort((a, b) => b[1] - a[1]);
+    return safe.length ? safe[0][0] : sk.sort((a, b) => a[1] - b[1])[0][0];
+  }
+  function autoChoose() {
+    const A = prefs();
+    if (S.screen === "level") {
+      const L = S.level;
+      if (L.failed) return null;
+      if (L.encounter) return ["wbignore", ""];
+      if (L.shopOpen) return ["merchleave", ""];
+      const lead = leadMon();
+      if (A.potions && S.items.potion > 0 && lead.hp > 0 && lead.hp < lead.maxHp * 0.3) return ["potionboard", lead.uid];
+      return ["roll", ""];
+    }
+    if (S.screen === "battle") {
+      const B = S.battle;
+      if (B.over === "win") return [B.boss ? "towheel" : "continue", ""];
+      if (B.over) return null;
+      const e = foe(), p = you(), alive = teamMons().filter(m => m.hp > 0 && m.uid !== B.active);
+      if (B.forced) {
+        alive.sort((a, b) => bestMult(b, e) - bestMult(a, e) || b.hp / b.maxHp - a.hp / a.maxHp);
+        return ["switch", alive[0].uid];
+      }
+      // Switch once per opponent if a teammate has a clearly better matchup.
+      const idx = B.enemies.indexOf(e);
+      if (B.autoSw !== idx && bestMult(p, e) < 1) {
+        const better = alive.filter(m => bestMult(m, e) > bestMult(p, e) && m.hp > m.maxHp * 0.4).sort((a, b) => bestMult(b, e) - bestMult(a, e))[0];
+        if (better) { B.autoSw = idx; return ["switch", better.uid]; }
+      }
+      if (A.potions && S.items.potion > 0 && p.hp < p.maxHp * 0.3) return ["potion", ""];
+      if (A.capture && !B.boss && S.items.orb > 0 && !S.dex.includes(e.id)) {
+        if (captureChance(e, "orb") >= 0.5 || e.hp <= e.maxHp * 0.35) return ["capture", "orb"];
+        return ["skill", gentleSkill(p, e)];
+      }
+      return ["skill", autoSkill(p, e)];
+    }
+    if (S.screen === "wheel") return S.wheel.spun ? (A.repeat ? ["autorepeat", ""] : null) : ["spin", ""];
+    return null;
+  }
+  // A short spoken summary of each step: rolls, landings, new opponents, faints, wins, captures and prizes.
+  const KEEP = /^You rolled|^You used a Loaded|^You land on|portal pulls|recovers|Thorns hit|open the chest|merchant|ambushes you|steps forward|level boss appears|world boss was hiding|slip past|Something rare|fainted|won the battle|defeated the level boss|reached level|evolved|learned|captured|broke free|Potion|stops on|Achievement unlocked|begins\.|Auto-play started|failed/;
+  function autoSummary(msgs) {
+    const sents = (msgs.join(" ").match(/[^.!?]+[.!?]+/g) || []).map(x => x.trim()).filter(x => KEEP.test(x));
+    return sents.join(" ");
+  }
+  function updateAutobar() {
+    const bar = document.getElementById("autobar"), on = autoOn();
+    bar.hidden = !on;
+    if (!on) return;
+    const A = prefs(), Au = S.auto;
+    let st = `Run ${Au.runs} of World ${Au.w}, Level ${Au.n}${A.repeat ? ", repeating" : ""}. `;
+    if (S.screen === "battle" && S.battle) { const e = foe(), p = you(); st += e ? `Battle: your ${p.name}, ${p.hp} of ${p.maxHp} health, against ${e.name}, ${e.hp} of ${e.maxHp}.` : "Battle won."; }
+    else if (S.screen === "level" && S.level) st += `Space ${S.level.pos + 1} of ${BOARD_SIZE}.`;
+    else if (S.screen === "wheel") st += "Reward wheel.";
+    st += ` So far: ${S.coins - Au.coins0} coins and ${(S.counts.caps || 0) - Au.caps0} captures.`;
+    document.getElementById("autostatus").textContent = st;
+    const set = (id, text, pressed) => { const b = document.getElementById(id); b.textContent = text; if (pressed !== undefined) b.setAttribute("aria-pressed", String(pressed)); };
+    set("ap-speed", `Speed: ${SPEED_NAME[A.speed]}`);
+    set("ap-repeat", `Repeat the level: ${A.repeat ? "on" : "off"}`, A.repeat);
+    set("ap-potions", `Use Potions: ${A.potions ? "on" : "off"}`, A.potions);
+    set("ap-capture", `Catch new monsters: ${A.capture ? "on" : "off"}`, A.capture);
+  }
+  function autoDelay(soundLen) {
+    const base = AUTO_SPEED[prefs().speed];
+    return prefs().speed === "fast" ? base : Math.max(base, soundLen * 1000 + 300);
+  }
+  function autoBegin() {
+    updateAutobar();
+    document.getElementById("autolive").textContent = `Auto-play started on World ${S.auto.w}, Level ${S.auto.n}. ${S.level ? leadMon().name + " leads." : ""}`;
+    document.getElementById("autostop").focus();
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(autoNext, AUTO_SPEED[prefs().speed]);
+  }
+  function autoNext() {
+    autoTimer = null;
+    if (!autoOn()) return;
+    const c = autoChoose();
+    if (!c) { autoStop(autoEndReason()); return; }
+    const len = doAction(c[0], c[1], true);
+    if (autoOn()) autoTimer = setTimeout(autoNext, autoDelay(len || 0));
+  }
+  function autoEndReason() {
+    if ((S.level && S.level.failed) || (S.battle && S.battle.over === "lose")) return "your whole team fainted, so the level failed. You kept your captures and experience";
+    if (S.screen === "wheel" && S.wheel && S.wheel.spun) return `the level is complete and you won ${S.wheel.prize}`;
+    return "there was nothing left to do";
+  }
+  function autoStop(reason) {
+    clearTimeout(autoTimer); autoTimer = null;
+    const Au = S.auto;
+    if (!Au) return;
+    S.auto = null;
+    const coins = S.coins - Au.coins0, caps = (S.counts.caps || 0) - Au.caps0;
+    S.result = `Auto-play stopped: ${reason}. ${Au.runs} run${Au.runs === 1 ? "" : "s"}, ${coins} coins earned, ${caps} monster${caps === 1 ? "" : "s"} captured. You're in control now.`;
+    render();
+    updateAutobar();
+    document.getElementById("result").focus();
+    queue = [];
+  }
+  document.getElementById("autobar").addEventListener("click", ev => {
+    const b = ev.target.closest("button");
+    if (!b || !autoOn()) return;
+    if (b.id === "autostop") { autoStop("you stopped it"); return; }
+    const t = togglePref(b.dataset.p);
+    updateAutobar(); save();
+    document.getElementById("autolive").textContent = t;
   });
   document.getElementById("soundBtn").addEventListener("click", () => { S.sound = !S.sound; render(); });
 
   S = load();
+  let autoWasOn = false;
   if (S) {
     ensureExtras();
+    if (S.auto) { autoWasOn = true; S.auto = null; }
     S.confirm = null;
     S.result = { camp: "Welcome back. You're at camp.", level: "Welcome back. Your level is waiting where you left it.", battle: "Welcome back. Your battle is waiting where you left it.", wheel: "Welcome back. Your reward wheel is waiting." }[S.screen] || "Welcome back.";
     const extra = [];
@@ -1951,6 +2135,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (S.wboss) extra.push(`World boss ${S.wboss.name} is active with ${S.wfights.count} fight${S.wfights.count === 1 ? "" : "s"} available.`);
     if (S.screen === "camp" && S.mine && minePending() > 0) extra.push(`Your Shard Mine has ${minePending()} coins ready.`);
     if (S.training.session && trainingStatus().done) extra.push("A monster has finished training.");
+    if (autoWasOn) extra.push("Auto-play stopped when the game was closed. You can carry on yourself or start it again from camp.");
     if (S.exped && S.exped.list.some(x => expLeft(x) <= 0)) extra.push("A monster is back from an expedition.");
     if (S.hatch && S.hatch.incub.some(x => hatchLeft(x) <= 0)) extra.push("An egg is ready to hatch.");
     ensureQuests();
