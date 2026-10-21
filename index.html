@@ -848,7 +848,12 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       { w: 25, label: "2 Potions", give: () => { S.items.potion += 2; } },
       { w: 25, label: "3 Capture Orbs", give: () => { S.items.orb += 3; } },
       { w: 25, label: `${150 * S.level.w} coins`, give: () => { S.coins += 150 * S.level.w; } },
-      { w: 20, label: `${30 * S.level.w} experience for each team monster`, give: msgs => { teamXp(30 * S.level.w, msgs, true); } },
+      { w: 20, label: "a quarter of a level's experience for each team monster", give: msgs => {
+          // Scales with each monster's own level: 25% of what it needs for its next level.
+          const parts = teamMons().map(m => { const amt = Math.ceil(xpNeed(m.level) / 4); return [m, amt]; });
+          msgs.push(parts.map(([m, amt]) => `${m.name} gained ${amt} experience`).join(", ") + ".");
+          for (const [m, amt] of parts) levelCheck(m, amt, msgs);
+        } },
       { w: 5, label: "a Perfect Orb", give: () => { S.items.perfect += 1; } }
     ];
     // Replaying the last level of a completed world adds a chance at a final-form crest.
