@@ -5,17 +5,17 @@ A turn-based monster-collecting RPG, built to be fully playable with a screen re
 **Play it:** https://christopherabel3000-creator.github.io/shardkin-eight-realms/
 
 ## Current state
-Step 1 of the build plan: a battle prototype. Your Fire starter, Cindercub, and two test monsters face random two-monster teams from the Plant world. It includes:
+A World 1 (Plant) prototype covering steps 1 and 2 of the build plan:
 
-- Skills with element strengths and weaknesses
-- Free switching between team members
-- Capturing, with the success chance shown before each throw
-- Potions, Capture Orbs and a Perfect Orb
-- Experience, leveling and skill unlocks
-- Optional sound effects
+- **Camp:** choose up to four monsters for your team; captured monsters wait in your base.
+- **Five levels** on 36-space dice boards with wild battles, healing springs, thorn traps, portals and quiet paths, plus a look-ahead of the next six spaces.
+- **Level bosses** that must be defeated, followed by a **reward wheel**.
+- **Battles** with element strengths, free switching, capturing, potions and experience.
+- **Automatic saving** in your browser.
+- Optional sound effects.
 
 ## Accessibility
-Every screen section has a heading (What happened, Opponent, Your monster, Skills, Switch monster, Capture and items), and all actions are buttons. After each action, focus moves to "What happened" so the results of the turn are read aloud right away.
+Every screen section has a heading (for example What happened, Level board, Look ahead, Opponent, Skills, Switch monster), and all actions are buttons. After each action, focus moves to "What happened" so the results of the turn are read aloud right away.
 
 ## Files
 - `index.html` — the game (plain HTML, CSS and JavaScript, no build step)

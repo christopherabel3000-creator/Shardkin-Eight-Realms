@@ -11,7 +11,7 @@
 :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body { margin: 0; }
 [hidden] { display: none !important; }
-/* Layout: one narrow column, opponent above you like a battle field, actions grouped under headings for screen reader navigation */
+/* Layout: one narrow column; each screen (camp, board, battle, wheel) is a stack of headed sections for screen reader navigation */
 :root {
   --bg: #eceef4;
   --surface: #ffffff;
@@ -62,10 +62,11 @@ body {
   padding-block: 20px 48px;
 }
 .wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 20px; }
+#screen { display: grid; gap: 20px; }
 header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
 h1 { font-family: var(--font-display); font-size: 1.75rem; line-height: 1.1; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
 h1 span { display: block; font-size: 0.95rem; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
-h2 { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h2 { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); text-wrap: balance; }
 section { min-width: 0; }
 p { margin: 0; }
 .result {
@@ -75,6 +76,8 @@ p { margin: 0; }
 .result:focus { outline: 3px solid var(--focus); outline-offset: 3px; }
 .mon { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; }
 .mon .name { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+.row { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; }
+.row .nm { font-weight: 700; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; border: 1.5px solid currentColor; }
 .plain { color: var(--muted); }
@@ -84,6 +87,7 @@ p { margin: 0; }
 .stat { font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .actions { display: grid; gap: 8px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 button {
   font: inherit; color: var(--ink); background: var(--surface);
   border: 1.5px solid var(--line); border-radius: 8px; padding: 12px 14px;
@@ -96,8 +100,13 @@ button .bn { font-weight: 700; }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 button.primary .sub { color: var(--accent-ink); opacity: 0.85; }
 .small { width: auto; min-height: 40px; padding: 8px 12px; font-size: 0.95rem; }
-ul.clean, ol.log { margin: 0; padding-left: 1.25rem; display: grid; gap: 4px; }
+ul.clean, ol.clean, ol.log { margin: 0; padding-left: 1.25rem; display: grid; gap: 4px; }
 ol.log { color: var(--muted); font-size: 0.95rem; }
+.track { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; }
+.track i { aspect-ratio: 1; max-width: 100%; border-radius: 3px; background: var(--line); }
+.track i.done { background: var(--muted); opacity: 0.45; }
+.track i.here { background: var(--accent); }
+.track i.boss { outline: 2px solid var(--hp-low); outline-offset: -2px; }
 details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
 summary { cursor: pointer; font-weight: 700; }
 details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
@@ -107,7 +116,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
 <body>
 <div class="wrap">
   <header>
-    <h1>Shardkin: Eight Realms<span>Battle prototype · World 1, Plant</span></h1>
+    <h1>Shardkin: Eight Realms<span id="subtitle">World 1, Plant</span></h1>
     <button class="small" id="soundBtn" type="button" aria-pressed="true">Sound effects: on</button>
   </header>
 
@@ -116,38 +125,19 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     <p class="result" id="result" tabindex="-1"></p>
   </section>
 
-  <section aria-labelledby="h-foe">
-    <h2 id="h-foe">Opponent</h2>
-    <div id="foe"></div>
-  </section>
-
-  <section aria-labelledby="h-you">
-    <h2 id="h-you">Your monster</h2>
-    <div id="you"></div>
-  </section>
-
-  <div id="controls" style="display:grid; gap:20px;"></div>
-
-  <section aria-labelledby="h-base">
-    <h2 id="h-base">Sent to your base</h2>
-    <div id="base"></div>
-  </section>
-
-  <section aria-labelledby="h-log">
-    <h2 id="h-log">Battle log</h2>
-    <ol class="log" id="log"></ol>
-  </section>
+  <div id="screen"></div>
 
   <details>
-    <summary>How this prototype works</summary>
+    <summary>How to play this prototype</summary>
     <ul>
-      <li>Each battle is against a random team of two wild monsters from the Plant world, weighted toward common ones.</li>
-      <li>Switching is free: you switch and can still act. Skills, items and capture attempts use your turn.</li>
-      <li>Capture odds rise as the target's health drops and fall with rarity. A failed throw gives the wild monster a free action.</li>
-      <li>Strong hits deal 1.5 times damage, weak hits about two thirds. A skill matching its user's element gets a small bonus.</li>
-      <li>"Next battle" keeps your team as it is, like moving on through a level, so fainted monsters stay out. "Restore team" resets everything.</li>
-      <li>Your team includes two test monsters so you can try switching. A real new player starts with Cindercub alone.</li>
-      <li>Skills 3 and 4 unlock at levels 8 and 15 for now. All numbers are first guesses for playtesting.</li>
+      <li>At camp, pick up to four monsters for your team, then choose a level. Your team is locked once the level starts.</li>
+      <li>On the board, roll the die to move along 36 spaces. Spaces can hold wild battles, healing springs, thorn traps, portals or a quiet path. Look ahead lists the next six.</li>
+      <li>Healing springs and thorn traps affect your lead monster, the one that starts each fight. Battle, spring and trap spaces are cleared once used.</li>
+      <li>Rolling past the end lands you on the boss space. The level boss must be defeated, not captured. Then you spin the reward wheel.</li>
+      <li>Fainted monsters stay out for the rest of the level. If your whole team faints, the level fails, but you keep your captures and experience.</li>
+      <li>Switching is free in battle. Skills, items and capture attempts use your turn. A failed capture gives the wild monster a free action.</li>
+      <li>Capture chance for a Common is 1 minus its current health divided by its maximum. Uncommons are three quarters of that, Rares half.</li>
+      <li>Progress saves automatically in this browser on this device.</li>
     </ul>
   </details>
 </div>
@@ -174,10 +164,6 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   const SP = {
     cindercub: { name: "Cindercub", el: "Fire", rarity: "Epic", base: { hp: 70, atk: 75, def: 55, spd: 70 },
       skills: [["Ember Swipe", "Fire", 40, 100], ["Pounce", "Physical", 35, 100], ["Flare Burst", "Fire", 70, 90], ["Blazing Crown", "Fire", 95, 85]] },
-    pebblet: { name: "Pebblet", el: "Earth", rarity: "Common", base: { hp: 60, atk: 50, def: 70, spd: 30 },
-      skills: [["Rock Toss", "Earth", 40, 95], ["Headbutt", "Physical", 40, 100], ["Quake Stomp", "Earth", 65, 90], ["Boulder Crash", "Earth", 85, 85]] },
-    sparkit: { name: "Sparkit", el: "Electric", rarity: "Common", base: { hp: 45, atk: 55, def: 40, spd: 80 },
-      skills: [["Static Nip", "Electric", 40, 100], ["Quick Dash", "Physical", 35, 100], ["Volt Arc", "Electric", 65, 90], ["Storm Coil", "Electric", 85, 85]] },
     mossling: { name: "Mossling", el: "Plant", rarity: "Common", base: { hp: 55, atk: 40, def: 50, spd: 35 },
       skills: [["Vine Lash", "Plant", 40, 100], ["Tackle", "Physical", 40, 100], ["Spore Cloud", "Plant", 55, 90], ["Overgrowth", "Plant", 75, 85]] },
     sproutle: { name: "Sproutle", el: "Plant", rarity: "Common", base: { hp: 45, atk: 50, def: 40, spd: 55 },
@@ -191,15 +177,14 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     bramblehorn: { name: "Bramblehorn", el: "Plant", rarity: "Rare", base: { hp: 75, atk: 75, def: 70, spd: 50 },
       skills: [["Bramble Charge", "Plant", 65, 95], ["Root Bind", "Earth", 50, 100], ["Thicket Crush", "Plant", 80, 90], ["Ancient Grove", "Plant", 100, 85]] }
   };
-  const WILD = {
-    Common: ["mossling", "sproutle", "fernkit"],
-    Uncommon: ["thornback", "petalwing"],
-    Rare: ["bramblehorn"]
-  };
+  const WILD = { Common: ["mossling", "sproutle", "fernkit"], Uncommon: ["thornback", "petalwing"], Rare: ["bramblehorn"] };
   // Chance per wild monster. About 1 Rare per 33 fights of two monsters.
   const RARITY_WEIGHT = [["Common", 70], ["Uncommon", 28.5], ["Rare", 1.5]];
-  const CAPTURE_BASE = { Common: 0.8, Uncommon: 0.6, Rare: 0.45, Epic: 0.25, Legendary: 0.12 };
+  // Capture chance = (1 - health / max health) x this.
+  const CAPTURE_MULT = { Common: 1, Uncommon: 0.75, Rare: 0.5, Epic: 0.3, Legendary: 0.15 };
   const XP_MULT = { Common: 1, Uncommon: 1.3, Rare: 1.8, Epic: 2.5, Legendary: 3.5 };
+  const LEVELS = 5;
+  function wildRange(n) { return [2 + n, 3 + n]; }
 
   function calc(m) {
     const b = SP[m.id].base, L = m.level;
@@ -213,44 +198,41 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     const m = { id, name: s.name, el: s.el, rarity: s.rarity, level, xp: 0 };
     calc(m); m.hp = m.maxHp; return m;
   }
-  function skillsOf(m) {
-    return SP[m.id].skills.map((s, i) => ({ name: s[0], el: s[1], power: s[2], acc: s[3], unlock: SKILL_UNLOCK[i] }));
-  }
+  function skillsOf(m) { return SP[m.id].skills.map((s, i) => ({ name: s[0], el: s[1], power: s[2], acc: s[3], unlock: SKILL_UNLOCK[i] })); }
   function unlocked(m) { return skillsOf(m).filter(s => m.level >= s.unlock); }
-  function xpNeed(L) { return L * 15; }
+  function xpNeed(L) { return 10 * L + 3 * L * L; }
+  function rand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  function pickFrom(list) { return list[Math.floor(Math.random() * list.length)]; }
 
-  // ---------- State ----------
+  // ---------- Save ----------
+  const SAVE_KEY = "shardkin-save-v1";
   let S;
-  function freshTeam() { return [makeMon("cindercub", 5), makeMon("pebblet", 5), makeMon("sparkit", 5)]; }
+  function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* saving is optional */ } }
+  function load() {
+    try {
+      const t = localStorage.getItem(SAVE_KEY);
+      if (!t) return null;
+      const d = JSON.parse(t);
+      return d && d.v === 1 && d.mons ? d : null;
+    } catch (e) { return null; }
+  }
   function newGame() {
-    S = { team: freshTeam(), active: 0, items: { orb: 5, perfect: 1, potion: 3 }, base: [], battle: 0 };
-    newBattle(true);
+    S = { v: 1, uid: 1, mons: {}, team: [], items: { orb: 5, perfect: 1, potion: 3 }, coins: 0,
+      unlocked: 1, cleared: [], screen: "camp", level: null, battle: null, wheel: null, log: [], confirm: null, sound: true, result: "" };
+    addMon(makeMon("cindercub", 5), true);
+    S.result = "Welcome to Shardkin. Your starter, Cindercub, is a level 5 Epic Fire monster, strong against the Plant world. Choose Level 1 to begin.";
   }
-  function pickWild() {
-    let r = Math.random() * 100, tier = "Common";
-    for (const [t, w] of RARITY_WEIGHT) { if (r < w) { tier = t; break; } r -= w; }
-    const list = WILD[tier];
-    const id = list[Math.floor(Math.random() * list.length)];
-    const lvl = tier === "Rare" ? 6 : 3 + Math.floor(Math.random() * 3);
-    return makeMon(id, lvl);
+  function addMon(m, toTeam) {
+    m.uid = "m" + (S.uid++);
+    S.mons[m.uid] = m;
+    if (toTeam && S.team.length < 4) S.team.push(m.uid);
+    return m;
   }
-  function newBattle(first) {
-    S.battle++;
-    S.enemies = [pickWild(), pickWild()];
-    S.over = null; S.forced = false; S.log = [];
-    if (S.team[S.active].hp <= 0) S.active = S.team.findIndex(m => m.hp > 0);
-    const e = foe();
-    const msg = `Battle ${S.battle}. A wild team of two appears. Wild ${e.name} steps forward, a ${e.rarity} ${e.el} monster at level ${e.level}. Your ${you().name} is ready.`;
-    S.result = msg; S.log.push(msg);
-    render();
-    if (!first) focusResult();
-  }
-  function you() { return S.team[S.active]; }
-  function foe() { return S.enemies.find(e => e.hp > 0 && !e.caught); }
-  function foesLeft() { return S.enemies.filter(e => e.hp > 0 && !e.caught).length; }
+  function restoreAll() { for (const id in S.mons) S.mons[id].hp = S.mons[id].maxHp; }
+  function teamMons() { return S.team.map(id => S.mons[id]); }
 
   // ---------- Sound ----------
-  let soundOn = true, ctx = null, queue = [];
+  let ctx = null, queue = [];
   function sfx(n) { queue.push(n); }
   const TONES = {
     hit: [[330, 0.08, "square"]], strong: [[440, 0.08, "square"], [660, 0.12, "square"]],
@@ -261,11 +243,17 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     level: [[523, 0.08, "square"], [784, 0.16, "square"]],
     heal: [[600, 0.08, "sine"], [800, 0.12, "sine"]], swap: [[500, 0.06, "sine"]],
     win: [[523, 0.1, "square"], [659, 0.1, "square"], [784, 0.1, "square"], [1046, 0.25, "square"]],
-    lose: [[300, 0.2, "sawtooth"], [200, 0.35, "sawtooth"]]
+    lose: [[300, 0.2, "sawtooth"], [200, 0.35, "sawtooth"]],
+    roll: [[700, 0.03, "square"], [900, 0.03, "square"], [700, 0.03, "square"], [1000, 0.05, "square"]],
+    trap: [[240, 0.08, "sawtooth"], [180, 0.12, "sawtooth"]],
+    portal: [[300, 0.06, "sine"], [450, 0.06, "sine"], [675, 0.06, "sine"], [1000, 0.12, "sine"]],
+    ambush: [[260, 0.07, "square"], [260, 0.07, "square"], [390, 0.14, "square"]],
+    boss: [[196, 0.15, "sawtooth"], [185, 0.15, "sawtooth"], [175, 0.3, "sawtooth"]],
+    tick: [[1200, 0.02, "square"]]
   };
   function flushSound() {
     const q = queue; queue = [];
-    if (!soundOn || !q.length) return;
+    if (!S.sound || !q.length) return;
     try {
       if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
       if (ctx.state === "suspended") ctx.resume();
@@ -280,15 +268,127 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
           o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + d + 0.02);
           t += d;
         }
-        t += 0.12;
+        t += n === "tick" ? 0.05 : 0.12;
       }
     } catch (e) { /* sound is optional */ }
   }
 
-  // ---------- Battle logic ----------
+  // ---------- Board ----------
+  const SPACE = { start: "Start", path: "Quiet path", heal: "Healing spring", trap: "Thorn trap", portal: "Portal", battle: "Wild battle", boss: "Level boss" };
+  const BOARD_SIZE = 36;
+  function genBoard() {
+    const weights = [["battle", 40], ["path", 28], ["heal", 12], ["trap", 12], ["portal", 8]];
+    const b = ["start"];
+    for (let i = 1; i < BOARD_SIZE - 1; i++) {
+      let r = Math.random() * 100, t = "path";
+      for (const [k, w] of weights) { if (r < w) { t = k; break; } r -= w; }
+      b.push(t);
+    }
+    b.push("boss");
+    return b;
+  }
+  function spaceLabel(i) {
+    const L = S.level;
+    if (L.used[i]) return "Cleared";
+    return SPACE[L.board[i]];
+  }
+  function leadMon() { return S.mons[S.level.lead]; }
+  function fixLead() {
+    if (leadMon().hp > 0) return true;
+    const next = teamMons().find(m => m.hp > 0);
+    if (!next) return false;
+    S.level.lead = next.uid;
+    return true;
+  }
+  function startLevel(n) {
+    restoreAll();
+    S.level = { n, board: genBoard(), pos: 0, used: Array(BOARD_SIZE).fill(false), lead: S.team[0], failed: false };
+    S.battle = null; S.wheel = null; S.confirm = null; S.screen = "level";
+    const [lo, hi] = wildRange(n);
+    return [`Level ${n} begins. You're on space 1 of ${BOARD_SIZE}, and the level boss waits on space ${BOARD_SIZE}. Wild monsters here are level ${lo} to ${hi}. ${leadMon().name} leads your team.`];
+  }
+  function roll() {
+    const L = S.level, msgs = [];
+    const r = rand(1, 6);
+    sfx("roll");
+    const target = L.pos + r;
+    const pos = Math.min(BOARD_SIZE - 1, target);
+    msgs.push(`You rolled a ${r}.`);
+    if (target > BOARD_SIZE - 1) msgs.push("You rolled past the end, so you land on the boss space.");
+    L.pos = pos;
+    landOn(pos, msgs, true);
+    return msgs;
+  }
+  function landOn(p, msgs, allowPortal) {
+    const L = S.level, type = L.board[p], lead = leadMon();
+    msgs.push(`You land on space ${p + 1}: ${L.used[p] ? "a cleared space" : SPACE[type].toLowerCase()}.`);
+    if (L.used[p] && type !== "boss") { msgs.push("Nothing happens."); return; }
+    if (type === "path") { msgs.push("Nothing happens."); }
+    else if (type === "heal") {
+      L.used[p] = true;
+      const heal = Math.min(lead.maxHp - lead.hp, Math.ceil(lead.maxHp * 0.4));
+      lead.hp += heal; sfx("heal");
+      msgs.push(heal > 0 ? `${lead.name} recovers ${heal} health and now has ${lead.hp} of ${lead.maxHp}.` : `${lead.name} is already at full health.`);
+    } else if (type === "trap") {
+      L.used[p] = true;
+      const dmg = Math.max(1, Math.ceil(lead.maxHp * 0.2));
+      lead.hp = Math.max(0, lead.hp - dmg); sfx("trap");
+      msgs.push(`Thorns hit ${lead.name} for ${dmg} damage.` + (lead.hp > 0 ? ` It has ${lead.hp} of ${lead.maxHp} health left.` : ""));
+      if (lead.hp <= 0) {
+        msgs.push(`${lead.name} fainted.`); sfx("faint");
+        if (fixLead()) msgs.push(`${leadMon().name} is now your lead monster.`);
+        else failLevel(msgs);
+      }
+    } else if (type === "portal") {
+      if (!allowPortal) { msgs.push("The portal flickers but stays quiet."); return; }
+      let dest = p;
+      while (dest === p) dest = rand(1, BOARD_SIZE - 2);
+      sfx("portal");
+      msgs.push(`The portal pulls you ${dest > p ? "forward" : "back"} to space ${dest + 1}.`);
+      L.pos = dest;
+      landOn(dest, msgs, false);
+    } else if (type === "battle") {
+      L.used[p] = true;
+      startBattle(false, msgs);
+    } else if (type === "boss") {
+      startBattle(true, msgs);
+    }
+  }
+  function failLevel(msgs) {
+    S.level.failed = true;
+    msgs.push(`Your whole team has fainted. Level ${S.level.n} failed. You keep your captures and experience. Return to camp to restore your team and try again.`);
+    sfx("lose");
+  }
+
+  // ---------- Battle ----------
+  function pickWild(n) {
+    let r = Math.random() * 100, tier = "Common";
+    for (const [t, w] of RARITY_WEIGHT) { if (r < w) { tier = t; break; } r -= w; }
+    const [lo, hi] = wildRange(n);
+    return makeMon(pickFrom(WILD[tier]), tier === "Rare" ? hi + 1 : rand(lo, hi));
+  }
+  function pickBoss(n) {
+    const tier = Math.random() < 0.2 ? "Rare" : "Uncommon";
+    return makeMon(pickFrom(WILD[tier]), wildRange(n)[1] + 2);
+  }
+  function startBattle(boss, msgs) {
+    const n = S.level.n;
+    S.battle = { boss, enemies: boss ? [pickBoss(n)] : [pickWild(n), pickWild(n)], active: S.level.lead, forced: false, over: null, log: [] };
+    S.screen = "battle";
+    const e = foe();
+    if (boss) { sfx("boss"); msgs.push(`The level boss appears: ${e.name}, a ${e.rarity} ${e.el} monster at level ${e.level}. Bosses must be defeated, not captured.`); }
+    else { sfx("ambush"); msgs.push(`A wild team of two ambushes you. Wild ${e.name} steps forward, a ${e.rarity} ${e.el} monster at level ${e.level}.`); }
+    msgs.push(`Your ${you().name} is ready.`);
+  }
+  function you() { return S.mons[S.battle.active]; }
+  function foe() { return S.battle.enemies.find(e => e.hp > 0 && !e.caught); }
+  function foesLeft() { return S.battle.enemies.filter(e => e.hp > 0 && !e.caught).length; }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
   function attack(att, def, sk, isYou, msgs) {
-    const who = isYou ? `Your ${att.name}` : `Wild ${att.name}`;
-    const target = isYou ? `wild ${def.name}` : `your ${def.name}`;
+    const foeWord = S.battle.boss ? "Boss" : "Wild";
+    const who = isYou ? `Your ${att.name}` : `${foeWord} ${att.name}`;
+    const target = isYou ? `${foeWord.toLowerCase()} ${def.name}` : `your ${def.name}`;
     if (Math.random() * 100 >= sk.acc) { msgs.push(`${who} used ${sk.name}, but it missed.`); sfx("miss"); return; }
     const m = mult(sk.el, def.el);
     const stab = sk.el === att.el ? 1.2 : 1;
@@ -299,10 +399,9 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     if (m > 1) { t += " It's strong against it."; sfx("strong"); }
     else if (m < 1) { t += " It's weak against it."; sfx("weak"); }
     else sfx("hit");
-    t += def.hp > 0 ? ` ${cap(target)} has ${def.hp} of ${def.maxHp} health left.` : "";
+    if (def.hp > 0) t += ` ${cap(target)} has ${def.hp} of ${def.maxHp} health left.`;
     msgs.push(t);
   }
-  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
   function aiSkill(e, target) {
     let best = null, score = -1;
     for (const s of unlocked(e)) {
@@ -330,42 +429,51 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     }
   }
   function settle(msgs) {
-    // Opponent fainted?
-    const cur = S.enemies.find(e => e.hp <= 0 && !e.caught && !e.done);
+    const B = S.battle;
+    const cur = B.enemies.find(e => e.hp <= 0 && !e.caught && !e.done);
     if (cur) {
       cur.done = true;
-      msgs.push(`Wild ${cur.name} fainted.`); sfx("faint");
-      if (you().hp > 0) giveXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity]), msgs);
+      msgs.push(`${B.boss ? "Boss" : "Wild"} ${cur.name} fainted.`); sfx("faint");
+      if (you().hp > 0) giveXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss ? 2 : 1)), msgs);
     }
     const next = foe();
     if (!next) { endBattle("win", msgs); return; }
     if (cur) msgs.push(`Wild ${next.name} steps forward, a ${next.rarity} ${next.el} monster at level ${next.level}.`);
-    // Your monster fainted?
     if (you().hp <= 0) {
       msgs.push(`Your ${you().name} fainted.`); sfx("faint");
-      if (S.team.some(m => m.hp > 0)) { S.forced = true; msgs.push("Choose a monster to send out."); }
+      if (teamMons().some(m => m.hp > 0)) { B.forced = true; msgs.push("Choose a monster to send out."); }
       else endBattle("lose", msgs);
     }
   }
   function endBattle(kind, msgs) {
-    S.over = kind;
-    if (kind === "win") { msgs.push("You won the battle!"); sfx("win"); }
-    else { msgs.push("All your monsters have fainted. You lost this battle. In the full game, this means restarting the level."); sfx("lose"); }
+    const B = S.battle;
+    B.over = kind;
+    if (kind === "win") {
+      sfx("win");
+      if (B.boss) {
+        const n = S.level.n;
+        if (!S.cleared.includes(n)) S.cleared.push(n);
+        S.unlocked = Math.max(S.unlocked, Math.min(LEVELS, n + 1));
+        msgs.push(`You defeated the level boss! Level ${n} complete.` + (n < LEVELS ? ` Level ${n + 1} is unlocked.` : " That's every level in this prototype's World 1.") + " Spin the reward wheel.");
+      } else msgs.push("You won the battle! Continue on the board when ready.");
+    } else {
+      failLevel(msgs);
+    }
   }
   function captureChance(e, kind) {
     if (kind === "perfect") return 1;
-    const hpFrac = e.hp / e.maxHp;
-    return Math.min(0.95, CAPTURE_BASE[e.rarity] * (1 - 0.85 * hpFrac));
+    return (1 - e.hp / e.maxHp) * CAPTURE_MULT[e.rarity];
   }
-
   function act(type, arg) {
-    if (S.over) return;
-    if (S.forced && type !== "switch") return;
+    const B = S.battle;
+    if (!B || B.over) return null;
+    if (B.forced && type !== "switch") return null;
     const msgs = [];
     if (type === "switch") {
-      if (arg === S.active || S.team[arg].hp <= 0) return;
-      S.active = arg; S.forced = false;
-      msgs.push(`You sent out ${you().name}. Switching is free, so you can still act this turn.`); sfx("swap");
+      const m = S.mons[arg];
+      if (!m || arg === B.active || m.hp <= 0) return null;
+      B.active = arg; B.forced = false;
+      msgs.push(`You sent out ${m.name}. Switching is free, so you can still act this turn.`); sfx("swap");
     } else if (type === "skill") {
       const p = you(), e = foe();
       const sk = unlocked(p)[arg], esk = aiSkill(e, p);
@@ -375,13 +483,12 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       settle(msgs);
     } else if (type === "capture") {
       const e = foe();
-      if (S.items[arg] <= 0) return;
+      if (B.boss || S.items[arg] <= 0) return null;
       S.items[arg]--;
       const orbName = arg === "perfect" ? "Perfect Orb" : "Capture Orb";
-      const chance = captureChance(e, arg);
-      if (Math.random() < chance) {
+      if (Math.random() < captureChance(e, arg)) {
         e.caught = true;
-        S.base.push({ name: e.name, el: e.el, rarity: e.rarity, level: e.level });
+        addMon(makeMon(e.id, e.level), false);
         msgs.push(`You threw a ${orbName}. Success! You captured wild ${e.name}. It was sent to your base.`); sfx("catch");
         giveXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs);
         const next = foe();
@@ -393,124 +500,276 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       }
     } else if (type === "potion") {
       const p = you();
-      if (S.items.potion <= 0 || p.hp >= p.maxHp) return;
-      S.items.potion--;
-      const heal = Math.min(p.maxHp - p.hp, Math.ceil(p.maxHp / 2));
-      p.hp += heal;
-      msgs.push(`You used a Potion. ${p.name} recovered ${heal} health and now has ${p.hp} of ${p.maxHp}.`); sfx("heal");
+      if (!usePotion(p, msgs)) return null;
       foeTurn(msgs); settle(msgs);
     }
-    finish(msgs);
+    return msgs;
   }
-  function finish(msgs) {
-    S.result = msgs.join(" ");
-    S.log.push(S.result);
-    render();
-    focusResult();
-    flushSound();
+  function usePotion(m, msgs) {
+    if (S.items.potion <= 0 || m.hp <= 0 || m.hp >= m.maxHp) return false;
+    S.items.potion--;
+    const heal = Math.min(m.maxHp - m.hp, Math.ceil(m.maxHp / 2));
+    m.hp += heal; sfx("heal");
+    msgs.push(`You used a Potion. ${m.name} recovered ${heal} health and now has ${m.hp} of ${m.maxHp}.`);
+    return true;
   }
-  function focusResult() { const r = document.getElementById("result"); r.focus(); }
+
+  // ---------- Reward wheel ----------
+  const PRIZES = [
+    { w: 25, label: "2 Potions", give: () => { S.items.potion += 2; } },
+    { w: 25, label: "3 Capture Orbs", give: () => { S.items.orb += 3; } },
+    { w: 25, label: "150 coins", give: () => { S.coins += 150; } },
+    { w: 20, label: "30 experience for each team monster", give: msgs => {
+        const keep = S.battle ? S.battle.active : null;
+        for (const id of S.team) { S.battle = { active: id }; giveXp(30, msgs); }
+        S.battle = keep ? { active: keep } : null;
+      } },
+    { w: 5, label: "a Perfect Orb", give: () => { S.items.perfect += 1; } }
+  ];
+  function spin() {
+    let r = Math.random() * 100, prize = PRIZES[0];
+    for (const p of PRIZES) { if (r < p.w) { prize = p; break; } r -= p.w; }
+    const msgs = [];
+    for (let i = 0; i < 8; i++) sfx("tick");
+    msgs.push(`The wheel spins, slows, and stops on ${prize.label}!`);
+    prize.give(msgs);
+    sfx("win");
+    S.wheel = { spun: true, prize: prize.label };
+    return msgs;
+  }
 
   // ---------- Rendering ----------
   function chip(el) { return `<span class="chip" style="color: var(--el-${el.toLowerCase()})">${el}</span>`; }
   function hpColor(f) { return f > 0.5 ? "var(--hp-good)" : f > 0.2 ? "var(--hp-mid)" : "var(--hp-low)"; }
-  function monCard(m, wild, extra) {
+  function hpBar(m) {
     const f = m.hp / m.maxHp;
+    return `<div class="bar" aria-hidden="true"><i style="width:${(f * 100).toFixed(1)}%; background:${hpColor(f)}"></i></div>`;
+  }
+  function monCard(m, prefix, extra) {
     return `<div class="mon">
-      <p class="name">${wild ? "Wild " : ""}${m.name}</p>
+      <p class="name">${prefix}${m.name}</p>
       <p class="tags">${chip(m.el)}<span class="chip plain">${m.rarity}</span><span class="chip plain">Level ${m.level}</span></p>
       <p class="stat">Health ${m.hp} of ${m.maxHp}</p>
-      <div class="bar" aria-hidden="true"><i style="width:${(f * 100).toFixed(1)}%; background:${hpColor(f)}"></i></div>
+      ${hpBar(m)}
       ${extra || ""}
     </div>`;
   }
-  function render() {
-    document.getElementById("result").textContent = S.result;
-    const e = foe();
-    const shownFoe = e || S.enemies[S.enemies.length - 1];
-    document.getElementById("foe").innerHTML = monCard(shownFoe, true,
-      `<p class="muted">Opponent team: ${S.enemies.length} monsters, ${foesLeft()} still standing.</p>`);
-    const p = you();
-    document.getElementById("you").innerHTML = monCard(p, false,
-      `<p class="stat muted">Experience ${p.xp} of ${xpNeed(p.level)} to level ${p.level + 1}</p>
-       <div class="bar xpbar" aria-hidden="true"><i style="width:${(p.xp / xpNeed(p.level) * 100).toFixed(1)}%"></i></div>`);
-
-    let html = "";
-    if (S.over) {
-      html += `<section aria-labelledby="h-over"><h2 id="h-over">Battle over</h2><div class="actions">`;
-      if (S.over === "win") html += btn("next", "", "Next battle", "Your team stays as it is, like moving through a level", true);
-      html += btn("restore", "", "Restore team and items", "Heals everyone and refills your items, then starts a new battle", S.over === "lose");
-      html += `</div></section>`;
-    } else {
-      // Skills
-      html += `<section aria-labelledby="h-skills"><h2 id="h-skills">Skills</h2><div class="actions">`;
-      if (S.forced) {
-        html += `<p>${p.name} has fainted. Choose a monster under Switch monster.</p>`;
-      } else {
-        unlocked(p).forEach((s, i) => {
-          html += btn("skill", i, s.name, `${s.el} · Power ${s.power} · Accuracy ${s.acc}% · ${effWord(mult(s.el, e.el))} against ${e.name}`);
-        });
-        const locked = skillsOf(p).filter(s => p.level < s.unlock);
-        if (locked.length) html += `<ul class="clean muted">${locked.map(s => `<li>Locked: ${s.name}, unlocks at level ${s.unlock}</li>`).join("")}</ul>`;
-      }
-      html += `</div></section>`;
-      // Switch
-      html += `<section aria-labelledby="h-switch"><h2 id="h-switch">Switch monster (free)</h2><div class="actions">`;
-      let any = false;
-      S.team.forEach((m, i) => {
-        if (i === S.active) return;
-        if (m.hp <= 0) { html += `<p class="muted">${m.name} has fainted.</p>`; return; }
-        any = true;
-        const vs = e ? ` · ${effWord(bestMult(m, e))} matchup` : "";
-        html += btn("switch", i, `Send out ${m.name}`, `${m.el} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${vs}`, S.forced);
-      });
-      if (!any && !S.team.some((m, i) => i !== S.active && m.hp <= 0)) html += `<p class="muted">No other monsters on your team.</p>`;
-      html += `</div></section>`;
-      // Items
-      if (!S.forced) {
-        html += `<section aria-labelledby="h-items"><h2 id="h-items">Capture and items</h2><div class="actions">`;
-        const pct = Math.round(captureChance(e, "orb") * 100);
-        html += S.items.orb > 0 ? btn("capture", "orb", "Throw Capture Orb", `${S.items.orb} left · ${pct}% chance on ${e.name} · Uses your turn`) : `<p class="muted">No Capture Orbs left.</p>`;
-        html += S.items.perfect > 0 ? btn("capture", "perfect", "Throw Perfect Orb", `${S.items.perfect} left · 100% chance · Rare late-game item`) : `<p class="muted">No Perfect Orbs left.</p>`;
-        if (S.items.potion > 0 && p.hp < p.maxHp) html += btn("potion", "", `Use Potion on ${p.name}`, `${S.items.potion} left · Heals half of its health · Uses your turn`);
-        else html += `<p class="muted">Potions: ${S.items.potion} left${p.hp >= p.maxHp ? ", and " + p.name + " is at full health" : ""}.</p>`;
-        html += `</div></section>`;
-      }
-    }
-    document.getElementById("controls").innerHTML = html;
-
-    document.getElementById("base").innerHTML = S.base.length
-      ? `<ul class="clean">${S.base.map(m => `<li>${m.name}, ${m.rarity} ${m.el}, level ${m.level}</li>`).join("")}</ul>`
-      : `<p class="muted">Nothing captured yet. Lower a wild monster's health, then throw a Capture Orb.</p>`;
-    document.getElementById("log").innerHTML = S.log.map(l => `<li>${l}</li>`).join("");
-  }
-  function bestMult(m, e) {
-    // How well this monster's skills hit the current foe, ignoring defense.
-    return Math.max(...unlocked(m).map(s => mult(s.el, e.el)));
+  function xpLine(m) {
+    return `<p class="stat muted">Experience ${m.xp} of ${xpNeed(m.level)} to level ${m.level + 1}</p>
+      <div class="bar xpbar" aria-hidden="true"><i style="width:${(m.xp / xpNeed(m.level) * 100).toFixed(1)}%"></i></div>`;
   }
   function btn(action, arg, label, sub, primary) {
-    return `<button type="button" class="${primary ? "primary" : ""}" data-a="${action}" data-arg="${arg}"><span class="bn">${label}</span><span class="sub">${sub}</span></button>`;
+    return `<button type="button" class="${primary ? "primary" : ""}" data-a="${action}" data-arg="${arg}"><span class="bn">${label}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</button>`;
+  }
+  function sec(id, title, inner) { return `<section aria-labelledby="${id}"><h2 id="${id}">${title}</h2>${inner}</section>`; }
+  function monLine(m) { return `${m.el} · ${m.rarity} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}`; }
+  function itemsLine() { return `${S.coins} coins · ${S.items.orb} Capture Orbs · ${S.items.perfect} Perfect Orbs · ${S.items.potion} Potions`; }
+
+  function renderCamp() {
+    let h = sec("h-camp", "Camp", `<p>${itemsLine()}</p>`);
+    let lv = `<div class="actions">`;
+    for (let n = 1; n <= LEVELS; n++) {
+      const [lo, hi] = wildRange(n);
+      if (n <= S.unlocked) lv += btn("level", n, `Play Level ${n}`, `Wild monsters level ${lo} to ${hi}${S.cleared.includes(n) ? " · Cleared" : ""}`, n === S.unlocked && !S.cleared.includes(n));
+      else lv += `<p class="muted">Level ${n}: locked. Clear Level ${n - 1} first.</p>`;
+    }
+    lv += `</div>`;
+    h += sec("h-levels", "World 1: Plant", lv);
+
+    let tm = `<div class="actions">`;
+    teamMons().forEach((m, i) => {
+      tm += `<div class="row"><p class="nm">${i === 0 ? "Lead: " : ""}${m.name}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}</p>`;
+      const b = [];
+      if (i > 0) b.push(btn("makefirst", m.uid, `Make ${m.name} the lead`));
+      if (S.team.length > 1) b.push(btn("remove", m.uid, `Send ${m.name} to base`));
+      if (b.length) tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div>`;
+      tm += `</div>`;
+    });
+    tm += `</div>`;
+    h += sec("h-team", `Your team (${S.team.length} of 4)`, tm);
+
+    const base = Object.values(S.mons).filter(m => !S.team.includes(m.uid));
+    let bs = "";
+    if (!base.length) bs = `<p class="muted">Nothing here yet. Monsters you capture are sent to your base.</p>`;
+    else {
+      bs = `<div class="actions">`;
+      for (const m of base) {
+        bs += S.team.length < 4 ? btn("add", m.uid, `Add ${m.name} to team`, monLine(m)) : `<div class="row"><p class="nm">${m.name}</p><p class="muted">${monLine(m)} · Team is full</p></div>`;
+      }
+      bs += `</div>`;
+    }
+    h += sec("h-base", `Your base (${base.length})`, bs);
+
+    let sv = `<p class="muted">Progress saves automatically in this browser on this device.</p>`;
+    if (S.confirm === "reset") sv += `<div class="actions" style="margin-top:10px"><p>Start over? This erases your monsters, items and progress.</p><div class="pair">${btn("resetyes", "", "Yes, erase and start over")}${btn("cancel", "", "Keep my game", "", true)}</div></div>`;
+    else sv += `<div class="actions" style="margin-top:10px">${btn("reset", "", "Start over", "Erase this saved game")}</div>`;
+    h += sec("h-save", "Saved game", sv);
+    return h;
   }
 
-  document.getElementById("controls").addEventListener("click", ev => {
+  function renderLevel() {
+    const L = S.level, lead = leadMon();
+    let h = "";
+    if (L.failed) {
+      return sec("h-board", `Level ${L.n} failed`, `<div class="actions">${btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true)}</div>`);
+    }
+    let track = `<div class="track" aria-hidden="true">`;
+    for (let i = 0; i < BOARD_SIZE; i++) track += `<i class="${i === L.pos ? "here" : L.used[i] ? "done" : ""} ${i === BOARD_SIZE - 1 ? "boss" : ""}"></i>`;
+    track += `</div>`;
+    h += sec("h-board", `Level ${L.n} board`, `<div class="actions">
+      <p class="stat">Space ${L.pos + 1} of ${BOARD_SIZE}. The boss is ${BOARD_SIZE - 1 - L.pos} spaces away.</p>
+      ${track}
+      ${btn("roll", "", "Roll the die", `${lead.name} leads · Health ${lead.hp} of ${lead.maxHp}`, true)}
+    </div>`);
+    let ahead = `<ol class="clean">`;
+    for (let i = L.pos + 1; i <= Math.min(BOARD_SIZE - 1, L.pos + 6); i++) ahead += `<li>Space ${i + 1}: ${spaceLabel(i)}</li>`;
+    ahead += `</ol>`;
+    h += sec("h-ahead", "Look ahead", ahead);
+
+    let tm = `<div class="actions">`;
+    for (const m of teamMons()) {
+      tm += `<div class="row"><p class="nm">${m.uid === L.lead ? "Lead: " : ""}${m.name}${m.hp <= 0 ? " (fainted)" : ""}</p><p class="muted">${monLine(m)}</p>${hpBar(m)}`;
+      const b = [];
+      if (m.hp > 0 && m.uid !== L.lead) b.push(btn("lead", m.uid, `Make ${m.name} the lead`));
+      if (m.hp > 0 && m.hp < m.maxHp && S.items.potion > 0) b.push(btn("potionboard", m.uid, `Use Potion on ${m.name}`, `${S.items.potion} left`));
+      if (b.length) tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div>`;
+      tm += `</div>`;
+    }
+    tm += `</div>`;
+    h += sec("h-lteam", "Your team", tm);
+    h += sec("h-bag", "Bag", `<p>${itemsLine()}</p>`);
+
+    let lv = "";
+    if (S.confirm === "leave") lv = `<div class="actions"><p>Leave the level? It counts as a failed attempt, but you keep captures and experience.</p><div class="pair">${btn("leaveyes", "", "Yes, leave")}${btn("cancel", "", "Keep playing", "", true)}</div></div>`;
+    else lv = `<div class="actions">${btn("leave", "", "Leave level", "Return to camp without finishing")}</div>`;
+    h += sec("h-leave", "Leave level", lv);
+    return h;
+  }
+
+  function renderBattle() {
+    const B = S.battle, e = foe(), p = you();
+    const shownFoe = e || B.enemies[B.enemies.length - 1];
+    let h = sec("h-foe", B.boss ? "Level boss" : "Opponent", monCard(shownFoe, B.boss ? "Boss " : "Wild ",
+      B.boss ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.</p>`));
+    h += sec("h-you", "Your monster", monCard(p, "", xpLine(p)));
+
+    if (B.over) {
+      let o = `<div class="actions">`;
+      if (B.over === "win" && B.boss) o += btn("towheel", "", "Go to the reward wheel", "", true);
+      else if (B.over === "win") o += btn("continue", "", "Continue on the board", `Space ${S.level.pos + 1} of ${BOARD_SIZE}`, true);
+      else o += btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true);
+      o += `</div>`;
+      return h + sec("h-over", "Battle over", o);
+    }
+    let sk = `<div class="actions">`;
+    if (B.forced) sk += `<p>${p.name} has fainted. Choose a monster under Switch monster.</p>`;
+    else {
+      unlocked(p).forEach((s, i) => { sk += btn("skill", i, s.name, `${s.el} · Power ${s.power} · Accuracy ${s.acc}% · ${effWord(mult(s.el, e.el))} against ${e.name}`); });
+      const locked = skillsOf(p).filter(s => p.level < s.unlock);
+      if (locked.length) sk += `<ul class="clean muted">${locked.map(s => `<li>Locked: ${s.name}, unlocks at level ${s.unlock}</li>`).join("")}</ul>`;
+    }
+    sk += `</div>`;
+    h += sec("h-skills", "Skills", sk);
+
+    let sw = `<div class="actions">`, others = 0;
+    for (const m of teamMons()) {
+      if (m.uid === B.active) continue;
+      others++;
+      if (m.hp <= 0) { sw += `<p class="muted">${m.name} has fainted.</p>`; continue; }
+      sw += btn("switch", m.uid, `Send out ${m.name}`, `${m.el} · Level ${m.level} · Health ${m.hp} of ${m.maxHp} · ${effWord(Math.max(...unlocked(m).map(s => mult(s.el, e.el))))} matchup`, B.forced);
+    }
+    if (!others) sw += `<p class="muted">No other monsters on your team.</p>`;
+    sw += `</div>`;
+    h += sec("h-switch", "Switch monster (free)", sw);
+
+    if (!B.forced) {
+      let it = `<div class="actions">`;
+      if (B.boss) it += `<p class="muted">Level bosses can't be captured. Defeat it to finish the level.</p>`;
+      else {
+        const pct = Math.round(captureChance(e, "orb") * 100);
+        it += S.items.orb > 0 ? btn("capture", "orb", "Throw Capture Orb", `${S.items.orb} left · ${pct}% chance on ${e.name} · Uses your turn`) : `<p class="muted">No Capture Orbs left.</p>`;
+        it += S.items.perfect > 0 ? btn("capture", "perfect", "Throw Perfect Orb", `${S.items.perfect} left · 100% chance · Rare late-game item`) : `<p class="muted">No Perfect Orbs left.</p>`;
+      }
+      if (S.items.potion > 0 && p.hp < p.maxHp) it += btn("potion", "", `Use Potion on ${p.name}`, `${S.items.potion} left · Heals half of its health · Uses your turn`);
+      else it += `<p class="muted">Potions: ${S.items.potion} left${p.hp >= p.maxHp ? `, and ${p.name} is at full health` : ""}.</p>`;
+      it += `</div>`;
+      h += sec("h-items", B.boss ? "Items" : "Capture and items", it);
+    }
+    h += sec("h-log", "Battle log", `<ol class="log">${B.log.map(l => `<li>${l}</li>`).join("")}</ol>`);
+    return h;
+  }
+
+  function renderWheel() {
+    let w = `<div class="actions">`;
+    if (!S.wheel.spun) {
+      w += `<p>Possible prizes: ${PRIZES.map(p => p.label).join(", ")}.</p>`;
+      w += btn("spin", "", "Spin the wheel", "", true);
+    } else {
+      w += `<p>You won ${S.wheel.prize}.</p>`;
+      w += btn("camp", "", "Return to camp", "Your team is restored for the next level", true);
+    }
+    w += `</div>`;
+    return sec("h-wheel", "Reward wheel", w);
+  }
+
+  function render() {
+    document.getElementById("result").textContent = S.result;
+    const sub = { camp: "World 1, Plant · Camp", level: `World 1, Plant · Level ${S.level && S.level.n}`, battle: `World 1, Plant · Level ${S.level && S.level.n} · Battle`, wheel: `World 1, Plant · Level ${S.level && S.level.n} complete` };
+    document.getElementById("subtitle").textContent = sub[S.screen];
+    const r = { camp: renderCamp, level: renderLevel, battle: renderBattle, wheel: renderWheel };
+    document.getElementById("screen").innerHTML = r[S.screen]();
+    const sb = document.getElementById("soundBtn");
+    sb.textContent = `Sound effects: ${S.sound ? "on" : "off"}`;
+    sb.setAttribute("aria-pressed", String(S.sound));
+    save();
+  }
+  function finish(msgs) {
+    if (!msgs) return;
+    S.result = msgs.join(" ");
+    if (S.screen === "battle" && S.battle && S.battle.log) S.battle.log.push(S.result);
+    render();
+    document.getElementById("result").focus();
+    flushSound();
+  }
+
+  // ---------- Input ----------
+  document.getElementById("screen").addEventListener("click", ev => {
     const b = ev.target.closest("button[data-a]");
     if (!b) return;
     const a = b.dataset.a, arg = b.dataset.arg;
-    if (a === "next") { newBattle(false); return; }
-    if (a === "restore") {
-      S.team = freshTeam(); S.active = 0; S.items = { orb: 5, perfect: 1, potion: 3 };
-      newBattle(false); return;
+    let msgs = null;
+    switch (a) {
+      case "level": if (S.team.length) msgs = startLevel(Number(arg)); break;
+      case "makefirst": S.team = [arg, ...S.team.filter(id => id !== arg)]; msgs = [`${S.mons[arg].name} will lead your team.`]; break;
+      case "remove": if (S.team.length > 1) { S.team = S.team.filter(id => id !== arg); msgs = [`${S.mons[arg].name} was sent to your base. Your team has ${S.team.length} of 4.`]; } break;
+      case "add": if (S.team.length < 4 && !S.team.includes(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
+      case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
+      case "resetyes": newGame(); msgs = [S.result]; break;
+      case "cancel": S.confirm = null; msgs = ["Okay, nothing changed."]; break;
+      case "roll": msgs = roll(); break;
+      case "lead": S.level.lead = arg; msgs = [`${S.mons[arg].name} is now your lead monster.`]; break;
+      case "potionboard": { const m = []; if (usePotion(S.mons[arg], m)) msgs = m; break; }
+      case "leave": S.confirm = "leave"; msgs = ["Leave the level? Choose Yes, leave, or Keep playing."]; break;
+      case "leaveyes": S.confirm = null; restoreAll(); S.level = null; S.battle = null; S.screen = "camp"; msgs = ["You left the level and returned to camp. Your team is restored."]; break;
+      case "continue": S.battle = null; S.screen = "level"; fixLead(); msgs = [`Back on the board at space ${S.level.pos + 1} of ${BOARD_SIZE}. ${leadMon().name} leads. Roll when ready.`]; break;
+      case "towheel": S.battle = null; S.wheel = { spun: false }; S.screen = "wheel"; msgs = ["Spin the reward wheel to claim your prize."]; break;
+      case "spin": if (!S.wheel.spun) msgs = spin(); break;
+      case "camp": restoreAll(); S.level = null; S.battle = null; S.wheel = null; S.confirm = null; S.screen = "camp"; msgs = ["Back at camp. Your team is fully restored."]; break;
+      case "skill": msgs = act("skill", Number(arg)); break;
+      case "switch": msgs = act("switch", arg); break;
+      case "capture": msgs = act("capture", arg); break;
+      case "potion": msgs = act("potion"); break;
     }
-    act(a, a === "skill" || a === "switch" ? Number(arg) : arg);
+    finish(msgs);
   });
-  const soundBtn = document.getElementById("soundBtn");
-  soundBtn.addEventListener("click", () => {
-    soundOn = !soundOn;
-    soundBtn.textContent = `Sound effects: ${soundOn ? "on" : "off"}`;
-    soundBtn.setAttribute("aria-pressed", String(soundOn));
-  });
+  document.getElementById("soundBtn").addEventListener("click", () => { S.sound = !S.sound; render(); });
 
-  newGame();
+  S = load();
+  if (S) {
+    S.confirm = null;
+    S.result = { camp: "Welcome back. You're at camp.", level: `Welcome back. You're on space ${S.level ? S.level.pos + 1 : 1} of Level ${S.level ? S.level.n : 1}.`, battle: "Welcome back. Your battle is waiting where you left it.", wheel: "Welcome back. Your reward wheel is waiting." }[S.screen] || "Welcome back.";
+  } else newGame();
+  render();
 })();
 </script>
 </body>

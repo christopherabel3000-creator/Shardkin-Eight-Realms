@@ -62,7 +62,7 @@ Physical is neutral against everything. Psychic and Ghost deal and take extra da
 - One-on-one: one monster fights at a time, from a team of up to 4.
 - **Switching is free:** you switch and still act in the same turn.
 - Using a skill, an item or a capture attempt uses your turn. Turn order is set by speed.
-- **Capturing:** the lower the target's health, the higher the chance; rarer monsters are harder. A failed attempt gives the wild monster a free action.
+- **Capturing:** chance = (1 − current health ÷ max health) × a rarity multiplier. Common 1, Uncommon 0.75, Rare 0.5, Epic 0.3, Legendary 0.15. A Common at 1 of 25 health has a 96% chance. A failed attempt gives the wild monster a free action.
 - **Capture items:** regular capture items, plus expensive special ones with a 100% success rate meant for the late game.
 - Captured monsters always go to your base, never directly to your team.
 - **Death:** a monster that dies stays dead for the rest of that level. Everyone is restored after the level ends.
@@ -150,8 +150,8 @@ Every new player gets the same Epic Fire starter, Cindercub, one of the Fire ele
 - **PvP (the arena):** team duels, and raids on an opponent's base. Raids will need base defenses such as guard monsters or traps, so the base should be designed with that in mind.
 
 ## Build Plan
-1. **Core battle** — done as a prototype (`index.html`): skills, free switching, element chart, capturing, items, experience.
-2. **Levels:** dice-board movement, space types, level boss and reward wheel, using World 1.
+1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
+2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.
 3. **Collection and team:** base storage, team selection, leveling and the 2+2 skill unlock.
 4. **Progression:** player level, shop, daily training, base buildings, passive income, achievements.
 5. **Content:** evolution, synthesis, and worlds 2 through 8.
