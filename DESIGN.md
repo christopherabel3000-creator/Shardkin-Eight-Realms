@@ -266,7 +266,7 @@ Forms are listed in evolution order. Rares evolve at level 16; Epics and Legenda
 - **Evolution:** Rare, Epic and Legendary monsters evolve at level 16. Each evolution stage adds 20% to base stats. Final forms need that monster's crest.
 - **Wild rarity per monster:** Common 68%, Uncommon 30.75%, Rare 1%, Epic 0.2%, Legendary 0.05% (Rare or better about once per 40 fights).
 - **Player experience:** level clear 40 + 10 × level number (doubled on the first clear), capture 10, synthesis 25, achievement 20, finished training 15. Each player level needs 60 × current level.
-- **Player level unlocks:** 2 Shop, 3 Training Yard, 4 Shard Mine.
+- **Player level unlocks:** 2 Shop and Quests, 3 Training Yard, 4 Shard Mine, 5 Expedition Dock, 6 Hatchery, 7 Arena.
 - **Coins:** 4 per wild monster level after a battle win; 30 + 20 × level number for a level clear.
 - **Shop:** Potion 40, Capture Orb 60, Loaded Die 120, Perfect Orb 1,500, Epic Plant scroll 2,500, Legendary Plant scroll 6,000.
 - **Synthesis scrolls:** Rare Plant (two Common or Uncommon Plant monsters; from the World 1 achievement), Epic Plant (two Rare Plant), Legendary Plant (two Epic Plant plus one Rare Plant). The result's level matches the highest ingredient.
@@ -277,6 +277,33 @@ Forms are listed in evolution order. Rares evolve at level 16; Epics and Legenda
 - **Combination worlds (9 to 12):** Fire and Water, Electric and Psychic, Earth and Plant, Ghost and Physical, 20 levels each, mixing both elements' monsters. Clearing one gives 2,000 coins, a Perfect Orb and a crest from either element.
 - **Achievements:** a clear achievement for every world (element worlds give that element's Rare scroll and a crest), a Master achievement for collecting each element's 15 monsters, and Shardkin Master for all 120.
 - **World bosses:** 12% chance per level start that one is hiding (only if none is active). It moves to a new space ahead after every roll. It's one of the world's Epics, at least 5 levels above that world's toughest wild monsters and 2 levels above your strongest team monster, with 12 times normal health. You start with 1 fight and earn 1 every 2 hours, up to 5. It leaves after 24 hours. Each fight starts with your team fully healed; you can retreat and keep the damage. Defeating it gives 1,000 coins, a Perfect Orb, a crest for that world and 150 player experience. In simulated fights a full team at the end of World 1 needed about 8 fights.
+
+## Activities Beyond the Campaign
+
+### Quests
+- Three daily quests (reset at local midnight) and three weekly quests (reset Monday), drawn from: win battles, capture monsters, capture monsters of one element, clear levels, open chests, spin the wheel, and, once unlocked, finish expeditions, hatch eggs, clear Arena floors and synthesize.
+- Daily: 5 battles, 3 captures, 2 element captures, 2 levels and so on. Weekly targets are about five to eight times larger.
+- Daily rewards: 100 + 20 × player level coins plus 2 Potions or 3 Capture Orbs, and 15 player experience. Weekly: 500 + 50 × player level coins plus a Perfect Orb, 2 Loaded Dice or an egg, and 60 player experience.
+- Unlocks with the shop at player level 2.
+
+### Arena Tower
+- Unlocks at player level 7. An endless climb of rival trainers: 2 monsters per floor, 3 from floor 10, and a 4-monster champion every tenth floor. Rival monsters are level 4 + 2 × floor, from any element.
+- Health carries over between floors, fainted monsters stay out, and rival monsters can't be captured. Lose and the run ends.
+- Start at floor 1 or any checkpoint (11, 21, ...) up to one past your best floor.
+- Rewards: 15 × floor coins each floor; first-time milestones give a Loaded Die every 5 floors, a Perfect Orb and an egg every 10, and a crest every 25.
+
+### Expeditions
+- Expedition Dock: player level 5, 400 coins. Up to 3 base monsters away at once, for 1, 4 or 8 hours.
+- Returns hours × (10 + level) × a rarity factor in coins, 5% of a level's experience per hour, item chances each hour (Potion 10%, Capture Orb 8%, Loaded Die 3%), and a 15% egg chance on 8-hour trips.
+- Monsters away can't battle, train or be used in synthesis.
+
+### Hatchery
+- Player level 6, 500 coins for one incubator; a second costs 1,000.
+- Eggs take 6 hours and hatch into a monster of their element: Common 50%, Uncommon 35%, Rare 12%, Epic 2.5%, Legendary 0.5%, at that element world's starting level.
+- Egg sources: treasure chests (4%), level bosses (8%), world bosses (always), 8-hour expeditions (15%), Arena milestones every 10 floors, and weekly quests.
+
+### New achievements
+New Life (first hatch), Explorer (10 expeditions), Arena Contender (floor 10), Arena Legend (floor 50).
 
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.

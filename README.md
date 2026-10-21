@@ -12,7 +12,8 @@ A playable single-player campaign:
 - **Dice-board levels** with wild battles, healing springs, thorn traps, portals, treasure chests, a wandering merchant and quiet paths, plus a look-ahead and Loaded Dice.
 - **Level bosses**, a **reward wheel**, and **roaming world bosses** that carry damage over between fights.
 - **Battles** with element strengths, sleep, stun and poison, free switching, capturing and team-wide experience.
-- **Camp:** player levels, a shop, synthesis, daily training, the Shard Mine for passive income, and achievements.
+- **Camp:** player levels, a shop, synthesis, daily training, the Shard Mine for passive income, expeditions, a hatchery, and achievements.
+- **Daily and weekly quests**, and an endless **Arena tower** of rival trainers.
 - **Automatic saving** in your browser, and optional sound effects.
 
 ## Accessibility

@@ -413,7 +413,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
 
   // ---------- Player, shop, recipes, buildings, world bosses ----------
   function pNeed(L) { return 60 * L; }
-  const UNLOCK_TEXT = { 2: "The Shop is now open at camp.", 3: "You can now build the Training Yard.", 4: "You can now build the Shard Mine for passive income." };
+  const UNLOCK_TEXT = { 2: "The Shop and Quests are now open at camp.", 3: "You can now build the Training Yard.", 4: "You can now build the Shard Mine for passive income.",
+    5: "You can now build the Expedition Dock.", 6: "You can now build the Hatchery.", 7: "The Arena is now open at camp." };
   const SHOP = [
     { id: "potion", name: "Potion", price: 40, desc: "Heals half of a monster's health" },
     { id: "orb", name: "Capture Orb", price: 60, desc: "Regular capture item" },
@@ -476,6 +477,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       player: { level: 1, xp: 0 }, pxpLife: 0, dex: [], stats: { caught: 0, evolved: 0, synth: 0, trained: 0, wbKills: 0 }, ach: [],
       yard: false, mine: null, training: { mode: "time", session: null }, campTab: "levels", dieChoose: false, synth: null,
       wboss: null, wfights: null, notices: [] };
+    ensureExtras();
     addMon(makeMon("cindercub", 5), true);
     S.result = "Welcome to Shardkin. Your starter, Cindercub, is a level 5 Epic Fire monster, strong against the Plant world. Choose Level 1 to begin.";
   }
@@ -539,6 +541,10 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   for (const el of ELEMENTS.slice(2)) {
     ACH.push({ id: "all" + el.toLowerCase(), name: `${el} Master`, desc: `Collect all 15 ${el} monsters.`, test: () => poolIds(el).every(id => S.dex.includes(id)), reward: "a Perfect Orb and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } });
   }
+  ACH.push({ id: "hatch1", name: "New Life", desc: "Hatch your first egg.", test: () => (S.counts.hatches || 0) >= 1, reward: "300 coins", give: () => { S.coins += 300; } });
+  ACH.push({ id: "exp10", name: "Explorer", desc: "Finish 10 expeditions.", test: () => (S.counts.exps || 0) >= 10, reward: "500 coins", give: () => { S.coins += 500; } });
+  ACH.push({ id: "arena10", name: "Arena Contender", desc: "Reach Arena floor 10.", test: () => S.arena.best >= 10, reward: "2 Loaded Dice", give: () => { S.items.die += 2; } });
+  ACH.push({ id: "arena50", name: "Arena Legend", desc: "Reach Arena floor 50.", test: () => S.arena.best >= 50, reward: "3 Perfect Orbs", give: () => { S.items.perfect += 3; } });
   ACH.push({ id: "all120", name: "Shardkin Master", desc: "Collect all 120 monsters.", test: () => ELEMENTS.every(el => poolIds(el).every(id => S.dex.includes(id))), reward: "5 Perfect Orbs and 10000 coins", give: () => { S.items.perfect += 5; S.coins += 10000; } });
   function checkAch(msgs) {
     for (let pass = 0; pass < 3; pass++) {
@@ -632,6 +638,153 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     for (const m of team) levelCheck(m, amount, msgs);
   }
 
+  // ---------- Activity counters (quests read these) ----------
+  function ensureExtras() {
+    S.counts = S.counts || { wins: 0, caps: 0, capEl: {}, levels: 0, spins: 0, chests: 0, synths: 0, exps: 0, hatches: 0, floors: 0, wbfights: 0 };
+    S.quests = S.quests || { day: "", week: "", daily: [], weekly: [] };
+    S.arena = S.arena || { best: 0, claimed: [] };
+    S.items.eggs = S.items.eggs || {};
+    if (S.exped === undefined) S.exped = null;
+    if (S.hatch === undefined) S.hatch = null;
+    S.expDur = S.expDur || 1;
+  }
+  function bump(key, n) { S.counts[key] = (S.counts[key] || 0) + (n || 1); }
+  function addEgg(el, msgs, why) {
+    S.items.eggs[el] = (S.items.eggs[el] || 0) + 1;
+    msgs.push(`${why || "You found"} a ${el} egg!` + (S.hatch ? " Hatch it at the Hatchery." : " Build the Hatchery to hatch it."));
+    sfx("chest");
+  }
+  function openElements() { return ELEMENTS.filter(el => worldOpen(elementWorld(el))); }
+  function eggCount() { return Object.values(S.items.eggs).reduce((a, b) => a + b, 0); }
+
+  // ---------- Expeditions ----------
+  const DOCK = { unlock: 5, cost: 400, slots: 3, hours: [1, 4, 8] };
+  const RARITY_COIN = { Common: 1, Uncommon: 1.2, Rare: 1.5, Epic: 2, Legendary: 2.5 };
+  function onExped(uid) { return !!(S.exped && S.exped.list.some(x => x.uid === uid)); }
+  function expLeft(x) { return x.start + x.hours * HOUR - now(); }
+  function expCollect(i) {
+    const x = S.exped.list[i], m = S.mons[x.uid], msgs = [];
+    S.exped.list.splice(i, 1);
+    const coins = Math.round(x.hours * (10 + m.level) * RARITY_COIN[m.rarity]);
+    S.coins += coins; sfx("coin");
+    msgs.push(`${m.name} returned from a ${x.hours}-hour expedition with ${coins} coins.`);
+    let pot = 0, orb = 0, die = 0;
+    for (let h = 0; h < x.hours; h++) { if (Math.random() < 0.1) pot++; if (Math.random() < 0.08) orb++; if (Math.random() < 0.03) die++; }
+    if (pot) { S.items.potion += pot; msgs.push(`It also brought back ${pot} Potion${pot > 1 ? "s" : ""}.`); }
+    if (orb) { S.items.orb += orb; msgs.push(`It found ${orb} Capture Orb${orb > 1 ? "s" : ""}.`); }
+    if (die) { S.items.die += die; msgs.push(`It found ${die} Loaded Di${die > 1 ? "ce" : "e"}!`); }
+    if (x.hours >= 8 && Math.random() < 0.15) addEgg(m.el, msgs, `${m.name} also found`);
+    const amt = Math.ceil(xpNeed(m.level) * 0.05 * x.hours);
+    msgs.push(`${m.name} gained ${amt} experience.`);
+    levelCheck(m, amt, msgs);
+    bump("exps");
+    return msgs;
+  }
+
+  // ---------- Hatchery ----------
+  const HATCHERY = { unlock: 6, cost: 500, upgrade: 1000, hours: 6 };
+  const HATCH_WEIGHT = [["Common", 50], ["Uncommon", 35], ["Rare", 12], ["Epic", 2.5], ["Legendary", 0.5]];
+  function hatchLeft(x) { return x.start + HATCHERY.hours * HOUR - now(); }
+  function hatchEgg(i) {
+    const x = S.hatch.incub[i];
+    S.hatch.incub.splice(i, 1);
+    const tier = pickWeighted(HATCH_WEIGHT), id = pickFrom(POOLS[x.el][tier]);
+    const fresh = !S.dex.includes(id);
+    const m = addMon(makeMon(id, wildRange(elementWorld(x.el), 1)[0]), false);
+    bump("hatches"); sfx("evolve");
+    return [`The ${x.el} egg hatched into ${m.name}, a ${m.rarity} ${m.el} monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It's in your base.`];
+  }
+
+  // ---------- Quests ----------
+  function dayKey(d) { return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
+  function weekKey() { const d = new Date(now()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dayKey(d); }
+  function counterVal(q) { return q.key === "capEl" ? (S.counts.capEl[q.el] || 0) : (S.counts[q.key] || 0); }
+  function questTemplates(weekly) {
+    const els = openElements(), el = pickFrom(els);
+    const k = weekly ? 1 : 0;
+    const t = [
+      { key: "wins", n: [5, 40][k], text: n => `Win ${n} battles` },
+      { key: "caps", n: [3, 15][k], text: n => `Capture ${n} monsters` },
+      { key: "capEl", el, n: [2, 8][k], text: n => `Capture ${n} ${el} monsters` },
+      { key: "levels", n: [2, 12][k], text: n => `Clear ${n} levels` },
+      { key: "chests", n: [3, 15][k], text: n => `Open ${n} treasure chests` },
+      { key: "spins", n: [2, 10][k], text: n => `Spin the reward wheel ${n} times` }
+    ];
+    if (S.exped) t.push({ key: "exps", n: [1, 6][k], text: n => `Finish ${n} expedition${n > 1 ? "s" : ""}` });
+    if (S.hatch) t.push({ key: "hatches", n: [1, 3][k], text: n => `Hatch ${n} egg${n > 1 ? "s" : ""}` });
+    if (S.player.level >= ARENA.unlock) t.push({ key: "floors", n: [3, 20][k], text: n => `Clear ${n} Arena floors` });
+    if (S.synth !== undefined && S.items.scrolls.length) t.push({ key: "synths", n: [1, 3][k], text: n => `Synthesize ${n} monster${n > 1 ? "s" : ""}` });
+    return t;
+  }
+  function makeQuests(weekly) {
+    const pool = questTemplates(weekly).sort(() => Math.random() - 0.5).slice(0, 3);
+    return pool.map(q => ({ key: q.key, el: q.el, n: q.n, text: q.text(q.n), base: 0, done: false, claimed: false, reward: questReward(weekly) })).map(q => { q.base = counterVal(q); return q; });
+  }
+  function questReward(weekly) {
+    const L = S.player.level;
+    if (!weekly) return pickFrom([{ coins: 100 + 20 * L, potion: 2 }, { coins: 100 + 20 * L, orb: 3 }]);
+    return pickFrom([{ coins: 500 + 50 * L, perfect: 1 }, { coins: 500 + 50 * L, die: 2 }, { coins: 500 + 50 * L, egg: 1 }]);
+  }
+  function rewardText(r) {
+    const p = [`${r.coins} coins`];
+    if (r.potion) p.push(`${r.potion} Potions`); if (r.orb) p.push(`${r.orb} Capture Orbs`); if (r.perfect) p.push("a Perfect Orb");
+    if (r.die) p.push(`${r.die} Loaded Dice`); if (r.egg) p.push("a random egg");
+    return p.join(", ");
+  }
+  function ensureQuests() {
+    if (S.player.level < 2) return;
+    const d = dayKey(new Date(now())), w = weekKey();
+    if (S.quests.day !== d) { S.quests.day = d; S.quests.daily = makeQuests(false); }
+    if (S.quests.week !== w) { S.quests.week = w; S.quests.weekly = makeQuests(true); }
+  }
+  function questProgress(q) { return Math.min(q.n, counterVal(q) - q.base); }
+  function claimQuest(kind, i) {
+    const q = S.quests[kind][i];
+    if (!q || q.claimed || questProgress(q) < q.n) return null;
+    q.claimed = true;
+    const r = q.reward, msgs = [`Quest complete: ${q.text}. You received ${rewardText(r)}.`];
+    S.coins += r.coins; S.items.potion += r.potion || 0; S.items.orb += r.orb || 0; S.items.perfect += r.perfect || 0; S.items.die += r.die || 0;
+    if (r.egg) addEgg(pickFrom(openElements()), msgs, "And");
+    givePxp(kind === "weekly" ? 60 : 15, msgs);
+    sfx("win");
+    return msgs;
+  }
+
+  // ---------- Arena tower ----------
+  const ARENA = { unlock: 7 };
+  const RIVALS = ["Rival Tamsin", "Rival Corvo", "Rival Juniper", "Rival Hale", "Rival Ondine", "Rival Bastian", "Rival Wren", "Rival Kito", "Rival Marisol", "Rival Ezra"];
+  function arenaTeam(floor) {
+    const size = floor % 10 === 0 ? 4 : floor >= 10 ? 3 : 2;
+    const tiers = floor >= 30 ? [["Uncommon", 40], ["Rare", 40], ["Epic", 20]] : floor >= 10 ? [["Common", 30], ["Uncommon", 50], ["Rare", 20]] : [["Common", 60], ["Uncommon", 40]];
+    const out = [];
+    for (let i = 0; i < size; i++) out.push(makeMon(pickFrom(POOLS[pickFrom(ELEMENTS)][pickWeighted(tiers)]), 4 + 2 * floor));
+    return out;
+  }
+  function arenaFloor(floor, fresh) {
+    if (fresh) { restoreAll(); S.level = null; }
+    for (const m of teamMons()) m.status = null;
+    const alive = teamMons().find(m => m.hp > 0);
+    S.battle = { boss: true, arena: true, floor, rival: pickFrom(RIVALS), enemies: arenaTeam(floor), active: alive.uid, forced: false, over: null, log: [] };
+    S.screen = "battle";
+    const B = S.battle, e = foe();
+    sfx(floor % 10 === 0 ? "boss" : "ambush");
+    return [`Arena floor ${floor}${floor % 10 === 0 ? ", a champion floor" : ""}. ${B.rival} sends out ${e.name}, a ${e.rarity} ${e.el} monster at level ${e.level}. They have ${B.enemies.length} monsters.`, `Your ${you().name} is ready.`];
+  }
+  function arenaWin(msgs) {
+    const B = S.battle, f = B.floor;
+    const coins = 15 * f;
+    S.coins += coins; bump("floors"); sfx("win");
+    msgs.push(`You beat ${B.rival} and cleared Arena floor ${f}! You earned ${coins} coins.`);
+    if (f > S.arena.best) { S.arena.best = f; msgs.push(`New best floor: ${f}.`); }
+    if (!S.arena.claimed.includes(f) && f % 5 === 0) {
+      S.arena.claimed.push(f);
+      if (f % 25 === 0) { msgs.push("Milestone reward:"); giveCrest(pickFrom(ELEMENTS), msgs); }
+      if (f % 10 === 0) { S.items.perfect++; msgs.push(`Milestone reward for floor ${f}: a Perfect Orb.`); addEgg(pickFrom(openElements()), msgs, "And"); }
+      else { S.items.die++; msgs.push(`Milestone reward for floor ${f}: a Loaded Die.`); }
+    }
+    B.over = "arenawin";
+  }
+
   // ---------- Board ----------
   const SPACE = { start: "Start", path: "Quiet path", heal: "Healing spring", trap: "Thorn trap", portal: "Portal", battle: "Wild battle",
     chest: "Treasure chest", merchant: "Wandering merchant", boss: "Level boss" };
@@ -712,11 +865,13 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     } else if (type === "chest") {
       L.used[p] = true;
       sfx("chest");
-      const prize = pickWeighted([["coins", 45], ["potion", 25], ["orb", 22], ["die", 8]]);
+      bump("chests");
+      const prize = pickWeighted([["coins", 45], ["potion", 25], ["orb", 22], ["die", 8], ["egg", 4]]);
+      if (prize === "egg") addEgg(worldEl(L.w), msgs, "You open the chest and find");
       if (prize === "coins") { const c = rand(20, 40) * L.w; S.coins += c; msgs.push(`You open the chest and find ${c} coins.`); }
       else if (prize === "potion") { S.items.potion++; msgs.push("You open the chest and find a Potion."); }
       else if (prize === "orb") { const c = rand(1, 2); S.items.orb += c; msgs.push(`You open the chest and find ${c} Capture Orb${c > 1 ? "s" : ""}.`); }
-      else { S.items.die++; msgs.push("You open the chest and find a Loaded Die!"); }
+      else if (prize === "die") { S.items.die++; msgs.push("You open the chest and find a Loaded Die!"); }
     } else if (type === "merchant") {
       L.shopOpen = true;
       msgs.push(`A wandering merchant waves you over. You have ${S.coins} coins. Buy what you need, then leave the merchant to keep rolling.`);
@@ -772,7 +927,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const W = S.wboss;
     const e = makeMon(W.id, W.level);
     e.maxHp = W.maxHp; e.hp = W.hp; e.name = W.name;
-    S.wfights.count--;
+    S.wfights.count--; bump("wbfights");
     if (S.wfights.count === WB.maxFights - 1) S.wfights.last = now();
     S.battle = { boss: true, wboss: true, enemies: [e], active: fromLevel ? S.level.lead : S.team[0], forced: false, over: null, log: [], startHp: W.hp, fromLevel };
     if (!fromLevel) { restoreAll(); S.level = null; }
@@ -794,6 +949,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     msgs.push(`You defeated the world boss ${W.name}! Reward: 1000 coins, a Perfect Orb and a ${W.el} final-form crest.`);
     S.coins += 1000; S.items.perfect++;
     giveCrest(W.el, msgs);
+    addEgg(W.el, msgs, "It left behind");
     teamXp(Math.round(W.maxHp / 6), msgs, true);
     givePxp(150, msgs);
     S.stats.wbKills++;
@@ -829,7 +985,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function foe() { return S.battle.enemies.find(e => e.hp > 0 && !e.caught); }
   function foesLeft() { return S.battle.enemies.filter(e => e.hp > 0 && !e.caught).length; }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-  function foeWord() { return S.battle.wboss ? "World boss" : S.battle.boss ? "Boss" : "Wild"; }
+  function foeWord() { return S.battle.wboss ? "World boss" : S.battle.arena ? "Rival" : S.battle.boss ? "Boss" : "Wild"; }
   function label(m, isYou) { return isYou ? `your ${m.name}` : `${foeWord().toLowerCase()} ${m.name}`; }
   const STATUS_WORD = { sleep: "asleep", stun: "stunned", poison: "poisoned" };
 
@@ -893,15 +1049,16 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       cur.done = true;
       if (B.wboss) { wbVictory(msgs); return; }
       msgs.push(`${foeWord()} ${cur.name} fainted.`); sfx("faint");
-      teamXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss ? 2 : 1)), msgs);
+      teamXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss && !B.arena ? 2 : 1)), msgs);
     }
     const next = foe();
     if (!next) { endBattle("win", msgs); return; }
-    if (cur) msgs.push(`Wild ${next.name} steps forward, a ${next.rarity} ${next.el} monster at level ${next.level}.`);
+    if (cur) msgs.push(B.arena ? `${B.rival} sends out ${next.name}, a ${next.rarity} ${next.el} monster at level ${next.level}.` : `Wild ${next.name} steps forward, a ${next.rarity} ${next.el} monster at level ${next.level}.`);
     if (you().hp <= 0) {
       msgs.push(`Your ${you().name} fainted.`); sfx("faint");
       if (teamMons().some(m => m.hp > 0)) { B.forced = true; msgs.push("Choose a monster to send out."); }
       else if (B.wboss) { msgs.push("Your whole team has fainted."); wbFinish(msgs, false); }
+      else if (B.arena) { B.over = "arenalose"; for (const m of teamMons()) m.status = null; sfx("lose"); msgs.push(`Your whole team has fainted on Arena floor ${B.floor}. Your best is floor ${S.arena.best}. Return to camp to heal up and climb again.`); }
       else endBattle("lose", msgs);
     }
   }
@@ -909,6 +1066,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const B = S.battle;
     B.over = kind;
     for (const m of teamMons()) m.status = null;
+    if (kind === "win") bump("wins");
+    if (kind === "win" && B.arena) { arenaWin(msgs); return; }
     if (kind === "win") {
       sfx("win");
       if (B.boss) {
@@ -922,6 +1081,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         if (first && n === world(w).levels && WORLDS[w]) { t += ` World ${w + 1}, ${WORLDS[w].name}, is now open!`; S.worldView = w + 1; }
         msgs.push(t + ` You earned ${coins} coins.`);
         givePxp((40 + 10 * n + 50 * (w - 1)) * (first ? 2 : 1), msgs);
+        bump("levels");
+        if (Math.random() < 0.08) addEgg(worldEl(w), msgs, "The boss dropped");
         msgs.push("Spin the reward wheel.");
       } else {
         const coins = B.enemies.reduce((s, e) => s + e.level * 4, 0);
@@ -965,7 +1126,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         e.caught = true;
         const isNew = !S.dex.includes(e.id);
         addMon(makeMon(e.id, e.level), false);
-        S.stats.caught++;
+        S.stats.caught++; bump("caps"); S.counts.capEl[e.el] = (S.counts.capEl[e.el] || 0) + 1;
         msgs.push(`You threw a ${orbName}. Success! You captured wild ${e.name}${isNew ? ", a new monster for your collection" : ""}. It was sent to your base.`); sfx("catch");
         teamXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs);
         givePxp(10, msgs);
@@ -1020,6 +1181,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     prize.give(msgs);
     sfx("win");
     S.wheel = { spun: true, prize: prize.label };
+    bump("spins");
     return msgs;
   }
 
@@ -1031,7 +1193,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   }
   function synthEligible(R) {
     const rar = new Set(R.slots.flat());
-    return Object.values(S.mons).filter(m => m.el === R.el && rar.has(m.rarity) && !inTraining(m.uid));
+    return Object.values(S.mons).filter(m => m.el === R.el && rar.has(m.rarity) && !inTraining(m.uid) && !onExped(m.uid));
   }
   function doSynth() {
     const R = RECIPES[S.synth.recipe], picks = S.synth.picks.map(id => S.mons[id]);
@@ -1042,7 +1204,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const id = pickFrom(POOLS[R.el][R.result]);
     const fresh = !S.dex.includes(id);
     const m = addMon(makeMon(id, level), false);
-    S.stats.synth++; S.synth.picks = [];
+    S.stats.synth++; S.synth.picks = []; bump("synths");
     sfx("evolve");
     const msgs = [`${picks.map(p => p.name).join(" and ")} combined into ${m.name}, a ${m.rarity} ${m.el} monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It was sent to your base.`];
     givePxp(25, msgs);
@@ -1106,18 +1268,22 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function monLine(m) { return `${m.el} · ${m.rarity} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${statusText(m)}`; }
   function itemsLine() {
     const crests = Object.entries(S.items.crests).filter(([, n]) => n > 0).map(([c, n]) => `${n} ${c}`);
-    return [`${S.coins} coins`, `${S.items.orb} Capture Orbs`, `${S.items.perfect} Perfect Orbs`, `${S.items.potion} Potions`, `${S.items.die} Loaded Dice`, ...crests].join(" · ");
+    return [`${S.coins} coins`, `${S.items.orb} Capture Orbs`, `${S.items.perfect} Perfect Orbs`, `${S.items.potion} Potions`, `${S.items.die} Loaded Dice`, `${eggCount()} eggs`, ...crests].join(" · ");
   }
 
   const TABS = [
-    ["levels", "Levels"], ["team", "Team and base"], ["shop", "Shop"], ["synth", "Synthesis"],
-    ["build", "Buildings"], ["train", "Training"], ["ach", "Achievements"], ["save", "Saved game"]
+    ["levels", "Levels"], ["team", "Team and base"], ["quests", "Quests"], ["arena", "Arena"], ["shop", "Shop"], ["synth", "Synthesis"],
+    ["build", "Buildings"], ["train", "Training"], ["exped", "Expeditions"], ["hatch", "Hatchery"], ["ach", "Achievements"], ["save", "Saved game"]
   ];
   function tabLocked(t) {
     if (t === "shop") return S.player.level < 2 ? "unlocks at player level 2" : "";
     if (t === "synth") return S.items.scrolls.length ? "" : "needs a Scroll of Synthesis";
     if (t === "build") return S.player.level < YARD.unlock ? `unlocks at player level ${YARD.unlock}` : "";
     if (t === "train") return S.yard ? "" : "needs the Training Yard";
+    if (t === "quests") return S.player.level < 2 ? "unlocks at player level 2" : "";
+    if (t === "arena") return S.player.level < ARENA.unlock ? `unlocks at player level ${ARENA.unlock}` : "";
+    if (t === "exped") return S.exped ? "" : "needs the Expedition Dock";
+    if (t === "hatch") return S.hatch ? "" : "needs the Hatchery";
     return "";
   }
   function renderCamp() {
@@ -1135,7 +1301,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const lock = tabLocked(S.campTab);
     const lab = TABS.find(t => t[0] === S.campTab)[1];
     if (lock) return h + sec("h-tab", lab, `<p class="muted">${lab} is locked: it ${lock}.</p>`);
-    const body = { levels: tabLevels, team: tabTeam, shop: tabShop, synth: tabSynth, build: tabBuild, train: tabTrain, ach: tabAch, save: tabSave }[S.campTab]();
+    const body = { levels: tabLevels, team: tabTeam, quests: tabQuests, arena: tabArena, shop: tabShop, synth: tabSynth, build: tabBuild, train: tabTrain, exped: tabExped, hatch: tabHatch, ach: tabAch, save: tabSave }[S.campTab]();
     return h + sec("h-tab", lab, body);
   }
   function wbPanel() {
@@ -1186,9 +1352,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     else {
       tm += `<div class="actions">`;
       for (const m of base) {
-        tm += `<div class="row"><p class="nm">${m.name}${inTraining(m.uid) ? " (training)" : ""}</p><p class="muted">${monLine(m)}${nextForm(m)}</p>`;
+        tm += `<div class="row"><p class="nm">${m.name}${inTraining(m.uid) ? " (training)" : ""}${onExped(m.uid) ? " (on expedition)" : ""}</p><p class="muted">${monLine(m)}${nextForm(m)}</p>`;
         const b = [];
-        if (S.team.length < 4) b.push(btn("add", m.uid, `Add ${m.name} to team`));
+        if (onExped(m.uid)) {} else if (S.team.length < 4) b.push(btn("add", m.uid, `Add ${m.name} to team`));
         else tm += `<p class="muted">Team is full.</p>`;
         b.push(...crestBtns(m));
         if (b.length) tm += `<div class="actions">${b.join("")}</div>`;
@@ -1256,6 +1422,15 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       if (lv < 3) s += S.coins >= MINE.cost[lv] ? btn("upmine", "", `Upgrade to level ${lv + 1} for ${MINE.cost[lv]} coins`, `Earns ${MINE.rate[lv + 1]} coins per hour`) : `<p class="muted">Upgrade to level ${lv + 1}: ${MINE.cost[lv]} coins.</p>`;
       s += btn("refresh", "", "Check again", "Updates coins ready to collect");
     }
+    s += `</div><div class="row"><p class="nm">Expedition Dock</p><p class="muted">Send up to ${DOCK.slots} base monsters on 1, 4 or 8 hour expeditions for coins, items, experience and sometimes eggs.</p>`;
+    if (S.player.level < DOCK.unlock) s += `<p class="muted">Unlocks at player level ${DOCK.unlock}.</p>`;
+    else if (!S.exped) s += S.coins >= DOCK.cost ? btn("builddock", "", `Build for ${DOCK.cost} coins`, "", true) : `<p class="muted">Costs ${DOCK.cost} coins. You have ${S.coins}.</p>`;
+    else s += `<p>Built. Open the Expeditions tab to use it.</p>`;
+    s += `</div><div class="row"><p class="nm">Hatchery</p><p class="muted">Incubates eggs for ${HATCHERY.hours} hours until they hatch into a random monster of their element.</p>`;
+    if (S.player.level < HATCHERY.unlock) s += `<p class="muted">Unlocks at player level ${HATCHERY.unlock}.</p>`;
+    else if (!S.hatch) s += S.coins >= HATCHERY.cost ? btn("buildhatch", "", `Build for ${HATCHERY.cost} coins`, "One incubator", true) : `<p class="muted">Costs ${HATCHERY.cost} coins. You have ${S.coins}.</p>`;
+    else if (S.hatch.slots < 2) s += S.coins >= HATCHERY.upgrade ? btn("uphatch", "", `Add a second incubator for ${HATCHERY.upgrade} coins`) : `<p class="muted">Built with 1 incubator. A second costs ${HATCHERY.upgrade} coins.</p>`;
+    else s += `<p>Built with 2 incubators. Open the Hatchery tab to use it.</p>`;
     return s + `</div></div>`;
   }
   function tabTrain() {
@@ -1270,7 +1445,69 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       s += st.done ? btn("trainclaim", "", `Finish training`, `${m.name} gains ${xpNeed(m.level)} experience`, true) : btn("refresh", "", "Check again", "Updates the time left");
       s += `</div>`;
     } else {
-      for (const m of [...teamMons(), ...Object.values(S.mons).filter(m => !S.team.includes(m.uid))]) s += btn("train", m.uid, `Train ${m.name}`, `${S.team.includes(m.uid) ? "On your team" : "In your base"} · Level ${m.level} · Will gain ${xpNeed(m.level)} experience`);
+      for (const m of [...teamMons(), ...Object.values(S.mons).filter(m => !S.team.includes(m.uid) && !onExped(m.uid))]) s += btn("train", m.uid, `Train ${m.name}`, `${S.team.includes(m.uid) ? "On your team" : "In your base"} · Level ${m.level} · Will gain ${xpNeed(m.level)} experience`);
+    }
+    return s + `</div>`;
+  }
+  function tabQuests() {
+    ensureQuests();
+    let s = `<div class="actions"><p class="muted">Daily quests reset at midnight and weekly quests on Monday. Progress counts from when a quest appears.</p>`;
+    for (const [kind, title] of [["daily", "Daily quests"], ["weekly", "Weekly quests"]]) {
+      s += sub3(title, kind === "weekly");
+      S.quests[kind].forEach((q, i) => {
+        const p = questProgress(q);
+        s += `<div class="row"><p class="nm">${q.text}${q.claimed ? " (claimed)" : p >= q.n ? " (complete)" : ""}</p><p class="muted">Progress ${p} of ${q.n} · Reward: ${rewardText(q.reward)}</p>`;
+        if (!q.claimed && p >= q.n) s += btn("claim", `${kind}-${i}`, "Claim reward", "", true);
+        s += `</div>`;
+      });
+    }
+    return s + `</div>`;
+  }
+  function tabArena() {
+    let s = `<div class="actions"><p>Best floor: ${S.arena.best}.</p><p class="muted">Each floor is a rival's team, and every tenth floor is a champion with four monsters. Your team's health carries over between floors, so potions matter. Rewards: coins every floor, a Loaded Die every 5 floors, a Perfect Orb and an egg every 10, and a crest every 25. Milestone rewards are paid the first time you reach them.</p>`;
+    const cps = [1];
+    for (let c = 11; c <= S.arena.best + 1; c += 10) cps.push(c);
+    cps.reverse().forEach((c, i) => { s += btn("arenastart", c, `Start at floor ${c}`, `Rivals at level ${4 + 2 * c} · Your team starts fully healed`, i === 0); });
+    return s + `</div>`;
+  }
+  function tabExped() {
+    const E = S.exped;
+    let s = `<div class="actions"><p class="muted">Send monsters from your base on expeditions. While away they can't battle, train or be used in synthesis. Up to ${DOCK.slots} at a time.</p>`;
+    s += sub3(`Away now (${E.list.length} of ${DOCK.slots})`);
+    if (!E.list.length) s += `<p class="muted">No one is away.</p>`;
+    let pending = false;
+    E.list.forEach((x, i) => {
+      const m = S.mons[x.uid], left = expLeft(x);
+      if (left > 0) pending = true;
+      s += `<div class="row"><p class="nm">${m.name}</p><p class="muted">${x.hours}-hour expedition · ${left <= 0 ? "Back now" : dur(left) + " left"}</p>${left <= 0 ? btn("expcollect", i, `Welcome ${m.name} back`, "Collect what it found", true) : ""}</div>`;
+    });
+    if (pending) s += btn("refresh", "", "Check again", "Updates the time left");
+    if (E.list.length < DOCK.slots) {
+      s += sub3("Send a monster", true) + `<div class="pair">`;
+      for (const h of DOCK.hours) s += btn("expdur", h, `${h} hour${h > 1 ? "s" : ""}${S.expDur === h ? " (chosen)" : ""}`, h === 8 ? "Chance of an egg" : "", S.expDur === h, S.expDur === h);
+      s += `</div>`;
+      const avail = Object.values(S.mons).filter(m => !S.team.includes(m.uid) && !onExped(m.uid) && !inTraining(m.uid));
+      if (!avail.length) s += `<p class="muted">No monsters free in your base. Send a monster from your team to base first.</p>`;
+      for (const m of avail) s += btn("expsend", m.uid, `Send ${m.name} for ${S.expDur} hour${S.expDur > 1 ? "s" : ""}`, `${m.rarity} · Level ${m.level} · About ${Math.round(S.expDur * (10 + m.level) * RARITY_COIN[m.rarity])} coins`);
+    }
+    return s + `</div>`;
+  }
+  function tabHatch() {
+    const H = S.hatch;
+    let s = `<div class="actions"><p class="muted">Eggs hatch after ${HATCHERY.hours} hours into a random monster of their element, usually Common or Uncommon, sometimes rarer. Find eggs in treasure chests, from level bosses and world bosses, on 8-hour expeditions, in Arena milestones and from weekly quests.</p>`;
+    s += sub3(`Incubators (${H.incub.length} of ${H.slots} in use)`);
+    let pending = false;
+    H.incub.forEach((x, i) => {
+      const left = hatchLeft(x);
+      if (left > 0) pending = true;
+      s += `<div class="row"><p class="nm">${x.el} egg</p><p class="muted">${left <= 0 ? "Ready to hatch" : dur(left) + " left"}</p>${left <= 0 ? btn("hatchnow", i, `Hatch the ${x.el} egg`, "", true) : ""}</div>`;
+    });
+    if (pending) s += btn("refresh", "", "Check again", "Updates the time left");
+    if (H.incub.length < H.slots) {
+      const eggs = Object.entries(S.items.eggs).filter(([, n]) => n > 0);
+      s += sub3("Your eggs", true);
+      if (!eggs.length) s += `<p class="muted">No eggs yet.</p>`;
+      for (const [el, n] of eggs) s += btn("incubate", el, `Incubate a ${el} egg`, `You have ${n}`);
     }
     return s + `</div>`;
   }
@@ -1336,15 +1573,17 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function renderBattle() {
     const B = S.battle, e = foe(), p = you();
     const shownFoe = e || B.enemies[B.enemies.length - 1];
-    const heading = B.wboss ? "World boss" : B.boss ? "Level boss" : "Opponent";
+    const heading = B.wboss ? "World boss" : B.arena ? `Arena floor ${B.floor}: ${B.rival}` : B.boss ? "Level boss" : "Opponent";
     let h = sec("h-foe", heading, monCard(shownFoe, foeWord() + " ",
-      B.boss ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`));
+      B.boss && !B.arena ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`));
     h += sec("h-you", "Your monster", monCard(p, "", xpLine(p)));
     if (B.over) {
       let o = `<div class="actions">`;
       if (B.over === "win" && B.boss) o += btn("towheel", "", "Go to the reward wheel", "", true);
       else if (B.over === "win") o += btn("continue", "", "Continue on the board", `Space ${S.level.pos + 1} of ${BOARD_SIZE}`, true);
       else if (B.over === "wbdone" || B.over === "wbwin") o += btn("camp", "", "Return to camp", "Your team is restored", true);
+      else if (B.over === "arenawin") { const alive = teamMons().filter(m => m.hp > 0).length; o += btn("arenanext", "", `Climb to floor ${B.floor + 1}`, `${alive} of ${S.team.length} monsters standing · Health carries over`, true) + btn("camp", "", "Leave the arena", "Your team is restored"); }
+      else if (B.over === "arenalose") o += btn("camp", "", "Return to camp", "Your team is restored", true);
       else o += btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true);
       return h + sec("h-over", B.wboss ? "Fight over" : "Battle over", o + `</div>`);
     }
@@ -1367,7 +1606,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     h += sec("h-switch", "Switch monster (free)", sw + `</div>`);
     if (!B.forced) {
       let it = `<div class="actions">`;
-      if (B.boss) it += `<p class="muted">${B.wboss ? "World bosses" : "Level bosses"} can't be captured.</p>`;
+      if (B.boss) it += `<p class="muted">${B.wboss ? "World bosses" : B.arena ? "Rival monsters" : "Level bosses"} can't be captured.</p>`;
       else {
         const pct = Math.round(captureChance(e, "orb") * 100);
         it += S.items.orb > 0 ? btn("capture", "orb", "Throw Capture Orb", `${S.items.orb} left · ${pct}% chance on ${e.name}${e.status ? ` (boosted, it's ${STATUS_WORD[e.status.type]})` : ""} · Uses your turn`) : `<p class="muted">No Capture Orbs left.</p>`;
@@ -1397,7 +1636,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     document.getElementById("result").textContent = S.result;
     const L = S.level, B = S.battle;
     const where = L ? `World ${L.w}, ${world(L.w).name} · Level ${L.n}` : "";
-    const sub = { camp: "Camp", level: where, battle: B && B.wboss ? "World boss fight" : `${where} · Battle`, wheel: `${where} complete` };
+    const sub = { camp: "Camp", level: where, battle: B && B.wboss ? "World boss fight" : B && B.arena ? `Arena · Floor ${B.floor}` : `${where} · Battle`, wheel: `${where} complete` };
     document.getElementById("subtitle").textContent = sub[S.screen];
     const r = { camp: renderCamp, level: renderLevel, battle: renderBattle, wheel: renderWheel };
     document.getElementById("screen").innerHTML = r[S.screen]();
@@ -1409,6 +1648,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function finish(msgs) {
     if (!msgs) return;
     wbTick(msgs);
+    ensureQuests();
     checkAch(msgs);
     S.result = msgs.join(" ");
     if (S.screen === "battle" && S.battle && S.battle.log) S.battle.log.push(S.result);
@@ -1430,9 +1670,20 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       case "tab": S.campTab = arg; S.confirm = null; msgs = (msgs || []).concat([`${TABS.find(t => t[0] === arg)[1]} is open.`]); break;
       case "level": { const [w, n] = arg.split("-").map(Number); if (S.team.length && worldOpen(w) && n <= prog(w).unlocked) msgs = startLevel(w, n); break; }
       case "world": { const w = Number(arg); if (worldOpen(w)) { S.worldView = w; msgs = [`World ${w}: ${world(w).name}. ${prog(w).cleared.length} of ${world(w).levels} levels cleared.`]; } break; }
+      case "claim": { const [k, i] = arg.split("-"); msgs = claimQuest(k, Number(i)); break; }
+      case "arenastart": { const f = Number(arg); if (S.player.level >= ARENA.unlock && (f === 1 || f <= S.arena.best + 1)) msgs = arenaFloor(f, true); break; }
+      case "arenanext": if (S.battle && S.battle.over === "arenawin") msgs = arenaFloor(S.battle.floor + 1, false); break;
+      case "builddock": if (!S.exped && S.player.level >= DOCK.unlock && S.coins >= DOCK.cost) { S.coins -= DOCK.cost; S.exped = { list: [] }; sfx("coin"); msgs = ["You built the Expedition Dock. Open the Expeditions tab to send monsters out."]; } break;
+      case "buildhatch": if (!S.hatch && S.player.level >= HATCHERY.unlock && S.coins >= HATCHERY.cost) { S.coins -= HATCHERY.cost; S.hatch = { slots: 1, incub: [] }; sfx("coin"); msgs = ["You built the Hatchery. Open the Hatchery tab to incubate eggs."]; } break;
+      case "uphatch": if (S.hatch && S.hatch.slots < 2 && S.coins >= HATCHERY.upgrade) { S.coins -= HATCHERY.upgrade; S.hatch.slots = 2; sfx("coin"); msgs = ["You added a second incubator."]; } break;
+      case "expdur": S.expDur = Number(arg); msgs = [`Expedition length set to ${arg} hour${arg === "1" ? "" : "s"}.`]; break;
+      case "expsend": if (S.exped && S.exped.list.length < DOCK.slots && S.mons[arg] && !S.team.includes(arg) && !onExped(arg) && !inTraining(arg)) { S.exped.list.push({ uid: arg, start: now(), hours: S.expDur }); if (S.synth) S.synth.picks = S.synth.picks.filter(x => x !== arg); msgs = [`${S.mons[arg].name} set out on a ${S.expDur}-hour expedition.`]; } break;
+      case "expcollect": { const x = S.exped && S.exped.list[Number(arg)]; if (x && expLeft(x) <= 0) msgs = expCollect(Number(arg)); break; }
+      case "incubate": if (S.hatch && S.hatch.incub.length < S.hatch.slots && S.items.eggs[arg] > 0) { S.items.eggs[arg]--; S.hatch.incub.push({ el: arg, start: now() }); msgs = [`You placed a ${arg} egg in an incubator. It hatches in ${HATCHERY.hours} hours.`]; } break;
+      case "hatchnow": { const x = S.hatch && S.hatch.incub[Number(arg)]; if (x && hatchLeft(x) <= 0) msgs = hatchEgg(Number(arg)); break; }
       case "makefirst": S.team = [arg, ...S.team.filter(id => id !== arg)]; msgs = [`${S.mons[arg].name} will lead your team.`]; break;
       case "remove": if (S.team.length > 1) { S.team = S.team.filter(id => id !== arg); msgs = [`${S.mons[arg].name} was sent to your base. Your team has ${S.team.length} of 4.`]; } break;
-      case "add": if (S.team.length < 4 && !S.team.includes(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
+      case "add": if (S.team.length < 4 && !S.team.includes(arg) && !onExped(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
       case "crest": { const m = S.mons[arg], c = crestName(m.id); if (m.stage === 1 && S.items.crests[c] > 0) { S.items.crests[c]--; msgs = [`You used the ${c}.`]; evolve(m, msgs); m.hp = m.maxHp; } break; }
       case "buy": { const it = SHOP.find(x => x.id === arg); if (it && S.coins >= it.price) { S.coins -= it.price; S.items[arg]++; sfx("coin"); msgs = [`You bought a ${it.name} for ${it.price} coins. You have ${S.items[arg]} now and ${S.coins} coins left.`]; } break; }
       case "buyscroll": { const r = RECIPES[arg]; if (r && S.coins >= r.price && !S.items.scrolls.includes(arg)) { S.coins -= r.price; S.items.scrolls.push(arg); sfx("coin"); msgs = [`You bought the ${r.name}. Find it under Synthesis.`]; } break; }
@@ -1481,6 +1732,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
 
   S = load();
   if (S) {
+    ensureExtras();
     S.confirm = null;
     S.result = { camp: "Welcome back. You're at camp.", level: "Welcome back. Your level is waiting where you left it.", battle: "Welcome back. Your battle is waiting where you left it.", wheel: "Welcome back. Your reward wheel is waiting." }[S.screen] || "Welcome back.";
     const extra = [];
@@ -1490,6 +1742,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (S.wboss) extra.push(`World boss ${S.wboss.name} is active with ${S.wfights.count} fight${S.wfights.count === 1 ? "" : "s"} available.`);
     if (S.screen === "camp" && S.mine && minePending() > 0) extra.push(`Your Shard Mine has ${minePending()} coins ready.`);
     if (S.training.session && trainingStatus().done) extra.push("A monster has finished training.");
+    if (S.exped && S.exped.list.some(x => expLeft(x) <= 0)) extra.push("A monster is back from an expedition.");
+    if (S.hatch && S.hatch.incub.some(x => hatchLeft(x) <= 0)) extra.push("An egg is ready to hatch.");
+    ensureQuests();
     if (extra.length) S.result += " " + extra.join(" ");
     queue = [];
   } else newGame();
