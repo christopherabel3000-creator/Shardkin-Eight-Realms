@@ -305,6 +305,15 @@ Forms are listed in evolution order. Rares evolve at level 16; Epics and Legenda
 ### New achievements
 New Life (first hatch), Explorer (10 expeditions), Arena Contender (floor 10), Arena Legend (floor 50).
 
+## Sound
+All sound is synthesized in the browser, with no audio files.
+- **Element attack sounds:** Fire roars and crackles, Water bloops and splashes, Earth thumps and rumbles, Electric zaps and buzzes, Plant whips and rustles, Physical whooshes and punches, Psychic shimmers with a rising warble, Ghost wails downward.
+- **Power:** skills up to 45 power play short and soft, up to 75 medium, and above 75 long and loud with extra layers.
+- **Skill name layers:** bites snap; beams, shots and darts whistle in; slashes and claws swish; slams and charges add a thud; waves, storms and gales swell; roars, howls and wails add a cry.
+- **Results:** a bright two-note chime after a strong hit, a dull thud after a weak one, and a whoosh with a falling tone for a miss.
+- **Stereo:** your attacks lean right and your opponent's lean left, for headphone listeners.
+- Loudness is balanced per element. Settings has a sound test for every element, the hit results and the left/right placement.
+
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.
