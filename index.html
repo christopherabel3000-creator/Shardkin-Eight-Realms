@@ -131,7 +131,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     <summary>How to play this prototype</summary>
     <ul>
       <li>Camp has a menu: Levels, Team and base, Shop, Synthesis, Buildings, Training and Achievements. New areas unlock as your player level rises.</li>
-      <li>Pick up to four monsters for your team, then choose a level. Your team is locked once the level starts. Clearing a world's last level unlocks the next world.</li>
+      <li>Pick up to four monsters for your team, then choose a level. Your team is locked once the level starts. Clearing a world's last level unlocks the next world. After the eight element worlds come combination worlds that mix two elements.</li>
       <li>On the board, roll the die to move along 36 spaces: wild battles, healing springs, thorn traps, portals, treasure chests, a wandering merchant and quiet paths. Look ahead lists the next six. A Loaded Die lets you pick your roll.</li>
       <li>Rolling past the end lands you on the boss space. Level bosses must be defeated, not captured, and then you spin the reward wheel.</li>
       <li>Fainted monsters stay out for the rest of the level. If your whole team faints, the level fails, but you keep your captures and experience.</li>
@@ -231,6 +231,129 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     deepcrown: { el: "Water", rarity: "Legendary", forms: ["Deepcrown", "Tidemonarch", "Oceanheart"], base: { hp: 95, atk: 90, def: 88, spd: 65 },
       skills: [["Crown Wave", "Water", 70, 100], ["Pressure Bind", "Physical", 60, 100, ["stun", 25]], ["Sovereign Tide", "Water", 90, 90], ["Ocean's Heart", "Water", 110, 85]] }
   };
+  // ----- Worlds 3 to 8, in a compact form -----
+  // id | forms (slash-separated) | rarity | hp,atk,def,spd | four skills separated by ";".
+  // A skill can add ":Element" (otherwise it matches the monster) and ":sleep30" style status chances.
+  // Power and accuracy come from the rarity templates below.
+  const POWER = { Common: [40, 35, 60, 80], Uncommon: [50, 45, 70, 90], Rare: [65, 50, 80, 100], Epic: [60, 50, 80, 100], Legendary: [70, 60, 90, 110] };
+  const ACC = [100, 100, 90, 85];
+  const ROSTER = {
+    Fire: `
+emberling|Emberling|Common|50,48,42,52|Ember Nip;Scratch:Physical;Cinder Toss;Flame Rush
+ashmouse|Ashmouse|Common|42,52,38,62|Ash Bite;Smoke Puff:sleep30;Hot Dash;Scorch Rush
+kindlet|Kindlet|Common|55,44,48,40|Kindle Bump;Tackle:Physical;Fire Spin;Blaze Wheel
+flarefly|Flarefly|Common|44,50,40,60|Flicker;Dazzle:Psychic:stun20;Flare Dart;Firefly Swarm
+coalpup|Coalpup|Common|58,46,52,38|Coal Bite;Headbutt:Physical;Ember Fang;Furnace Charge
+magmole|Magmole|Uncommon|65,58,68,38|Magma Dig;Rock Paw:Earth;Lava Burst;Molten Quake:Earth
+pyrofox|Pyrofox|Uncommon|52,64,46,72|Fox Fire;Quick Bite:Physical;Blaze Tail;Inferno Dash
+smoulderbat|Smoulderbat|Uncommon|55,58,50,62|Heat Wing;Smoke Screech:Ghost:sleep30;Ember Swoop;Firestorm
+cinderhorn|Cinderhorn|Uncommon|66,62,60,48|Horn Singe;Ram:Physical:stun20;Scorch Charge;Volcanic Ram
+blazewing|Blazewing/Pyrewing|Rare|62,72,58,78|Flame Peck;Gust:Physical;Sunfire Dive;Rebirth Blaze
+lavaback|Lavaback/Magmatortle|Rare|80,66,82,35|Lava Shell;Rock Slam:Earth:stun25;Magma Wave;Eruption
+salamandrite|Salamandrite/Salamancer|Rare|65,74,60,70|Flame Lash;Toxic Tongue:Physical:poison30;Fire Whirl;Hellfire
+kilnling|Kilnling/Kilnbeast/Forgetitan|Epic|85,80,75,45|Kiln Punch;Iron Slam:Physical:stun25;Forge Blast;Titan Furnace
+solkit|Solkit/Solarion/Sunsovereign|Legendary|90,92,82,72|Solar Flare;Radiant Roar:Psychic:stun25;Sun Pillar;Supernova`,
+    Earth: `
+pebblet|Pebblet|Common|60,50,70,30|Rock Toss;Headbutt:Physical;Quake Stomp;Boulder Crash
+dustmite|Dustmite|Common|44,48,46,56|Dust Kick;Grit Spray:stun20;Sand Burst;Dune Rush
+burrowbun|Burrowbun|Common|52,46,48,54|Dig Hop;Thump:Physical;Mud Shot;Tunnel Strike
+claypod|Claypod|Common|62,40,62,30|Clay Slap;Mud Glob:stun20;Clay Crush;Golem Fist
+rocklet|Rocklet|Common|50,52,60,36|Pebble Shot;Roll:Physical;Rock Slide;Stone Edge
+quarryhog|Quarryhog|Uncommon|70,62,66,40|Tusk Dig;Charge:Physical:stun20;Quarry Slam;Landslide
+sandviper|Sandviper|Uncommon|54,64,48,70|Sand Fang:poison30;Coil:Physical;Dune Strike;Desert Venom
+cragowl|Cragowl|Uncommon|56,58,56,62|Crag Talon;Hypno Stare:Psychic:sleep30;Rock Dive;Canyon Gale
+geodemite|Geodemite|Uncommon|60,56,72,42|Geode Pop;Crystal Glint:Psychic;Shard Burst;Geode Quake
+golemite|Golemite/Golemon|Rare|82,72,85,30|Stone Fist;Body Slam:Physical:stun25;Rock Crusher;Mountain Fall
+tremorhound|Tremorhound/Quakehound|Rare|66,76,60,70|Tremor Bite;Ground Howl:stun25;Fault Line;Seismic Pounce
+amberix|Amberix/Amberlord|Rare|70,68,78,48|Amber Shot;Resin Trap:Plant:sleep30;Fossil Blast;Ancient Amber
+quakelet|Quakelet/Quakadon/Worldshaker|Epic|85,84,78,50|Quake Bite;Tail Slam:Physical:stun25;Earth Crush;World Shatter
+glintmole|Glintmole/Gemborer/Crystalking|Epic|75,78,80,60|Gem Claw;Prism Flash:Psychic:sleep30;Crystal Drill;Geode Cataclysm
+pebblord|Pebblord/Stonemonarch/Gaiacore|Legendary|98,90,95,50|Core Strike;Gravity Bind:Psychic:stun25;Tectonic Fury;Gaia's Wrath`,
+    Electric: `
+sparkit|Sparkit|Common|45,55,40,80|Static Nip;Quick Dash:Physical:stun20;Volt Arc;Storm Coil
+zappip|Zappip|Common|48,50,42,62|Zap;Peck:Physical;Charge Beam;Thunder Peck
+voltbug|Voltbug|Common|46,46,50,55|Buzz Shock:stun20;Bite:Physical;Volt Swarm;Megawatt Buzz
+wattling|Wattling|Common|52,48,46,50|Watt Bump;Tackle:Physical;Spark Ball;Power Surge
+fizzlet|Fizzlet|Common|42,54,38,64|Fizz;Pop:Physical;Static Burst;Fizz Bomb
+thunderpaw|Thunderpaw|Uncommon|54,64,48,72|Thunder Paw;Pounce:Physical;Volt Claw;Lightning Lunge
+ampereel|Ampereel|Uncommon|60,60,52,60|Eel Shock:stun25;Wrap:Physical;Ampere Wave;Megavolt
+dynamole|Dynamole|Uncommon|66,58,64,42|Dynamo Dig;Ground Spark:Earth;Charge Burst;Overload
+glowmoth|Glowmoth|Uncommon|52,60,44,70|Glow Dust:sleep30;Wing Bash:Physical;Neon Gust;Plasma Glow
+stormhawk|Stormhawk/Tempestalon|Rare|64,74,56,82|Bolt Talon;Gale:Physical;Thunder Dive;Tempest Strike
+voltigon|Voltigon/Gigavolt|Rare|78,70,72,50|Volt Ram;Magnet Bind:Physical:stun25;Gigawatt Beam;Grid Collapse
+plasmink|Plasmink/Plasmalynx|Rare|64,72,60,78|Plasma Swipe;Mind Spark:Psychic:sleep30;Arc Pounce;Plasma Storm
+boltling|Boltling/Thundrake/Stormtyrant|Epic|78,84,66,72|Bolt Fang;Static Roar:stun25;Thunder Breath;Storm Cataclysm
+coilbot|Coilbot/Teslatron/Omnicoil|Epic|75,76,80,58|Coil Zap;Magnet Field:Physical:stun25;Tesla Beam;Omega Discharge
+fulmit|Fulmit/Fulminar/Skyfulgor|Legendary|92,94,80,80|Sky Bolt;Thunderclap:Physical:stun25;Fulmination;Heavens' Fury`,
+    Psychic: `
+mindlet|Mindlet|Common|48,50,46,50|Mind Poke;Bonk:Physical;Psy Wave;Mind Blast
+dozepuff|Dozepuff|Common|55,40,52,40|Doze Puff:sleep40;Tackle:Physical;Dream Beam;Lull Burst
+hootwit|Hootwit|Common|46,52,44,58|Hoot;Peck:Physical;Psybeam;Wisdom Strike
+prismite|Prismite|Common|44,54,48,52|Prism Spark;Glint:Physical:stun20;Light Ray;Spectrum Burst
+gazekin|Gazekin|Common|50,48,48,54|Gaze:stun20;Nudge:Physical;Third Eye;Mind Crush
+seerling|Seerling|Uncommon|56,62,50,62|Foresight Jab;Palm Strike:Physical;Psy Lance;Prophecy
+mesmoth|Mesmoth|Uncommon|52,60,46,70|Mesmer Wing:sleep30;Gust:Physical;Hypno Beam;Trance Storm
+levitoad|Levitoad|Uncommon|66,56,62,40|Float Slam;Tongue Lash:Physical:stun20;Gravity Pulse;Levitate Crash
+runefox|Runefox|Uncommon|54,64,48,68|Rune Bite;Fox Feint:Physical;Glyph Blast;Arcane Pounce
+astralynx|Astralynx/Cosmolynx|Rare|64,74,58,78|Astral Claw;Star Gaze:sleep30;Nebula Pounce;Cosmic Rift
+sagebeak|Sagebeak/Archsage|Rare|70,70,70,55|Sage Peck;Mind Lock:stun25;Psystorm;Enlightenment
+dreamdeer|Dreamdeer/Dreamstag|Rare|72,68,66,62|Dream Kick;Antler Ram:Physical;Reverie;Waking Nightmare:Ghost
+cerebrix|Cerebrix/Cerebrion/Omnicerebra|Epic|72,86,62,74|Brain Wave;Mind Snap:stun25;Psionic Burst;Mind Singularity
+lunakit|Lunakit/Lunaria/Eclipsera|Epic|78,80,68,70|Moon Beam;Lunar Lullaby:sleep40;Crescent Slash:Physical;Total Eclipse
+aethling|Aethling/Aetherion/Aetherthrone|Legendary|92,95,82,78|Aether Pulse;Time Stop:stun25;Reality Warp;Infinite Mind`,
+    Ghost: `
+wispling|Wispling|Common|44,52,40,60|Wisp Touch;Lick:Physical:stun20;Shadow Ball;Spirit Flare
+gloomkit|Gloomkit|Common|50,48,46,50|Gloom Swipe;Scratch:Physical;Shade Pounce;Night Claw
+murkmoth|Murkmoth|Common|46,50,44,56|Murk Dust:sleep30;Flutter:Physical;Shadow Wing;Dusk Swarm
+boneling|Boneling|Common|56,46,56,36|Bone Tap;Rattle:Physical:stun20;Grave Toss;Ossuary Crash
+sheetsy|Sheetsy|Common|48,44,50,48|Boo;Sheet Wrap:Physical;Haunt;Phantom Fright
+ghoulcrow|Ghoulcrow|Uncommon|54,62,46,70|Grave Peck;Caw:Physical:stun20;Curse Dive;Murder Flock
+lanternwisp|Lanternwisp|Uncommon|56,60,52,56|Lantern Glow:sleep30;Bump:Physical;Wisp Burn:Fire;Soul Lantern
+cryptbat|Cryptbat|Uncommon|52,62,48,68|Crypt Bite:poison30;Wing Slap:Physical;Shadow Swoop;Night Shroud
+mournhound|Mournhound|Uncommon|66,62,58,50|Mourn Howl;Grave Bite:Physical;Spirit Fang;Requiem Rush
+specterfox|Specterfox/Wraithfox|Rare|62,74,56,80|Specter Bite;Vanish Strike:Physical;Ectoplasm;Wraith Rush
+gravekeep|Gravekeep/Graveward|Rare|80,68,80,40|Grave Toll;Shovel Smack:Physical:stun25;Tomb Slam;Last Rites
+eeriel|Eeriel/Eeriseraph|Rare|64,72,60,74|Chill Touch;Eerie Wail:sleep30;Soul Siphon;Seraph's Lament:Psychic
+shadelet|Shadelet/Shadewyrm/Umbradragon|Epic|76,84,64,72|Shade Fang;Fear Roar:stun25;Umbral Breath;Eclipse of Souls
+hexling|Hexling/Hexcaller/Hexsovereign|Epic|72,82,66,70|Hex Bolt;Curse Mark:poison30;Voodoo Burst;Grand Hex
+soulkin|Soulkin/Soulreaver/Soulmonarch|Legendary|92,95,80,78|Soul Strike;Spirit Chain:Physical:stun25;Netherstorm;Final Judgment`,
+    Physical: `
+pugilet|Pugilet|Common|55,56,48,48|Jab;Uppercut;Haymaker;Flurry
+scrapcat|Scrapcat|Common|46,54,40,62|Scratch;Pounce:stun20;Fury Swipes;Alley Rush
+buffbun|Buffbun|Common|56,52,48,52|Hop Kick;Ear Slap;Double Kick;Moon Drop
+gruntle|Gruntle|Common|62,50,56,34|Grunt Bash;Stomp:stun20;Body Check;Belly Flop
+kickit|Kickit|Common|48,56,44,58|Low Kick;Tail Smack;Spin Kick;Tornado Kick
+brawlbear|Brawlbear|Uncommon|72,66,62,40|Bear Swipe;Bear Hug:stun20;Maul;Grizzly Rush
+staffmonk|Staffmonk|Uncommon|56,62,54,64|Staff Strike;Focus Palm:Psychic;Whirl Staff;Hundred Blows
+ironhorn|Ironhorn|Uncommon|68,64,70,40|Horn Jab;Iron Charge:stun20;Battering Ram;Rhino Rampage
+flexfrog|Flexfrog|Uncommon|56,60,48,68|Frog Kick;Tongue Whip:stun20;Leap Smash;Bounce Barrage
+cubrawl|Cubrawl/Grandbrawl|Rare|74,78,64,58|Power Punch;Stunning Blow:stun25;Mega Punch;Knockout
+wrestlotl|Wrestlotl/Grapplotl|Rare|78,72,72,48|Grapple;Headlock:stun25;Suplex;Piledriver
+swiftail|Swiftail/Blitztail|Rare|62,72,56,84|Swift Strike;Feint;Blitz;Afterimage Assault
+oxling|Oxling/Titanox/Colossox|Epic|88,86,78,48|Horn Gore;Stampede:stun25;Titan Charge;Colossal Crash
+fistling|Fistling/Fistmaster/Grandfist|Epic|74,90,62,76|Rapid Fist;Pressure Point:stun25;Dragon Fist;Ultimate Strike
+atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthshake:Earth:stun25;Titan Hold;World Breaker`
+  };
+  const EXTRA_POOLS = {};
+  for (const [el, text] of Object.entries(ROSTER)) {
+    EXTRA_POOLS[el] = { Common: [], Uncommon: [], Rare: [], Epic: [], Legendary: [] };
+    for (const line of text.trim().split("\n")) {
+      const [id, forms, rarity, stats, skills] = line.split("|");
+      const [hp, atk, def, spd] = stats.split(",").map(Number);
+      SP[id] = { el, rarity, forms: forms.split("/"), base: { hp, atk, def, spd },
+        skills: skills.split(";").map((sk, i) => {
+          const parts = sk.split(":"), out = [parts[0], el, POWER[rarity][i], ACC[i]];
+          for (const p of parts.slice(1)) {
+            const st = p.match(/^(sleep|stun|poison)(\d+)$/);
+            if (st) out[4] = [st[1], Number(st[2])]; else out[1] = p;
+          }
+          return out;
+        }) };
+      EXTRA_POOLS[el][rarity].push(id);
+    }
+  }
+  // Cindercub, the starter, is one of the Fire element's two Epics.
+  EXTRA_POOLS.Fire.Epic.unshift("cindercub");
   function crestName(id) { return `${SP[id].forms[2]} Crest`; }
   const POOLS = {
     Plant: { Common: ["mossling", "sproutle", "fernkit", "budlet", "twiglet"], Uncommon: ["thornback", "petalwing", "mushwick", "briarfox"],
@@ -238,7 +361,19 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     Water: { Common: ["puddlepup", "bubblet", "driftling", "shellkin", "splashrat"], Uncommon: ["tidecrab", "reefwing", "mistnewt", "coralhound"],
       Rare: ["rippleray", "frostfin", "kelpling"], Epic: ["tidalisk", "pearlcalf"], Legendary: ["deepcrown"] }
   };
-  const WORLDS = [{ el: "Plant", levels: 5 }, { el: "Water", levels: 5 }];
+  Object.assign(POOLS, EXTRA_POOLS);
+  const ELEMENTS = ["Plant", "Water", "Fire", "Earth", "Electric", "Psychic", "Ghost", "Physical"];
+  // Eight element worlds, then combination worlds that mix two elements' monsters at higher levels.
+  const WORLDS = [
+    { els: ["Plant"], levels: 5 }, { els: ["Water"], levels: 5 }, { els: ["Fire"], levels: 10 }, { els: ["Earth"], levels: 10 },
+    { els: ["Electric"], levels: 15 }, { els: ["Psychic"], levels: 15 }, { els: ["Ghost"], levels: 15 }, { els: ["Physical"], levels: 15 },
+    { els: ["Fire", "Water"], levels: 20 }, { els: ["Electric", "Psychic"], levels: 20 }, { els: ["Earth", "Plant"], levels: 20 }, { els: ["Ghost", "Physical"], levels: 20 }
+  ];
+  WORLDS.forEach(W => { W.name = W.els.join(" and "); });
+  function worldPool(w, tier) { return world(w).els.flatMap(e => POOLS[e][tier]); }
+  function worldEl(w) { return pickFrom(world(w).els); }
+  function levelIndex(w, n) { let g = 0; for (let i = 1; i < w; i++) g += world(i).levels; return g + n - 1; }
+  function elementWorld(el) { return WORLDS.findIndex(W => W.els.length === 1 && W.els[0] === el) + 1; }
   function poolIds(el) { return Object.values(POOLS[el]).flat(); }
   function crestSpecies(el) { return [...POOLS[el].Epic, ...POOLS[el].Legendary]; }
   function world(w) { return WORLDS[w - 1]; }
@@ -247,7 +382,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   const CAPTURE_MULT = { Common: 1, Uncommon: 0.75, Rare: 0.5, Epic: 0.3, Legendary: 0.15 };
   const STATUS_CAPTURE = { sleep: 1.5, stun: 1.5, poison: 1.2 };
   const XP_MULT = { Common: 1, Uncommon: 1.3, Rare: 1.8, Epic: 2.5, Legendary: 3.5 };
-  function wildRange(w, n) { const lo = 2 + n + (w - 1) * 7; return [lo, lo + 1]; }
+  function wildRange(w, n) { const lo = 3 + levelIndex(w, n) + (w - 1); return [lo, lo + 1]; }
 
   function calc(m) {
     const b = SP[m.id].base, L = m.level, k = 1 + 0.2 * (m.stage || 0);
@@ -286,8 +421,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     { id: "perfect", name: "Perfect Orb", price: 1500, desc: "100% capture chance" }
   ];
   const RECIPES = {};
-  for (const W of WORLDS) {
-    const el = W.el;
+  for (const el of ELEMENTS) {
     RECIPES[el + "Rare"] = { el, name: `Scroll of Synthesis: Rare ${el}`, desc: `Combine two Common or Uncommon ${el} monsters into a random Rare ${el} monster.`, slots: [["Common", "Uncommon"], ["Common", "Uncommon"]], result: "Rare", price: 0 };
     RECIPES[el + "Epic"] = { el, name: `Scroll of Synthesis: Epic ${el}`, desc: `Combine two Rare ${el} monsters into a random Epic ${el} monster.`, slots: [["Rare"], ["Rare"]], result: "Epic", price: 2500 };
     const leg = SP[POOLS[el].Legendary[0]].forms[0];
@@ -356,7 +490,9 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   function restoreAll() { for (const id in S.mons) { S.mons[id].hp = S.mons[id].maxHp; S.mons[id].status = null; } }
   function teamMons() { return S.team.map(id => S.mons[id]); }
   function inTraining(uid) { return S.training.session && S.training.session.uid === uid; }
-  function worldCleared(w) { return S.prog[w].cleared.includes(world(w).levels); }
+  function prog(w) { if (!S.prog[w]) S.prog[w] = { unlocked: 1, cleared: [] }; return S.prog[w]; }
+  function worldCleared(w) { return prog(w).cleared.includes(world(w).levels); }
+  function highestOpen() { let h = 1; for (let w = 1; w <= WORLDS.length; w++) if (worldOpen(w)) h = w; return h; }
   function worldOpen(w) { return w === 1 || worldCleared(w - 1); }
 
   function givePxp(n, msgs) {
@@ -374,7 +510,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   function giveCrest(el, msgs) { const c = crestName(pickFrom(crestSpecies(el))); addCrest(c); msgs.push(`You received the ${c}.`); }
   const ACH = [
     { id: "catch1", name: "First Catch", desc: "Capture your first monster.", test: () => S.stats.caught >= 1, reward: "3 Capture Orbs", give: () => { S.items.orb += 3; } },
-    { id: "clear1", name: "First Steps", desc: "Clear Level 1.", test: () => S.prog[1].cleared.includes(1), reward: "2 Potions", give: () => { S.items.potion += 2; } },
+    { id: "clear1", name: "First Steps", desc: "Clear Level 1.", test: () => prog(1).cleared.includes(1), reward: "2 Potions", give: () => { S.items.potion += 2; } },
     { id: "dex5", name: "Growing Collection", desc: "Collect 5 different monsters.", test: () => S.dex.length >= 5, reward: "100 coins", give: () => { S.coins += 100; } },
     { id: "evolve1", name: "New Form", desc: "Evolve a monster for the first time.", test: () => S.stats.evolved >= 1, reward: "150 coins", give: () => { S.coins += 150; } },
     { id: "plv5", name: "Rising Tamer", desc: "Reach player level 5.", test: () => S.player.level >= 5, reward: "2 Loaded Dice", give: () => { S.items.die += 2; } },
@@ -389,6 +525,21 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     { id: "allplant", name: "Plant Master", desc: "Collect all 15 Plant monsters.", test: () => poolIds("Plant").every(id => S.dex.includes(id)), reward: "a Perfect Orb and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } },
     { id: "allwater", name: "Water Master", desc: "Collect all 15 Water monsters.", test: () => poolIds("Water").every(id => S.dex.includes(id)), reward: "a Perfect Orb and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } }
   ];
+  for (let w = 3; w <= WORLDS.length; w++) {
+    const W = WORLDS[w - 1];
+    if (W.els.length === 1) {
+      const el = W.els[0];
+      ACH.push({ id: "world" + w, name: `${el} World Cleared`, desc: `Complete World ${w} by clearing its Level ${W.levels}.`, test: () => worldCleared(w),
+        reward: `Scroll of Synthesis: Rare ${el}, plus a random ${el} final-form crest`, give: msgs => { if (!S.items.scrolls.includes(el + "Rare")) S.items.scrolls.push(el + "Rare"); giveCrest(el, msgs); } });
+    } else {
+      ACH.push({ id: "world" + w, name: `${W.name} Conquered`, desc: `Complete World ${w} by clearing its Level ${W.levels}.`, test: () => worldCleared(w),
+        reward: "2000 coins, a Perfect Orb and a random final-form crest from either element", give: msgs => { S.coins += 2000; S.items.perfect++; giveCrest(worldEl(w), msgs); } });
+    }
+  }
+  for (const el of ELEMENTS.slice(2)) {
+    ACH.push({ id: "all" + el.toLowerCase(), name: `${el} Master`, desc: `Collect all 15 ${el} monsters.`, test: () => poolIds(el).every(id => S.dex.includes(id)), reward: "a Perfect Orb and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } });
+  }
+  ACH.push({ id: "all120", name: "Shardkin Master", desc: "Collect all 120 monsters.", test: () => ELEMENTS.every(el => poolIds(el).every(id => S.dex.includes(id))), reward: "5 Perfect Orbs and 10000 coins", give: () => { S.items.perfect += 5; S.coins += 10000; } });
   function checkAch(msgs) {
     for (let pass = 0; pass < 3; pass++) {
       let got = false;
@@ -488,7 +639,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   // Boards get busier and more dangerous as levels go up. Every board has one merchant mid-way,
   // a healing spring in the last stretch before the boss, and never more than three battles in a row.
   function genBoard(w, n) {
-    const step = n + (w - 1) * 2;
+    const step = Math.min(10, n + (w - 1) * 2);
     const weights = [["battle", 34 + 2 * step], ["path", 28 - 2 * step], ["heal", 11], ["trap", 8 + step], ["portal", 7], ["chest", 7]];
     const b = ["start"];
     let streak = 0;
@@ -515,12 +666,12 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   function startLevel(w, n) {
     restoreAll();
     S.level = { w, n, board: genBoard(w, n), pos: 0, used: Array(BOARD_SIZE).fill(false), lead: S.team[0], failed: false,
-      replay: S.prog[w].cleared.includes(n), wb: null, shopOpen: false, encounter: false };
+      replay: prog(w).cleared.includes(n), wb: null, shopOpen: false, encounter: false };
     // A hidden world boss can lurk here if none is active. It moves every roll.
     if (!S.wboss && Math.random() < WB.chance) S.level.wb = rand(3, BOARD_SIZE - 3);
     S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "level";
     const [lo, hi] = wildRange(w, n);
-    return [`World ${w}, Level ${n} begins. You're on space 1 of ${BOARD_SIZE}, and the level boss waits on space ${BOARD_SIZE}. Wild ${world(w).el} monsters here are level ${lo} to ${hi}. ${leadMon().name} leads your team.`];
+    return [`World ${w}, Level ${n} begins. You're on space 1 of ${BOARD_SIZE}, and the level boss waits on space ${BOARD_SIZE}. Wild ${world(w).name} monsters here are level ${lo} to ${hi}. ${leadMon().name} leads your team.`];
   }
   function roll(chosen) {
     const L = S.level, msgs = [];
@@ -606,8 +757,8 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     }
   }
   function wbEncounter(msgs) {
-    const L = S.level, el = world(L.w).el;
-    const id = pickFrom(crestSpecies(el).slice(0, 2));
+    const L = S.level, el = worldEl(L.w);
+    const id = pickFrom(POOLS[el].Epic);
     // At least 5 levels above the world's toughest wild monsters, and always above your strongest team monster.
     const top = Math.max(...teamMons().map(x => x.level));
     const m = makeMon(id, Math.max(wildRange(L.w, world(L.w).levels)[1] + WB.levelBonus, top + WB.levelOverTeam));
@@ -640,9 +791,9 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   }
   function wbVictory(msgs) {
     const W = S.wboss;
-    msgs.push(`You defeated the world boss ${W.name}! Reward: 1000 coins, a Perfect Orb and a ${world(W.world).el} final-form crest.`);
+    msgs.push(`You defeated the world boss ${W.name}! Reward: 1000 coins, a Perfect Orb and a ${W.el} final-form crest.`);
     S.coins += 1000; S.items.perfect++;
-    giveCrest(world(W.world).el, msgs);
+    giveCrest(W.el, msgs);
     teamXp(Math.round(W.maxHp / 6), msgs, true);
     givePxp(150, msgs);
     S.stats.wbKills++;
@@ -655,11 +806,11 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   function pickWild(w, n) {
     const tier = pickWeighted(RARITY_WEIGHT);
     const [lo, hi] = wildRange(w, n);
-    return makeMon(pickFrom(POOLS[world(w).el][tier]), tier === "Common" || tier === "Uncommon" ? rand(lo, hi) : hi + 1);
+    return makeMon(pickFrom(worldPool(w, tier)), tier === "Common" || tier === "Uncommon" ? rand(lo, hi) : hi + 1);
   }
   function pickBoss(w, n) {
     const tier = Math.random() < 0.2 ? "Rare" : "Uncommon";
-    return makeMon(pickFrom(POOLS[world(w).el][tier]), wildRange(w, n)[1] + 2);
+    return makeMon(pickFrom(worldPool(w, tier)), wildRange(w, n)[1] + 2);
   }
   function startBattle(boss, msgs) {
     const { w, n } = S.level;
@@ -761,14 +912,14 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     if (kind === "win") {
       sfx("win");
       if (B.boss) {
-        const { w, n } = S.level, P = S.prog[w], first = !P.cleared.includes(n);
+        const { w, n } = S.level, P = prog(w), first = !P.cleared.includes(n);
         if (first) P.cleared.push(n);
         P.unlocked = Math.max(P.unlocked, Math.min(world(w).levels, n + 1));
         const coins = 30 + 20 * n + 40 * (w - 1);
         S.coins += coins;
         let t = `You defeated the level boss! World ${w}, Level ${n} complete.`;
         if (first && n < world(w).levels) t += ` Level ${n + 1} is unlocked.`;
-        if (first && n === world(w).levels && WORLDS[w]) t += ` World ${w + 1}, ${WORLDS[w].el}, is now open!`;
+        if (first && n === world(w).levels && WORLDS[w]) { t += ` World ${w + 1}, ${WORLDS[w].name}, is now open!`; S.worldView = w + 1; }
         msgs.push(t + ` You earned ${coins} coins.`);
         givePxp((40 + 10 * n + 50 * (w - 1)) * (first ? 2 : 1), msgs);
         msgs.push("Spin the reward wheel.");
@@ -858,7 +1009,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     ];
     // Replaying the last level of a completed world adds a chance at a final-form crest.
     const L = S.level;
-    if (L.n === world(L.w).levels && L.replay) list.push({ w: 8, label: `a random ${world(L.w).el} final-form crest`, give: msgs => giveCrest(world(L.w).el, msgs) });
+    if (L.n === world(L.w).levels && L.replay) list.push({ w: 8, label: `a random ${world(L.w).name} final-form crest`, give: msgs => giveCrest(worldEl(L.w), msgs) });
     return list;
   }
   function spin() {
@@ -999,16 +1150,22 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   }
   function tabLevels() {
     let lv = `<div class="actions">` + wbPanel();
+    if (!S.worldView || !worldOpen(S.worldView)) S.worldView = highestOpen();
+    lv += sub3("Choose a world", !!S.wboss) + `<div class="pair">`;
+    let shownLocked = false;
     WORLDS.forEach((W, i) => {
-      const w = i + 1;
-      lv += sub3(`World ${w}: ${W.el}`, i > 0 || S.wboss);
-      if (!worldOpen(w)) { lv += `<p class="muted">Locked. Clear World ${w - 1} first.</p>`; return; }
-      for (let n = 1; n <= W.levels; n++) {
-        const [lo, hi] = wildRange(w, n), P = S.prog[w], done = P.cleared.includes(n);
-        if (n <= P.unlocked) lv += btn("level", `${w}-${n}`, `Play World ${w}, Level ${n}`, `Wild monsters level ${lo} to ${hi}${done ? " · Cleared" : ""}${n === W.levels && done ? " · Replays can win a final-form crest" : ""}`, n === P.unlocked && !done);
-        else lv += `<p class="muted">Level ${n}: locked. Clear Level ${n - 1} first.</p>`;
-      }
+      const w = i + 1, sel = S.worldView === w;
+      if (worldOpen(w)) lv += btn("world", w, `World ${w}: ${W.name}${sel ? " (open)" : ""}`, `${prog(w).cleared.length} of ${W.levels} levels cleared${worldCleared(w) ? " · Complete" : ""}`, sel, sel);
+      else if (!shownLocked) { shownLocked = true; lv += `<p class="muted">World ${w}: ${W.name}. Locked until you clear World ${w - 1}.</p>`; }
     });
+    lv += `</div>`;
+    const w = S.worldView, W = world(w), P = prog(w);
+    lv += sub3(`World ${w}: ${W.name}`, true);
+    for (let n = 1; n <= W.levels; n++) {
+      const [lo, hi] = wildRange(w, n), done = P.cleared.includes(n);
+      if (n <= P.unlocked) lv += btn("level", `${w}-${n}`, `Play World ${w}, Level ${n}`, `Wild monsters level ${lo} to ${hi}${done ? " · Cleared" : ""}${n === W.levels && done ? " · Replays can win a final-form crest" : ""}`, n === P.unlocked && !done);
+      else { lv += `<p class="muted">Levels ${n} to ${W.levels}: locked. Clear Level ${n - 1} first.</p>`; break; }
+    }
     return lv + `</div>`;
   }
   function tabTeam() {
@@ -1039,8 +1196,8 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       }
       tm += `</div>`;
     }
-    const counts = WORLDS.map(W => `${poolIds(W.el).filter(id => S.dex.includes(id)).length} of 15 ${W.el}`).join(", ");
-    return tm + `<p class="muted" style="margin-top:12px">Collection: ${S.dex.length} different monsters. ${counts}.</p>`;
+    const counts = ELEMENTS.map(el => `${poolIds(el).filter(id => S.dex.includes(id)).length} of 15 ${el}`).join(", ");
+    return tm + `<p class="muted" style="margin-top:12px">Collection: ${S.dex.length} of 120 monsters. ${counts}.</p>`;
   }
   function crestBtns(m) {
     if (m.stage !== 1 || SP[m.id].forms.length < 3) return [];
@@ -1059,8 +1216,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     let s = `<div class="actions"><p>You have ${S.coins} coins.</p>` + shopButtons();
     for (const [rid, r] of Object.entries(RECIPES)) {
       if (!r.price || S.items.scrolls.includes(rid)) continue;
-      const wIdx = WORLDS.findIndex(W => W.el === r.el) + 1;
-      if (!worldOpen(wIdx)) continue;
+      if (!worldOpen(elementWorld(r.el))) continue;
       s += S.coins >= r.price ? btn("buyscroll", rid, `Buy ${r.name} for ${r.price} coins`, r.desc + " Scrolls are never used up.") : `<p class="muted">${r.name}: ${r.price} coins. ${r.desc} Not enough coins.</p>`;
     }
     return s + `</div>`;
@@ -1240,7 +1396,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   function render() {
     document.getElementById("result").textContent = S.result;
     const L = S.level, B = S.battle;
-    const where = L ? `World ${L.w}, ${world(L.w).el} · Level ${L.n}` : "";
+    const where = L ? `World ${L.w}, ${world(L.w).name} · Level ${L.n}` : "";
     const sub = { camp: "Camp", level: where, battle: B && B.wboss ? "World boss fight" : `${where} · Battle`, wheel: `${where} complete` };
     document.getElementById("subtitle").textContent = sub[S.screen];
     const r = { camp: renderCamp, level: renderLevel, battle: renderBattle, wheel: renderWheel };
@@ -1272,7 +1428,8 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     switch (a) {
       // Camp
       case "tab": S.campTab = arg; S.confirm = null; msgs = (msgs || []).concat([`${TABS.find(t => t[0] === arg)[1]} is open.`]); break;
-      case "level": { const [w, n] = arg.split("-").map(Number); if (S.team.length && worldOpen(w) && n <= S.prog[w].unlocked) msgs = startLevel(w, n); break; }
+      case "level": { const [w, n] = arg.split("-").map(Number); if (S.team.length && worldOpen(w) && n <= prog(w).unlocked) msgs = startLevel(w, n); break; }
+      case "world": { const w = Number(arg); if (worldOpen(w)) { S.worldView = w; msgs = [`World ${w}: ${world(w).name}. ${prog(w).cleared.length} of ${world(w).levels} levels cleared.`]; } break; }
       case "makefirst": S.team = [arg, ...S.team.filter(id => id !== arg)]; msgs = [`${S.mons[arg].name} will lead your team.`]; break;
       case "remove": if (S.team.length > 1) { S.team = S.team.filter(id => id !== arg); msgs = [`${S.mons[arg].name} was sent to your base. Your team has ${S.team.length} of 4.`]; } break;
       case "add": if (S.team.length < 4 && !S.team.includes(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;

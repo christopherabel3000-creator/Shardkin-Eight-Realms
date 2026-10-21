@@ -149,27 +149,106 @@ Every new player gets the same Epic Fire starter, Cindercub, one of the Fire ele
 - **Co-op:** two players tackle a world-themed level together.
 - **PvP (the arena):** team duels, and raids on an opponent's base. Raids will need base defenses such as guard monsters or traps, so the base should be designed with that in mind.
 
-## World 1 Roster (Plant)
+## Monster Rosters
+
+Forms are listed in evolution order. Rares evolve at level 16; Epics and Legendaries evolve at 16 and reach their final form with their own crest.
+
+### Plant
 
 | Rarity | Monsters |
 |---|---|
-| Common | Mossling, Sproutle, Fernkit, Budlet, Twiglet |
-| Uncommon | Thornback, Petalwing, Mushwick, Briarfox |
-| Rare | Bramblehorn → Elderhorn, Lilypaw → Lotuslynx, Cactling → Saguardian |
+| Common | Mossling; Sproutle; Fernkit; Budlet; Twiglet |
+| Uncommon | Thornback; Petalwing; Mushwick; Briarfox |
+| Rare | Bramblehorn → Elderhorn; Lilypaw → Lotuslynx; Cactling → Saguardian |
 | Epic | Seedrake → Grovedrake → Sylvanwyrm; Mothbloom → Moonmoth → Eclipse Moth |
 | Legendary | Saplord → Oakenreign → Worldroot |
 
-Starter: Cindercub → Blazefang → Infernox (Fire Epic; Infernox Crest comes from World 3).
-
-## World 2 Roster (Water)
+### Water
 
 | Rarity | Monsters |
 |---|---|
-| Common | Puddlepup, Bubblet, Driftling, Shellkin, Splashrat |
-| Uncommon | Tidecrab, Reefwing, Mistnewt, Coralhound |
-| Rare | Rippleray → Stormray, Frostfin → Glacierfin, Kelpling → Kelpwarden |
+| Common | Puddlepup; Bubblet; Driftling; Shellkin; Splashrat |
+| Uncommon | Tidecrab; Reefwing; Mistnewt; Coralhound |
+| Rare | Rippleray → Stormray; Frostfin → Glacierfin; Kelpling → Kelpwarden |
 | Epic | Tidalisk → Torrentisk → Abyssalisk; Pearlcalf → Pearlwhale → Leviathal |
 | Legendary | Deepcrown → Tidemonarch → Oceanheart |
+
+### Fire
+
+| Rarity | Monsters |
+|---|---|
+| Common | Emberling; Ashmouse; Kindlet; Flarefly; Coalpup |
+| Uncommon | Magmole; Pyrofox; Smoulderbat; Cinderhorn |
+| Rare | Blazewing → Pyrewing; Lavaback → Magmatortle; Salamandrite → Salamancer |
+| Epic | Cindercub → Blazefang → Infernox; Kilnling → Kilnbeast → Forgetitan |
+| Legendary | Solkit → Solarion → Sunsovereign |
+
+### Earth
+
+| Rarity | Monsters |
+|---|---|
+| Common | Pebblet; Dustmite; Burrowbun; Claypod; Rocklet |
+| Uncommon | Quarryhog; Sandviper; Cragowl; Geodemite |
+| Rare | Golemite → Golemon; Tremorhound → Quakehound; Amberix → Amberlord |
+| Epic | Quakelet → Quakadon → Worldshaker; Glintmole → Gemborer → Crystalking |
+| Legendary | Pebblord → Stonemonarch → Gaiacore |
+
+### Electric
+
+| Rarity | Monsters |
+|---|---|
+| Common | Sparkit; Zappip; Voltbug; Wattling; Fizzlet |
+| Uncommon | Thunderpaw; Ampereel; Dynamole; Glowmoth |
+| Rare | Stormhawk → Tempestalon; Voltigon → Gigavolt; Plasmink → Plasmalynx |
+| Epic | Boltling → Thundrake → Stormtyrant; Coilbot → Teslatron → Omnicoil |
+| Legendary | Fulmit → Fulminar → Skyfulgor |
+
+### Psychic
+
+| Rarity | Monsters |
+|---|---|
+| Common | Mindlet; Dozepuff; Hootwit; Prismite; Gazekin |
+| Uncommon | Seerling; Mesmoth; Levitoad; Runefox |
+| Rare | Astralynx → Cosmolynx; Sagebeak → Archsage; Dreamdeer → Dreamstag |
+| Epic | Cerebrix → Cerebrion → Omnicerebra; Lunakit → Lunaria → Eclipsera |
+| Legendary | Aethling → Aetherion → Aetherthrone |
+
+### Ghost
+
+| Rarity | Monsters |
+|---|---|
+| Common | Wispling; Gloomkit; Murkmoth; Boneling; Sheetsy |
+| Uncommon | Ghoulcrow; Lanternwisp; Cryptbat; Mournhound |
+| Rare | Specterfox → Wraithfox; Gravekeep → Graveward; Eeriel → Eeriseraph |
+| Epic | Shadelet → Shadewyrm → Umbradragon; Hexling → Hexcaller → Hexsovereign |
+| Legendary | Soulkin → Soulreaver → Soulmonarch |
+
+### Physical
+
+| Rarity | Monsters |
+|---|---|
+| Common | Pugilet; Scrapcat; Buffbun; Gruntle; Kickit |
+| Uncommon | Brawlbear; Staffmonk; Ironhorn; Flexfrog |
+| Rare | Cubrawl → Grandbrawl; Wrestlotl → Grapplotl; Swiftail → Blitztail |
+| Epic | Oxling → Titanox → Colossox; Fistling → Fistmaster → Grandfist |
+| Legendary | Atlaslet → Atlasaur → Worldbearer |
+
+## Worlds
+
+| World | Elements | Levels | Wild monster levels |
+|---|---|---|---|
+| 1 | Plant | 5 | 3 to 8 |
+| 2 | Water | 5 | 9 to 14 |
+| 3 | Fire | 10 | 15 to 25 |
+| 4 | Earth | 10 | 26 to 36 |
+| 5 | Electric | 15 | 37 to 52 |
+| 6 | Psychic | 15 | 53 to 68 |
+| 7 | Ghost | 15 | 69 to 84 |
+| 8 | Physical | 15 | 85 to 100 |
+| 9 | Fire and Water | 20 | 101 to 121 |
+| 10 | Electric and Psychic | 20 | 122 to 142 |
+| 11 | Earth and Plant | 20 | 143 to 163 |
+| 12 | Ghost and Physical | 20 | 164 to 184 |
 
 ## Status Effects
 - **Sleep:** the monster loses 1 to 3 turns (bosses only 1).
@@ -194,7 +273,9 @@ Starter: Cindercub → Blazefang → Infernox (Fire Epic; Infernox Crest comes f
 - **Training Yard:** costs 150 coins. One monster, from the team or the base, trains at a time and can keep battling while it trains. It gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 150 player experience.
 - **Shard Mine:** costs 300, then 600 and 1,200 to upgrade. Earns 15, 30 or 50 coins per hour and holds up to 12 hours of earnings.
 - **Reward wheel:** 2 Potions, 3 Capture Orbs, 150 coins per world number, 25% of a level's experience for each team monster (based on each monster's own level, fainted ones included), or a Perfect Orb. Replays of a world's last level add a chance at a random crest for that world.
-- **World progression:** World 2 opens after clearing World 1, Level 5. Wild levels start at 3 to 4 in World 1, Level 1 and rise by one per level, with World 2 starting at 9 to 10.
+- **World progression:** each world opens after clearing the previous world's last level. Wild levels rise by one per level, plus one more at each new world (see the Worlds table).
+- **Combination worlds (9 to 12):** Fire and Water, Electric and Psychic, Earth and Plant, Ghost and Physical, 20 levels each, mixing both elements' monsters. Clearing one gives 2,000 coins, a Perfect Orb and a crest from either element.
+- **Achievements:** a clear achievement for every world (element worlds give that element's Rare scroll and a crest), a Master achievement for collecting each element's 15 monsters, and Shardkin Master for all 120.
 - **World bosses:** 12% chance per level start that one is hiding (only if none is active). It moves to a new space ahead after every roll. It's one of the world's Epics, at least 5 levels above that world's toughest wild monsters and 2 levels above your strongest team monster, with 12 times normal health. You start with 1 fight and earn 1 every 2 hours, up to 5. It leaves after 24 hours. Each fight starts with your team fully healed; you can retreat and keep the damage. Defeating it gives 1,000 coins, a Perfect Orb, a crest for that world and 150 player experience. In simulated fights a full team at the end of World 1 needed about 8 fights.
 
 ## Build Plan
@@ -202,9 +283,9 @@ Starter: Cindercub → Blazefang → Infernox (Fire Epic; Infernox Crest comes f
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.
 3. **Collection and team** — done (prototype): base storage, team selection, leveling and the 2+2 skill unlock.
 4. **Progression** — done (prototype): player level, shop, daily training, Training Yard and Shard Mine, achievements.
-5. **Content:** Worlds 1 and 2 with full rosters, evolution, synthesis and status effects are done (prototype); worlds 3 through 8 are next.
+5. **Content** — done (prototype): all eight element worlds with full rosters, evolution, synthesis and status effects.
 6. **World bosses** — done (prototype).
-7. **Combination worlds.**
+7. **Combination worlds** — done (prototype): four to start; more can be added.
 8. **Multiplayer:** co-op, then PvP and base raids.
 
 Progress will save on the device between sessions.

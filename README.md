@@ -5,15 +5,14 @@ A turn-based monster-collecting RPG, built to be fully playable with a screen re
 **Play it:** https://christopherabel3000-creator.github.io/shardkin-eight-realms/
 
 ## Current state
-A prototype covering Worlds 1 (Plant) and 2 (Water):
+A playable single-player campaign:
 
-- **Camp menu:** Levels, Team and base, Shop, Synthesis, Buildings, Training, Achievements, Saved game.
-- **Ten levels** on 36-space dice boards with wild battles, healing springs, thorn traps, portals, treasure chests, a wandering merchant and quiet paths, plus a look-ahead and Loaded Dice.
-- **Level bosses** and a **reward wheel**.
-- **Roaming world bosses** that hide on the board, carry damage over between fights, and leave after 24 hours.
+- **Twelve worlds:** the eight element worlds (Plant, Water, Fire, Earth, Electric, Psychic, Ghost, Physical) plus four combination worlds, 165 levels in all.
+- **120 monsters**, 15 per element, with evolutions and crest-unlocked final forms.
+- **Dice-board levels** with wild battles, healing springs, thorn traps, portals, treasure chests, a wandering merchant and quiet paths, plus a look-ahead and Loaded Dice.
+- **Level bosses**, a **reward wheel**, and **roaming world bosses** that carry damage over between fights.
 - **Battles** with element strengths, sleep, stun and poison, free switching, capturing and team-wide experience.
-- **30 monsters** (15 Plant, 15 Water) with evolutions and crest-unlocked final forms.
-- **Player levels**, a **shop**, **synthesis**, **daily training**, the **Shard Mine** for passive income, and **achievements**.
+- **Camp:** player levels, a shop, synthesis, daily training, the Shard Mine for passive income, and achievements.
 - **Automatic saving** in your browser, and optional sound effects.
 
 ## Accessibility
