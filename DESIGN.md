@@ -169,7 +169,7 @@ Starter: Cindercub → Blazefang → Infernox (Fire Epic; Infernox Crest comes f
 - **Coins:** 4 per wild monster level after a battle win; 30 + 20 × level number for a level clear.
 - **Shop:** Potion 40, Capture Orb 60, Loaded Die 120, Perfect Orb 1,500, Epic Plant scroll 2,500, Legendary Plant scroll 6,000.
 - **Synthesis scrolls:** Rare Plant (two Common or Uncommon Plant monsters; from the World 1 achievement), Epic Plant (two Rare Plant), Legendary Plant (two Epic Plant plus one Rare Plant). The result's level matches the highest ingredient.
-- **Training Yard:** costs 150 coins. One base monster trains at a time and gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 150 player experience.
+- **Training Yard:** costs 150 coins. One monster, from the team or the base, trains at a time and can keep battling while it trains. It gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 150 player experience.
 - **Shard Mine:** costs 300, then 600 and 1,200 to upgrade. Earns 15, 30 or 50 coins per hour and holds up to 12 hours of earnings.
 - **Reward wheel:** 2 Potions, 3 Capture Orbs, 150 coins, 30 experience per team monster, or a Perfect Orb. Replays of Level 5 add a chance at a random Plant crest.
 

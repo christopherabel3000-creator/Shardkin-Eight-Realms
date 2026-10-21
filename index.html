@@ -806,7 +806,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   function tabTeam() {
     let tm = `<h3 class="muted" style="margin:0 0 8px;font-size:1rem">Your team (${S.team.length} of 4)</h3><div class="actions">`;
     teamMons().forEach((m, i) => {
-      tm += `<div class="row"><p class="nm">${i === 0 ? "Lead: " : ""}${m.name}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>`;
+      tm += `<div class="row"><p class="nm">${i === 0 ? "Lead: " : ""}${m.name}${inTraining(m.uid) ? " (training)" : ""}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>`;
       const b = [];
       if (i > 0) b.push(btn("makefirst", m.uid, `Make ${m.name} the lead`));
       if (S.team.length > 1) b.push(btn("remove", m.uid, `Send ${m.name} to base`));
@@ -823,7 +823,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       for (const m of base) {
         tm += `<div class="row"><p class="nm">${m.name}${inTraining(m.uid) ? " (training)" : ""}</p><p class="muted">${monLine(m)}${nextForm(m)}</p>`;
         const b = [];
-        if (inTraining(m.uid)) {} else if (S.team.length < 4) b.push(btn("add", m.uid, `Add ${m.name} to team`));
+        if (S.team.length < 4) b.push(btn("add", m.uid, `Add ${m.name} to team`));
         else tm += `<p class="muted">Team is full.</p>`;
         b.push(...crestBtns(m));
         if (b.length) tm += `<div class="actions">${b.join("")}</div>`;
@@ -872,7 +872,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
   }
   function tabBuild() {
     let s = `<div class="actions">`;
-    s += `<div class="row"><p class="nm">Training Yard</p><p class="muted">Train one monster from your base at a time for a full level's worth of experience.</p>`;
+    s += `<div class="row"><p class="nm">Training Yard</p><p class="muted">Train one monster at a time, from your team or base, for a full level's worth of experience. It can still battle while training.</p>`;
     if (S.yard) s += `<p>Built. Open the Training tab to use it.</p>`;
     else s += S.coins >= YARD.cost ? btn("buildyard", "", `Build for ${YARD.cost} coins`, "", true) : `<p class="muted">Costs ${YARD.cost} coins. You have ${S.coins}.</p>`;
     s += `</div>`;
@@ -901,9 +901,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       s += st.done ? btn("trainclaim", "", `Finish training`, `${m.name} gains ${xpNeed(m.level)} experience`, true) : btn("refresh", "", "Check again", "Updates the time left");
       s += `</div>`;
     } else {
-      const base = Object.values(S.mons).filter(m => !S.team.includes(m.uid));
-      if (!base.length) s += `<p class="muted">Only monsters in your base can train. Send one from your team to base first.</p>`;
-      for (const m of base) s += btn("train", m.uid, `Train ${m.name}`, `Level ${m.level} · Will gain ${xpNeed(m.level)} experience`);
+      for (const m of [...teamMons(), ...Object.values(S.mons).filter(m => !S.team.includes(m.uid))]) s += btn("train", m.uid, `Train ${m.name}`, `${S.team.includes(m.uid) ? "On your team" : "In your base"} · Level ${m.level} · Will gain ${xpNeed(m.level)} experience`);
     }
     return s + `</div>`;
   }
@@ -1051,7 +1049,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       case "level": if (S.team.length) msgs = startLevel(Number(arg)); break;
       case "makefirst": S.team = [arg, ...S.team.filter(id => id !== arg)]; msgs = [`${S.mons[arg].name} will lead your team.`]; break;
       case "remove": if (S.team.length > 1) { S.team = S.team.filter(id => id !== arg); msgs = [`${S.mons[arg].name} was sent to your base. Your team has ${S.team.length} of 4.`]; } break;
-      case "add": if (S.team.length < 4 && !S.team.includes(arg) && !inTraining(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
+      case "add": if (S.team.length < 4 && !S.team.includes(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
       case "crest": { const m = S.mons[arg], c = crestName(m.id); if (m.stage === 1 && S.items.crests[c] > 0) { S.items.crests[c]--; msgs = [`You used the ${c}.`]; evolve(m, msgs); m.hp = m.maxHp; } break; }
       case "buy": { const it = SHOP.find(x => x.id === arg); if (it && S.coins >= it.price) { S.coins -= it.price; S.items[arg]++; sfx("coin"); msgs = [`You bought a ${it.name} for ${it.price} coins. You have ${S.items[arg]} now and ${S.coins} coins left.`]; } break; }
       case "buyscroll": { const r = RECIPES[arg]; if (r && S.coins >= r.price && !S.items.scrolls.includes(arg)) { S.coins -= r.price; S.items.scrolls.push(arg); sfx("coin"); msgs = [`You bought the ${r.name}. Find it under Synthesis.`]; } break; }
@@ -1064,7 +1062,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       case "collect": { const p = minePending(); S.coins += p; S.mine.last = now(); if (p) sfx("coin"); msgs = [p ? `You collected ${p} coins. You have ${S.coins} coins.` : "No coins ready yet. Check back later."]; break; }
       case "refresh": msgs = ["Updated."]; break;
       case "mode": if (!S.training.session) { S.training.mode = S.training.mode === "time" ? "xp" : "time"; msgs = [`Training mode is now ${S.training.mode === "time" ? "time-based" : "experience-based"}.`]; } break;
-      case "train": if (!S.training.session && !S.team.includes(arg)) { S.training.session = { uid: arg, start: now(), pxpAt: S.pxpLife }; msgs = [`${S.mons[arg].name} started training. ${trainingStatus().text}`]; } break;
+      case "train": if (!S.training.session && S.mons[arg]) { S.training.session = { uid: arg, start: now(), pxpAt: S.pxpLife }; msgs = [`${S.mons[arg].name} started training. ${trainingStatus().text}`]; } break;
       case "trainclaim": { const s = S.training.session, st = trainingStatus(); if (s && st.done) { const m = S.mons[s.uid], amt = xpNeed(m.level); msgs = [`${m.name} finished training and gained ${amt} experience.`]; S.training.session = null; S.stats.trained++; levelCheck(m, amt, msgs); givePxp(15, msgs); } break; }
       case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
       case "resetyes": newGame(); msgs = [S.result]; break;
