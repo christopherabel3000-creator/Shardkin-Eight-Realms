@@ -137,6 +137,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       <li>Fainted monsters stay out for the rest of the level. If your whole team faints, the level fails, but you keep your captures and experience.</li>
       <li>Switching is free in battle. Skills, items and capture attempts use your turn. A failed capture gives the wild monster a free action.</li>
       <li>Capture chance for a Common is 1 minus its current health divided by its maximum. Uncommons are three quarters of that, Rares half.</li>
+      <li>Every defeat or capture gives experience to your whole team, even monsters that didn't fight.</li>
       <li>Progress saves automatically in this browser on this device.</li>
     </ul>
   </details>
@@ -414,10 +415,14 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     const e = foe(), p = you();
     if (e && p.hp > 0) attack(e, p, aiSkill(e, p), false, msgs);
   }
-  function giveXp(amount, msgs) {
-    const p = you();
+  // Every monster on the team gets the experience, including ones that didn't fight or have fainted.
+  function teamXp(amount, msgs) {
+    const team = teamMons();
+    msgs.push(team.length > 1 ? `Each monster on your team gained ${amount} experience.` : `${team[0].name} gained ${amount} experience.`);
+    for (const m of team) levelCheck(m, amount, msgs);
+  }
+  function levelCheck(p, amount, msgs) {
     p.xp += amount;
-    msgs.push(`${p.name} gained ${amount} experience.`);
     while (p.xp >= xpNeed(p.level)) {
       p.xp -= xpNeed(p.level);
       const oldMax = p.maxHp;
@@ -434,7 +439,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     if (cur) {
       cur.done = true;
       msgs.push(`${B.boss ? "Boss" : "Wild"} ${cur.name} fainted.`); sfx("faint");
-      if (you().hp > 0) giveXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss ? 2 : 1)), msgs);
+      teamXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss ? 2 : 1)), msgs);
     }
     const next = foe();
     if (!next) { endBattle("win", msgs); return; }
@@ -490,7 +495,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
         e.caught = true;
         addMon(makeMon(e.id, e.level), false);
         msgs.push(`You threw a ${orbName}. Success! You captured wild ${e.name}. It was sent to your base.`); sfx("catch");
-        giveXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs);
+        teamXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs);
         const next = foe();
         if (!next) endBattle("win", msgs);
         else msgs.push(`Wild ${next.name} steps forward, a ${next.rarity} ${next.el} monster at level ${next.level}.`);
@@ -519,11 +524,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
     { w: 25, label: "2 Potions", give: () => { S.items.potion += 2; } },
     { w: 25, label: "3 Capture Orbs", give: () => { S.items.orb += 3; } },
     { w: 25, label: "150 coins", give: () => { S.coins += 150; } },
-    { w: 20, label: "30 experience for each team monster", give: msgs => {
-        const keep = S.battle ? S.battle.active : null;
-        for (const id of S.team) { S.battle = { active: id }; giveXp(30, msgs); }
-        S.battle = keep ? { active: keep } : null;
-      } },
+    { w: 20, label: "30 experience for each team monster", give: msgs => { teamXp(30, msgs); } },
     { w: 5, label: "a Perfect Orb", give: () => { S.items.perfect += 1; } }
   ];
   function spin() {

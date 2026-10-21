@@ -40,7 +40,7 @@ Each element has 15 monsters, 120 in total.
 - The randomness is deliberate: it encourages collecting every monster and replaying old levels.
 
 ### Leveling
-Monsters gain experience from battles and daily training. Monster levels are separate from the player level.
+Monsters gain experience from battles and daily training. Every defeated or captured monster gives experience to the whole team, including monsters that didn't fight or have fainted. Monster levels are separate from the player level.
 
 ## Elements
 Strong means dealing extra damage (1.5x); weak means taking extra damage. A skill hitting an element that is strong against it deals reduced damage (about 0.67x). A skill matching its user's element gets a small bonus.
