@@ -360,6 +360,12 @@ All sound is synthesized in the browser, with no audio files.
 - **Stereo:** your attacks lean right and your opponent's lean left, for headphone listeners.
 - Loudness is balanced per element. Settings has a sound test for every element, the hit results and the left/right placement.
 
+## Save Codes
+- The game saves automatically in the browser, which is tied to one device.
+- **Copy save code** (Settings) turns the whole game into text starting with `SHARDKIN1.` and tries to copy it to the clipboard; the code is also shown in a box so it can be selected and copied by hand.
+- **Load a save code** accepts a pasted code, ignoring spaces and line breaks, shows what the code contains (Shardbinder level, monsters, coins, furthest world) and asks for confirmation before replacing the current game. Older save formats are upgraded on load.
+- The replaced game is kept as a backup, and **Go back to my game from before the last import** swaps them back.
+
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.

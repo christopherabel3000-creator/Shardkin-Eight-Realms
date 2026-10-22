@@ -17,7 +17,7 @@ A playable single-player campaign:
 - **Auto-play** for cleared levels, with speed, repeat, potion and catching settings.
 - **Shardborn variants**, rare crystal versions of every monster, plus elemental shards, the **Shard Forge**, shard storms and the story of the Heartcrystal.
 - **Element-themed attack sounds** that change with each skill's power and name, plus a sound test in Settings.
-- **Automatic saving** in your browser.
+- **Automatic saving** in your browser, plus **save codes** in Settings to back up your game or move it to another device.
 
 ## Accessibility
 Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; each area opens on its own with a Back to main menu button. Every screen section has a heading (for example What happened, Level board, Look ahead, Opponent, Skills, Switch monster), and all actions are buttons. After each action, focus moves to "What happened" so the results of the turn are read aloud right away.

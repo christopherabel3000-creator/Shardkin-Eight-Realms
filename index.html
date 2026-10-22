@@ -110,6 +110,9 @@ ol.log { color: var(--muted); font-size: 0.95rem; }
 details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
 summary { cursor: pointer; font-weight: 700; }
 details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
+label.field { display: block; font-weight: 700; }
+textarea { width: 100%; max-width: 100%; min-height: 7rem; font: inherit; font-size: 0.85rem; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px; padding: 10px; word-break: break-all; }
+textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
 </style>
 </head>
@@ -156,7 +159,7 @@ details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
       <li>Cleared levels can be auto-played. The die rolls itself and skills are picked for you, choosing the strongest matchup. Settings let you change the speed, repeat the level, use Potions and catch monsters you don't have yet.</li>
       <li>About 1 in 500 wild monsters is Shardborn, a crystal variant with 10% stronger stats. A chime marks one when it appears. Shard storms on the board make them ten times more likely for the rest of the level.</li>
       <li>Wild monsters, bosses, chests, storms, expeditions, the Arena and the Shard Mine drop elemental shards. Spend them at the Shard Forge on items and eggs, or to infuse monsters of the same element.</li>
-      <li>Progress saves automatically in this browser on this device.</li>
+      <li>Progress saves automatically in this browser on this device. Use Copy save code and Load a save code in Settings to back up your game or move it to another device.</li>
     </ul>
   </details>
 </div>
@@ -481,14 +484,45 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function load() {
     try {
       const t = localStorage.getItem(SAVE_KEY);
-      if (!t) return null;
-      const d = JSON.parse(t);
-      if (!d || !d.mons) return null;
-      if (d.v === 1) migrate1(d);
-      if (d.v === 2) migrate2(d);
-      return d.v === 3 ? d : null;
+      return t ? upgradeSave(JSON.parse(t)) : null;
     } catch (e) { return null; }
   }
+  // Brings any older save up to the current format, or returns null if it isn't a save.
+  function upgradeSave(d) {
+    if (!d || typeof d !== "object" || !d.mons || !d.items) return null;
+    if (d.v === 1) migrate1(d);
+    if (d.v === 2) migrate2(d);
+    return d.v === 3 ? d : null;
+  }
+
+  // ---------- Save codes ----------
+  // A save code is the whole game as text: SHARDKIN1. followed by base64 of the saved JSON.
+  // Spaces and line breaks are ignored when pasting, so codes survive Notes and email.
+  const BACKUP_KEY = "shardkin-before-import";
+  let exportCode = "", pendingImport = null;
+  function encodeSave() {
+    const bytes = new TextEncoder().encode(JSON.stringify(S));
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    return "SHARDKIN1." + btoa(bin);
+  }
+  function decodeSave(text) {
+    try {
+      const m = String(text || "").replace(/\s+/g, "").match(/SHARDKIN1\.([A-Za-z0-9+/=]+)/);
+      if (!m) return null;
+      const bin = atob(m[1]);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return upgradeSave(JSON.parse(new TextDecoder().decode(bytes)));
+    } catch (e) { return null; }
+  }
+  function saveSummary(d) {
+    const mons = Object.keys(d.mons).length, lvl = d.player ? d.player.level : 1;
+    let far = 1;
+    for (let w = WORLDS.length; w >= 1; w--) if (d.prog && d.prog[w] && (d.prog[w].cleared.length || w === 1)) { far = w; break; }
+    return `Shardbinder level ${lvl}, ${mons} monster${mons === 1 ? "" : "s"}, ${d.coins} coins, furthest world ${far}`;
+  }
+  function hasBackup() { try { return !!localStorage.getItem(BACKUP_KEY); } catch (e) { return false; } }
   function migrate1(d) {
     d.v = 2;
     for (const id in d.mons) { const m = d.mons[id]; m.stage = 0; if (SP[m.id].forms.length > 1 && m.level >= EVOLVE_LEVEL) { m.stage = 1; m.name = SP[m.id].forms[1]; } calc(m); m.hp = Math.min(m.hp, m.maxHp); }
@@ -1611,7 +1645,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (id === "quests") { ensureQuests(); const ready = [...S.quests.daily, ...S.quests.weekly].filter(q => !q.claimed && questProgress(q) >= q.n).length; return ready ? `${ready} reward${ready === 1 ? "" : "s"} ready to claim` : "No rewards ready yet"; }
     if (id === "build") { const p = minePending(); return p > 0 ? `${p} coins ready at the Shard Mine` : ""; }
     if (id === "ach") return `${S.ach.length} of ${ACH.length} earned`;
-    if (id === "save") return "Sound test and saved game";
+    if (id === "save") return "Sound test, save codes and backups";
     if (id === "forge") return `${shardCount()} elemental shards`;
     if (id === "story") return "The tale of the Heartcrystal";
     return "";
@@ -1903,7 +1937,19 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     sv += btn("sndtest", "strong", "Strong hit", "The chime for a strong matchup") + btn("sndtest", "weak", "Weak hit", "The thud for a weak matchup");
     sv += btn("sndtest", "miss", "Missed attack", "A whoosh that hits nothing") + btn("sndtest", "sides", "Left and right", "Your attack, then your opponent's");
     sv += `</div></div>` + sub3("Saved game", true);
-    sv += `<p class="muted">Progress saves automatically in this browser on this device.</p>`;
+    sv += `<div class="actions"><p class="muted">Progress saves automatically, but only in this browser on this device. To keep a backup or move your game to another device, copy your save code and keep it somewhere safe, like Notes or an email to yourself. On the other device, paste it into Load a save code.</p>`;
+    sv += btn("copysave", "", "Copy save code", `Your current game: ${saveSummary(S)}`, true);
+    if (exportCode) sv += `<label class="field" for="exportbox">Your save code</label><textarea id="exportbox" readonly>${exportCode}</textarea>`;
+    sv += `</div>` + sub3("Load a save code", true) + `<div class="actions">`;
+    if (S.confirm === "import" && pendingImport) {
+      sv += `<p>This save code holds a game at ${saveSummary(pendingImport)}. Loading it replaces your current game at ${saveSummary(S)}. Your current game is kept as a backup you can go back to.</p>`;
+      sv += `<div class="pair">${btn("importyes", "", "Yes, load this save")}${btn("cancel", "", "Keep my game", "", true)}</div>`;
+    } else {
+      sv += `<label class="field" for="importbox">Paste a save code</label><textarea id="importbox" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>`;
+      sv += btn("importcheck", "", "Load this save code", "You'll be asked to confirm before anything changes");
+    }
+    if (hasBackup()) sv += btn("undoimport", "", "Go back to my game from before the last import", "Swaps the backup with your current game");
+    sv += `</div>` + sub3("Start over", true);
     if (S.confirm === "reset") sv += `<div class="actions" style="margin-top:10px"><p>Start over? This erases your monsters, items and progress.</p><div class="pair">${btn("resetyes", "", "Yes, erase and start over")}${btn("cancel", "", "Keep my game", "", true)}</div></div>`;
     else sv += `<div class="actions" style="margin-top:10px">${btn("reset", "", "Start over", "Erase this saved game")}</div>`;
     return sv;
@@ -2129,7 +2175,56 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       case "wbfight": if (S.wboss && S.wfights.count > 0 && S.screen === "camp") msgs = wbBattle(false); break;
       case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
       case "resetyes": newGame(); msgs = [S.result]; break;
-      case "cancel": S.confirm = null; msgs = ["Okay, nothing changed."]; break;
+      case "cancel": S.confirm = null; pendingImport = null; msgs = ["Okay, nothing changed."]; break;
+      case "copysave": {
+        exportCode = encodeSave();
+        msgs = [`Your save code is ready in the Your save code box below. It's ${exportCode.length.toLocaleString()} characters long.`];
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(exportCode).then(() => {
+              const r = document.getElementById("result");
+              r.textContent = "Your save code was copied. Paste it into Notes or an email to keep it safe. It's also shown in the Your save code box below."; r.focus();
+            }, () => {});
+          }
+        } catch (e) { /* the code is still shown in the box */ }
+        msgs.push("If it wasn't copied automatically, select all the text in that box and copy it.");
+        break;
+      }
+      case "importcheck": {
+        const box = document.getElementById("importbox"), text = box ? box.value : "";
+        if (!String(text).trim()) { msgs = ["Paste a save code into the Paste a save code box first."]; break; }
+        const d = decodeSave(text);
+        if (!d) { msgs = ["That doesn't look like a complete Shardkin save code. Make sure you copied the whole code, which starts with SHARDKIN1 and a period."]; break; }
+        pendingImport = d; S.confirm = "import";
+        msgs = [`Found a save: ${saveSummary(d)}. Choose Yes, load this save, or Keep my game.`];
+        break;
+      }
+      case "importyes": {
+        if (!pendingImport) break;
+        try { localStorage.setItem(BACKUP_KEY, JSON.stringify(Object.assign({}, S, { confirm: null }))); } catch (e) { /* backup is best-effort */ }
+        clearTimeout(autoTimer); autoTimer = null;
+        S = pendingImport; pendingImport = null; exportCode = "";
+        ensureExtras();
+        S.auto = null; S.confirm = null;
+        if (S.screen === "camp") S.campTab = "save";
+        msgs = [`Save loaded: ${saveSummary(S)}. Your previous game is kept as a backup in Settings.`];
+        updateAutobar();
+        break;
+      }
+      case "undoimport": {
+        let b = null;
+        try { b = upgradeSave(JSON.parse(localStorage.getItem(BACKUP_KEY))); } catch (e) { b = null; }
+        if (!b) { msgs = ["There's no backup to go back to."]; break; }
+        try { localStorage.setItem(BACKUP_KEY, JSON.stringify(Object.assign({}, S, { confirm: null }))); } catch (e) { /* best-effort */ }
+        clearTimeout(autoTimer); autoTimer = null;
+        S = b; exportCode = "";
+        ensureExtras();
+        S.auto = null; S.confirm = null;
+        if (S.screen === "camp") S.campTab = "save";
+        msgs = [`Back to your earlier game: ${saveSummary(S)}. The game you just left is now the backup, so you can switch again.`];
+        updateAutobar();
+        break;
+      }
       // Board
       case "roll": msgs = roll(); break;
       case "die": S.dieChoose = true; msgs = ["Choose a roll from 1 to 6. Each choice says where you'd land."]; break;
