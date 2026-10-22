@@ -2,7 +2,7 @@
 
 A turn-based monster-collecting RPG, built to be fully playable with a screen reader (VoiceOver on iPhone, or any screen reader on a computer).
 
-**Play it:** https://christopherabel3000-creator.github.io/shardkin-eight-realms/
+**Play it:** https://christopherabel3000-creator.github.io/Shardkin-Eight-Realms/
 
 ## Current state
 A playable single-player campaign:
