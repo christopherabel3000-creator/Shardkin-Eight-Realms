@@ -366,6 +366,41 @@ All sound is synthesized in the browser, with no audio files.
 - **Load a save code** accepts a pasted code, ignoring spaces and line breaks, shows what the code contains (Shardbinder level, monsters, coins, furthest world) and asks for confirmation before replacing the current game. Older save formats are upgraded on load.
 - The replaced game is kept as a backup, and **Go back to my game from before the last import** swaps them back.
 
+## Balance Pass 1 (after first playtest)
+Playtest findings: coins piled up (78,000+ with nothing worth buying), the team outgrew each world by 30 levels through auto-play replays, rewards in World 3 were the same items as World 1, and world bosses fell in about 2 fights.
+
+### Outgrown levels
+- Experience is judged per monster against the monster it defeated or caught: full up to 3 levels above it, then 10% less per extra level, never below 10%. Messages note "(outgrown)".
+- Battle coins, level-clear coins, chest coins and the wheel's coin prize use the team's highest level against the level's monsters.
+- Low-level monsters carried through a level still earn full experience. Auto-play and catching are unchanged.
+- On the playtest save, 10 replays of World 3, Level 10 went from 12,950 coins and 3 to 6 levels per monster to 893 coins and almost no levels.
+
+### Coins
+- Wild battle coins halved (2 per wild monster level instead of 4).
+- Upgrades to spend on: Training Yard level 2 (2,000, trains two levels' worth per session) and level 3 (6,000, three levels' worth in 2 hours); Shard Mine levels 4 and 5 (4,000 and 10,000; 80 and 120 coins per hour); Expedition Dock expansion to 5 slots (4,000); warmer incubators (3,000, eggs in 4 hours) and a third incubator (6,000).
+- **Crest Exchange** in the Shop: trade a crest for a random different crest of the same element for 2,000 coins.
+- Loaded Die now 150 coins and Prism Shard 3,000.
+
+### Item tiers
+| Item | Unlocks | Shop price | Effect |
+|---|---|---|---|
+| Potion | World 1 | 40 | Heals half of one monster |
+| Super Potion | World 3 | 180 | Fully heals one monster and clears its status |
+| Revive Shard | World 4 | 600 | Revives a fainted team monster at half health, on the board or in battle |
+| Team Tonic | World 6 | 900 | Heals every standing team monster by half |
+| Binding Shard | World 1 | 60 | Capture item |
+| Greater Binding Shard | World 3 | 250 | 1.5 times a Binding Shard's chance |
+| Grand Binding Shard | World 5 | 700 | 2.25 times a Binding Shard's chance |
+| Fury Shard | World 2 | 300 | 50% more damage for the rest of one battle |
+| Ward Shard | World 2 | 300 | A third less damage taken for the rest of one battle |
+
+- Chests, the reward wheel, the wandering merchant and the Shard Forge offer the higher tiers as worlds open (Forge: Super Potion 6, Greater Binding Shard 8, Fury or Ward 10, Revive 15 shards).
+- Auto-play uses Super Potions when Potions run out, and the best capture item available.
+
+### World bosses and crests
+- World bosses have 16 times normal health and are at least 3 levels above your strongest monster, aiming for about 5 fights.
+- When you hold a crest that fits a monster you own, the Team and base menu button, the welcome message and the crest's own message say so.
+
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.

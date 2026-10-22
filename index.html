@@ -159,6 +159,7 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
       <li>Cleared levels can be auto-played. The die rolls itself and skills are picked for you, choosing the strongest matchup. Settings let you change the speed, repeat the level, use Potions and catch monsters you don't have yet.</li>
       <li>About 1 in 500 wild monsters is Shardborn, a crystal variant with 10% stronger stats. A chime marks one when it appears. Shard storms on the board make them ten times more likely for the rest of the level.</li>
       <li>Wild monsters, bosses, chests, storms, expeditions, the Arena and the Shard Mine drop elemental shards. Spend them at the Shard Forge on items and eggs, or to infuse monsters of the same element.</li>
+      <li>Rewards shrink once a monster has outgrown a level: full rewards up to 3 levels above its monsters, then less for each extra level. New worlds unlock better items, like Super Potions, Revive Shards and Greater Binding Shards.</li>
       <li>Progress saves automatically in this browser on this device. Use Copy save code and Load a save code in Settings to back up your game or move it to another device.</li>
     </ul>
   </details>
@@ -458,12 +459,39 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function pNeed(L) { return 60 * L; }
   const UNLOCK_TEXT = { 2: "The Shop and Quests are now open at camp.", 3: "You can now build the Training Yard.", 4: "You can now build the Shard Mine for passive income.",
     5: "You can now build the Expedition Dock.", 6: "You can now build the Hatchery.", 7: "The Arena is now open at camp." };
+  // ---------- Item tiers ----------
+  // Better items unlock as new worlds open; w is the world that must be open.
+  const ITEM_INFO = {
+    potion: { name: "Potion", plural: "Potions", w: 1 },
+    superpotion: { name: "Super Potion", plural: "Super Potions", w: 3 },
+    revive: { name: "Revive Shard", plural: "Revive Shards", w: 4 },
+    tonic: { name: "Team Tonic", plural: "Team Tonics", w: 6 },
+    orb: { name: "Binding Shard", plural: "Binding Shards", w: 1 },
+    gorb: { name: "Greater Binding Shard", plural: "Greater Binding Shards", w: 3 },
+    grorb: { name: "Grand Binding Shard", plural: "Grand Binding Shards", w: 5 },
+    perfect: { name: "Prism Shard", plural: "Prism Shards", w: 1 },
+    fury: { name: "Fury Shard", plural: "Fury Shards", w: 2 },
+    ward: { name: "Ward Shard", plural: "Ward Shards", w: 2 },
+    die: { name: "Loaded Die", plural: "Loaded Dice", w: 1 }
+  };
+  function itemOpen(id) { return !ITEM_INFO[id] || worldOpen(ITEM_INFO[id].w); }
+  function iname(id, n) { return n === 1 ? ITEM_INFO[id].name : ITEM_INFO[id].plural; }
+  function icount(id, n) { return n === 1 ? an(ITEM_INFO[id].name) : `${n} ${ITEM_INFO[id].plural}`; }
+  const BIND_MULT = { orb: 1, gorb: 1.5, grorb: 2.25 };
   const SHOP = [
-    { id: "potion", name: "Potion", price: 40, desc: "Heals half of a monster's health" },
-    { id: "orb", name: "Binding Shard", price: 60, desc: "Regular capture item" },
-    { id: "die", name: "Loaded Die", price: 120, desc: "Choose your roll on the board" },
-    { id: "perfect", name: "Prism Shard", price: 1500, desc: "100% capture chance" }
+    { id: "potion", price: 40, desc: "Heals half of a monster's health" },
+    { id: "superpotion", price: 180, desc: "Fully heals one monster and clears its status" },
+    { id: "revive", price: 600, desc: "Brings a fainted team monster back with half its health, even mid-level" },
+    { id: "tonic", price: 900, desc: "Heals half the health of every standing monster on your team" },
+    { id: "orb", price: 60, desc: "Capture item" },
+    { id: "gorb", price: 250, desc: "Capture item with 1.5 times a Binding Shard's chance" },
+    { id: "grorb", price: 700, desc: "Capture item with 2.25 times a Binding Shard's chance" },
+    { id: "fury", price: 300, desc: "Your monsters deal 50% more damage for the rest of one battle" },
+    { id: "ward", price: 300, desc: "Your monsters take a third less damage for the rest of one battle" },
+    { id: "die", price: 150, desc: "Choose your roll on the board" },
+    { id: "perfect", price: 3000, desc: "100% capture chance" }
   ];
+  SHOP.forEach(it => { it.name = ITEM_INFO[it.id].name; });
   const RECIPES = {};
   for (const el of ELEMENTS) {
     RECIPES[el + "Rare"] = { el, name: `Scroll of Synthesis: Rare ${el}`, desc: `Combine two Common or Uncommon ${el} monsters into a random Rare ${el} monster.`, slots: [["Common", "Uncommon"], ["Common", "Uncommon"]], result: "Rare", price: 0 };
@@ -471,11 +499,16 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const leg = SP[POOLS[el].Legendary[0]].forms[0];
     RECIPES[el + "Legendary"] = { el, name: `Scroll of Synthesis: Legendary ${el}`, desc: `Combine two Epic ${el} monsters and one Rare ${el} monster into ${leg}, the Legendary ${el} monster.`, slots: [["Epic"], ["Epic"], ["Rare"]], result: "Legendary", price: 6000 };
   }
-  const YARD = { unlock: 3, cost: 150 };
-  const MINE = { unlock: 4, cost: [300, 600, 1200], rate: [0, 15, 30, 50], capHours: 12 };
+  const YARD = { unlock: 3, cost: 150, up: [0, 0, 2000, 6000] };
+  const MINE = { unlock: 4, cost: [300, 600, 1200, 4000, 10000], rate: [0, 15, 30, 50, 80, 120], capHours: 12, max: 5 };
+  const CREST_SWAP = 2000;
+  // Training Yard level 1 trains one level per session, level 2 two levels, level 3 three levels in 2 hours.
+  function yardLvl() { return S.yard ? (S.yardLvl || 1) : 0; }
+  function trainHours() { return yardLvl() >= 3 ? 2 : TRAIN.hours; }
+  function trainAmount(m) { let a = 0; for (let i = 0; i < Math.max(1, yardLvl()); i++) a += xpNeed(m.level + i); return a; }
   const TRAIN = { hours: 3, pxp: 150 };
   const HOUR = 3600000;
-  const WB = { chance: 0.12, hpMult: 12, levelBonus: 5, levelOverTeam: 2, maxFights: 5, fightEvery: 2 * HOUR, lifetime: 24 * HOUR };
+  const WB = { chance: 0.12, hpMult: 16, levelBonus: 5, levelOverTeam: 3, maxFights: 5, fightEvery: 2 * HOUR, lifetime: 24 * HOUR };
 
   // ---------- Save ----------
   const SAVE_KEY = "shardkin-save-v1";
@@ -584,7 +617,15 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
 
   // ---------- Achievements ----------
   function addCrest(c) { S.items.crests[c] = (S.items.crests[c] || 0) + 1; }
-  function giveCrest(el, msgs) { const c = crestName(pickFrom(crestSpecies(el))); addCrest(c); msgs.push(`You received the ${c}.`); }
+  function giveCrest(el, msgs) { const c = crestName(pickFrom(crestSpecies(el))); addCrest(c); msgs.push(`You received the ${c}.`); const f = crestFits(c); if (f) msgs.push(f); }
+  // Says which of your monsters a crest fits, if any.
+  function crestFits(c) {
+    const ready = Object.values(S.mons).filter(m => m.stage === 1 && SP[m.id].forms.length === 3 && crestName(m.id) === c);
+    if (ready.length) return `You can use it on ${ready[0].name} right now in Team and base.`;
+    const later = Object.values(S.mons).find(m => m.stage === 0 && SP[m.id].forms.length === 3 && crestName(m.id) === c);
+    return later ? `It fits ${later.name} once it evolves at level ${EVOLVE_LEVEL}.` : "";
+  }
+  function readyCrests() { return Object.values(S.mons).filter(m => m.stage === 1 && SP[m.id].forms.length === 3 && (S.items.crests[crestName(m.id)] || 0) > 0); }
   const ACH = [
     { id: "catch1", name: "First Catch", desc: "Capture your first monster.", test: () => S.stats.caught >= 1, reward: "3 Binding Shards", give: () => { S.items.orb += 3; } },
     { id: "clear1", name: "First Steps", desc: "Clear Level 1.", test: () => prog(1).cleared.includes(1), reward: "2 Potions", give: () => { S.items.potion += 2; } },
@@ -908,12 +949,21 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   }
   // Every standing monster on the team gets the experience, even ones that didn't fight.
   // everyone = true (reward wheel, world boss) includes fainted monsters too.
-  function teamXp(amount, msgs, everyone) {
+  // Rewards shrink once a monster has outgrown a level: full up to 3 levels above its monsters,
+  // then 10% less for each extra level, never below 10%. Each monster is judged on its own level.
+  function outgrowMult(myLevel, foeLevel) { const d = myLevel - foeLevel; return d <= 3 ? 1 : Math.max(0.1, 1 - 0.1 * (d - 3)); }
+  function teamTop() { return Math.max(1, ...teamMons().map(m => m.level)); }
+  function levelRef() { return S.level ? wildRange(S.level.w, S.level.n)[1] : 1; }
+  function teamXp(amount, msgs, everyone, foeLevel) {
     const team = teamMons().filter(m => everyone || m.hp > 0);
     if (!team.length || amount <= 0) return;
+    const parts = team.map(m => { const k = foeLevel ? outgrowMult(m.level, foeLevel) : 1; return [m, Math.max(1, Math.round(amount * k)), k < 1]; });
     const who = everyone ? "Each monster on your team" : "Each standing monster on your team";
-    msgs.push(team.length > 1 ? `${who} gained ${amount} experience.` : `${team[0].name} gained ${amount} experience.`);
-    for (const m of team) levelCheck(m, amount, msgs);
+    if (parts.every(x => x[1] === parts[0][1] && x[2] === parts[0][2])) {
+      const note = parts[0][2] ? " (reduced: outgrown this level)" : "";
+      msgs.push(team.length > 1 ? `${who} gained ${parts[0][1]} experience${note}.` : `${team[0].name} gained ${parts[0][1]} experience${note}.`);
+    } else msgs.push("Experience: " + parts.map(([m, a, cut]) => `${m.name} ${a}${cut ? " (outgrown)" : ""}`).join(", ") + ".");
+    for (const [m, a] of parts) levelCheck(m, a, msgs);
   }
 
   // ---------- Activity counters (quests read these) ----------
@@ -928,6 +978,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     S.items.shards = S.items.shards || {};
     S.shardDex = S.shardDex || [];
     if (S.forge === undefined) S.forge = false;
+    for (const id of Object.keys(ITEM_INFO)) if (typeof S.items[id] !== "number") S.items[id] = 0;
+    if (S.yard && !S.yardLvl) S.yardLvl = 1;
   }
   // ---------- Shards ----------
   const SHARDBORN = { chance: 1 / 500, stormMult: 10, hatch: 1 / 250, synth: 1 / 100 };
@@ -942,6 +994,11 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   const FORGE = { unlock: 3, cost: 250 };
   const FORGE_ITEMS = [
     { id: "potion", name: "a Potion", cost: 2, desc: "Heals half of a monster's health" },
+    { id: "superpotion", name: "a Super Potion", cost: 6, desc: "Fully heals one monster" },
+    { id: "gorb", name: "a Greater Binding Shard", cost: 8, desc: "Capture item, 1.5 times the chance" },
+    { id: "fury", name: "a Fury Shard", cost: 10, desc: "50% more damage for one battle" },
+    { id: "ward", name: "a Ward Shard", cost: 10, desc: "A third less damage taken for one battle" },
+    { id: "revive", name: "a Revive Shard", cost: 15, desc: "Revives a fainted team monster" },
     { id: "orb", name: "a Binding Shard", cost: 3, desc: "Capture item" },
     { id: "die", name: "a Loaded Die", cost: 8, desc: "Choose your roll on the board" },
     { id: "egg", name: "an egg", cost: 25, desc: "An egg of this element, ready for the Hatchery" },
@@ -958,7 +1015,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function eggCount() { return Object.values(S.items.eggs).reduce((a, b) => a + b, 0); }
 
   // ---------- Expeditions ----------
-  const DOCK = { unlock: 5, cost: 400, slots: 3, hours: [1, 4, 8] };
+  const DOCK = { unlock: 5, cost: 400, slots: 3, bigSlots: 5, upgrade: 4000, hours: [1, 4, 8] };
+  function dockSlots() { return S.exped && S.exped.big ? DOCK.bigSlots : DOCK.slots; }
   const RARITY_COIN = { Common: 1, Uncommon: 1.2, Rare: 1.5, Epic: 2, Legendary: 2.5 };
   function onExped(uid) { return !!(S.exped && S.exped.list.some(x => x.uid === uid)); }
   function expLeft(x) { return x.start + x.hours * HOUR - now(); }
@@ -984,9 +1042,10 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   }
 
   // ---------- Hatchery ----------
-  const HATCHERY = { unlock: 6, cost: 500, upgrade: 1000, hours: 6 };
+  const HATCHERY = { unlock: 6, cost: 500, upgrade: 1000, hours: 6, fastHours: 4, fastCost: 3000, slot3: 6000 };
+  function hatchHours() { return S.hatch && S.hatch.fast ? HATCHERY.fastHours : HATCHERY.hours; }
   const HATCH_WEIGHT = [["Common", 50], ["Uncommon", 35], ["Rare", 12], ["Epic", 2.5], ["Legendary", 0.5]];
-  function hatchLeft(x) { return x.start + HATCHERY.hours * HOUR - now(); }
+  function hatchLeft(x) { return x.start + hatchHours() * HOUR - now(); }
   function hatchEgg(i) {
     const x = S.hatch.incub[i];
     S.hatch.incub.splice(i, 1);
@@ -1170,10 +1229,21 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       L.used[p] = true;
       sfx("chest");
       bump("chests");
-      const prize = pickWeighted([["coins", 40], ["potion", 22], ["orb", 20], ["shards", 15], ["die", 7], ["egg", 4]]);
+      const w = L.w;
+      let prize = pickWeighted([["coins", 30], ["potion", 22], ["orb", 20], ["shards", 15], ["die", 5], ["egg", 4], ["boost", w >= 2 ? 6 : 0], ["revive", w >= 4 ? 4 : 0]]);
+      // Later worlds hold better tiers of the same kinds of items.
+      const tier = (opts) => { for (const [id, chance] of opts) if (itemOpen(id) && Math.random() < chance) return id; return null; };
+      let found = null;
+      if (prize === "potion") found = tier([["tonic", w >= 6 ? 0.3 : 0], ["superpotion", w >= 3 ? 0.6 : 0], ["potion", 1]]);
+      if (prize === "orb") found = tier([["grorb", w >= 5 ? 0.4 : 0], ["gorb", w >= 3 ? 0.6 : 0], ["orb", 1]]);
+      if (prize === "boost") found = pickFrom(["fury", "ward"]);
+      if (prize === "revive") found = "revive";
+      if (found && found !== "orb" && found !== "potion") { S.items[found]++; msgs.push(`You open the chest and find ${icount(found, 1)}!`); prize = "done"; }
+      else if (found === "potion") prize = "potion";
+      else if (found === "orb") prize = "orb";
       if (prize === "shards") addShards(worldEl(L.w), rand(2, 4), msgs, "You open the chest and find");
       if (prize === "egg") addEgg(worldEl(L.w), msgs, "You open the chest and find");
-      if (prize === "coins") { const c = rand(20, 40) * L.w; S.coins += c; msgs.push(`You open the chest and find ${c} coins.`); }
+      if (prize === "coins") { const c = Math.max(1, Math.round(rand(20, 40) * L.w * outgrowMult(teamTop(), levelRef()))); S.coins += c; msgs.push(`You open the chest and find ${c} coins.`); }
       else if (prize === "potion") { S.items.potion++; msgs.push("You open the chest and find a Potion."); }
       else if (prize === "orb") { const c = rand(1, 2); S.items.orb += c; msgs.push(`You open the chest and find ${c} Binding Shard${c > 1 ? "s" : ""}.`); }
       else if (prize === "die") { S.items.die++; msgs.push("You open the chest and find a Loaded Die!"); }
@@ -1321,7 +1391,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const m = mult(sk.el, def.el);
     const stab = sk.el === att.el ? 1.2 : 1;
     const base = ((2 * att.level / 5 + 2) * sk.power * att.atk / def.def) / 50 + 2;
-    const dmg = Math.max(1, Math.round(base * stab * m * (0.85 + Math.random() * 0.15)));
+    let dmg = Math.max(1, Math.round(base * stab * m * (0.85 + Math.random() * 0.15)));
+    if (isYou && S.battle.fury) dmg = Math.round(dmg * 1.5);
+    if (!isYou && S.battle.ward) dmg = Math.max(1, Math.round(dmg * 0.67));
     def.hp = Math.max(0, def.hp - dmg);
     let t = `${who} used ${sk.name} on ${target} for ${dmg} damage.`;
     if (m > 1) t += " It's strong against it.";
@@ -1365,7 +1437,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       cur.done = true;
       if (B.wboss) { wbVictory(msgs); return; }
       msgs.push(`${foeWord()} ${cur.name} fainted.`); sfx("faint");
-      teamXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss && !B.arena ? 2 : 1)), msgs);
+      teamXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss && !B.arena ? 2 : 1)), msgs, false, cur.level);
       if (!B.boss && Math.random() < 0.5) addShards(cur.el, SHARD_DROP[cur.rarity] * (cur.shard ? 3 : 1), msgs, "It left behind");
     }
     const next = foe();
@@ -1391,7 +1463,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         const { w, n } = S.level, P = prog(w), first = !P.cleared.includes(n);
         if (first) P.cleared.push(n);
         P.unlocked = Math.max(P.unlocked, Math.min(world(w).levels, n + 1));
-        const coins = 30 + 20 * n + 40 * (w - 1);
+        const coins = Math.max(1, Math.round((30 + 20 * n + 40 * (w - 1)) * outgrowMult(teamTop(), levelRef() + 2)));
         S.coins += coins;
         addShards(worldEl(w), 3 + w, msgs, "The boss shattered into");
         let t = `You defeated the level boss! World ${w}, Level ${n} complete.`;
@@ -1403,16 +1475,17 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         if (Math.random() < 0.08) addEgg(worldEl(w), msgs, "The boss dropped");
         msgs.push("Spin the reward wheel.");
       } else {
-        const coins = B.enemies.reduce((s, e) => s + e.level * 4, 0);
+        const k = outgrowMult(teamTop(), Math.max(...B.enemies.map(e => e.level)));
+        const coins = Math.max(1, Math.round(B.enemies.reduce((s, e) => s + e.level * 2, 0) * k));
         S.coins += coins; sfx("coin");
-        msgs.push(`You won the battle and earned ${coins} coins! Continue on the board when ready.`);
+        msgs.push(`You won the battle and earned ${coins} coins${k < 1 ? " (reduced: your team has outgrown this level)" : ""}! Continue on the board when ready.`);
       }
     } else failLevel(msgs);
   }
   function captureChance(e, kind) {
     if (kind === "perfect") return 1;
     const st = e.status ? STATUS_CAPTURE[e.status.type] : 1;
-    return Math.min(1, (1 - e.hp / e.maxHp) * CAPTURE_MULT[e.rarity] * st);
+    return Math.min(1, (1 - e.hp / e.maxHp) * CAPTURE_MULT[e.rarity] * st * (BIND_MULT[kind] || 1));
   }
   function act(type, arg) {
     const B = S.battle;
@@ -1437,9 +1510,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       else { theirMove(); if (p.hp > 0 && e.hp > 0) yourMove(); }
     } else if (type === "capture") {
       const e = foe();
-      if (B.boss || S.items[arg] <= 0) return null;
+      if (B.boss || !(S.items[arg] > 0) || !(arg in BIND_MULT || arg === "perfect")) return null;
       S.items[arg]--;
-      const orbName = arg === "perfect" ? "Prism Shard" : "Binding Shard";
+      const orbName = iname(arg, 1);
       if (Math.random() < captureChance(e, arg)) {
         e.caught = true;
         const isNew = !S.dex.includes(e.id);
@@ -1447,7 +1520,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         S.stats.caught++; bump("caps"); S.counts.capEl[e.el] = (S.counts.capEl[e.el] || 0) + 1;
         msgs.push(`You threw a ${orbName}. Success! You captured wild ${e.name}${isNew ? ", a new monster for your collection" : ""}. It was sent to your base.`); sfx("catch");
         if (e.shard) { bump("shardcaps"); msgs.push("You caught a Shardborn! Its crystal body makes it stronger than others of its kind."); sfx("shardborn"); }
-        teamXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs);
+        teamXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs, false, e.level);
         givePxp(10, msgs);
         const next = foe();
         if (!next) endBattle("win", msgs);
@@ -1459,36 +1532,74 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     } else if (type === "potion") {
       if (!usePotion(you(), msgs)) return null;
       foeTurn(msgs);
+    } else if (type === "use") {
+      const [id, target] = String(arg).split(":");
+      if (!useItem(id, target, msgs, true)) return null;
+      foeTurn(msgs);
     }
     if (you().hp > 0 && foe() && foe().hp > 0) poisonTick(msgs);
     settle(msgs);
     return msgs;
   }
-  function usePotion(m, msgs) {
-    if (S.items.potion <= 0 || m.hp <= 0 || m.hp >= m.maxHp) return false;
-    S.items.potion--;
-    const heal = Math.min(m.maxHp - m.hp, Math.ceil(m.maxHp / 2));
-    m.hp += heal; sfx("heal");
-    msgs.push(`You used a Potion. ${m.name} recovered ${heal} health and now has ${m.hp} of ${m.maxHp}.`);
-    return true;
+  function usePotion(m, msgs) { return useItem("potion", m.uid, msgs, false); }
+  // Healing, reviving and battle boosts. Returns false (and changes nothing) if the item can't be used.
+  function useItem(id, target, msgs, inBattle) {
+    if (!(S.items[id] > 0) || !itemOpen(id)) return false;
+    if (id === "potion" || id === "superpotion") {
+      const m = S.mons[target];
+      if (!m || m.hp <= 0 || (m.hp >= m.maxHp && !(id === "superpotion" && m.status))) return false;
+      const heal = id === "superpotion" ? m.maxHp - m.hp : Math.min(m.maxHp - m.hp, Math.ceil(m.maxHp / 2));
+      m.hp += heal; if (id === "superpotion") m.status = null;
+      S.items[id]--; sfx("heal");
+      msgs.push(`You used ${an(iname(id, 1))}. ${m.name} recovered ${heal} health and now has ${m.hp} of ${m.maxHp}.`);
+      return true;
+    }
+    if (id === "revive") {
+      const m = S.mons[target];
+      if (!m || !S.team.includes(target) || m.hp > 0) return false;
+      m.hp = Math.ceil(m.maxHp / 2); m.status = null;
+      S.items.revive--; sfx("heal");
+      msgs.push(`You used a Revive Shard. ${m.name} is back on its feet with ${m.hp} of ${m.maxHp} health.`);
+      return true;
+    }
+    if (id === "tonic") {
+      const hurt = teamMons().filter(m => m.hp > 0 && m.hp < m.maxHp);
+      if (!hurt.length) return false;
+      for (const m of hurt) m.hp = Math.min(m.maxHp, m.hp + Math.ceil(m.maxHp / 2));
+      S.items.tonic--; sfx("heal");
+      msgs.push(`You used a Team Tonic. ${hurt.map(m => `${m.name} now has ${m.hp} of ${m.maxHp}`).join(", ")}.`);
+      return true;
+    }
+    if (id === "fury" || id === "ward") {
+      if (!inBattle || !S.battle || S.battle[id]) return false;
+      S.items[id]--; S.battle[id] = true; sfx("status");
+      msgs.push(id === "fury" ? "You crushed a Fury Shard. Your monsters deal 50% more damage for the rest of this battle." : "You crushed a Ward Shard. Your monsters take a third less damage for the rest of this battle.");
+      return true;
+    }
+    return false;
   }
 
   // ---------- Reward wheel ----------
   function prizes() {
+    const L = S.level, w = L.w, k = outgrowMult(teamTop(), levelRef());
+    const coins = Math.max(1, Math.round(150 * w * k));
+    const heal = itemOpen("tonic") && w >= 6 ? ["tonic", 1] : itemOpen("superpotion") && w >= 3 ? ["superpotion", 2] : ["potion", 2];
+    const bind = itemOpen("grorb") && w >= 5 ? ["grorb", 2] : itemOpen("gorb") && w >= 3 ? ["gorb", 3] : ["orb", 3];
     const list = [
-      { w: 25, label: "2 Potions", give: () => { S.items.potion += 2; } },
-      { w: 25, label: "3 Binding Shards", give: () => { S.items.orb += 3; } },
-      { w: 25, label: `${150 * S.level.w} coins`, give: () => { S.coins += 150 * S.level.w; } },
-      { w: 20, label: "a quarter of a level's experience for each team monster", give: msgs => {
-          // Scales with each monster's own level: 25% of what it needs for its next level.
-          const parts = teamMons().map(m => { const amt = Math.ceil(xpNeed(m.level) / 4); return [m, amt]; });
+      { w: 22, label: icount(heal[0], heal[1]), give: () => { S.items[heal[0]] += heal[1]; } },
+      { w: 22, label: icount(bind[0], bind[1]), give: () => { S.items[bind[0]] += bind[1]; } },
+      { w: 22, label: `${coins} coins${k < 1 ? " (reduced: outgrown)" : ""}`, give: () => { S.coins += coins; } },
+      { w: 18, label: "a quarter of a level's experience for each team monster", give: msgs => {
+          // 25% of what each monster needs for its next level, reduced if it has outgrown this level.
+          const parts = teamMons().map(m => [m, Math.max(1, Math.ceil(xpNeed(m.level) / 4 * outgrowMult(m.level, levelRef())))]);
           msgs.push(parts.map(([m, amt]) => `${m.name} gained ${amt} experience`).join(", ") + ".");
           for (const [m, amt] of parts) levelCheck(m, amt, msgs);
         } },
-      { w: 5, label: "a Prism Shard", give: () => { S.items.perfect += 1; } }
-    ];
+      { w: w >= 2 ? 8 : 0, label: "a Fury Shard and a Ward Shard", give: () => { S.items.fury++; S.items.ward++; } },
+      { w: w >= 4 ? 6 : 0, label: "a Revive Shard", give: () => { S.items.revive++; } },
+      { w: 3, label: "a Prism Shard", give: () => { S.items.perfect += 1; } }
+    ].filter(x => x.w > 0);
     // Replaying the last level of a completed world adds a chance at a final-form crest.
-    const L = S.level;
     if (L.n === world(L.w).levels && L.replay) list.push({ w: 8, label: `a random ${world(L.w).name} final-form crest`, give: msgs => giveCrest(worldEl(L.w), msgs) });
     return list;
   }
@@ -1557,7 +1668,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const s = S.training.session;
     if (!s) return null;
     if (S.training.mode === "time") {
-      const left = s.start + TRAIN.hours * HOUR - now();
+      const left = s.start + trainHours() * HOUR - now();
       return { done: left <= 0, text: left <= 0 ? "Training is complete." : `${dur(left)} left.` };
     }
     const left = s.pxpAt + TRAIN.pxp - S.pxpLife;
@@ -1600,7 +1711,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function itemsLine() {
     const pl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
     const crests = Object.entries(S.items.crests).filter(([, n]) => n > 0).map(([c, n]) => pl(n, c, c + "s"));
-    return [pl(S.coins, "coin", "coins"), pl(S.items.orb, "Binding Shard", "Binding Shards"), pl(S.items.perfect, "Prism Shard", "Prism Shards"), pl(S.items.potion, "Potion", "Potions"), pl(S.items.die, "Loaded Die", "Loaded Dice"), pl(eggCount(), "egg", "eggs"), pl(shardCount(), "elemental shard", "elemental shards"), ...crests].join(" · ");
+    const items = ["potion", "superpotion", "revive", "tonic", "orb", "gorb", "grorb", "perfect", "fury", "ward", "die"]
+      .filter(id => (S.items[id] || 0) > 0 || ["potion", "orb"].includes(id)).map(id => pl(S.items[id] || 0, ITEM_INFO[id].name, ITEM_INFO[id].plural));
+    return [pl(S.coins, "coin", "coins"), ...items, pl(eggCount(), "egg", "eggs"), pl(shardCount(), "elemental shard", "elemental shards"), ...crests].join(" · ");
   }
 
   const TABS = [
@@ -1636,10 +1749,10 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       return notes.join(" · ");
     }
     if (id === "arena") return `Best floor ${S.arena.best}`;
-    if (id === "team") return `${S.team.length} of 4 on your team · ${Object.keys(S.mons).length - S.team.length} in your base`;
+    if (id === "team") { const rc = readyCrests(); return `${S.team.length} of 4 on your team · ${Object.keys(S.mons).length - S.team.length} in your base${rc.length ? ` · Crest ready for ${rc.map(m => m.name).join(", ")}` : ""}`; }
     if (id === "synth") return `${S.items.scrolls.length} scroll${S.items.scrolls.length === 1 ? "" : "s"}`;
     if (id === "train") { const st = trainingStatus(); return !st ? "Nothing training" : st.done ? "Training complete, ready to finish" : `${S.mons[S.training.session.uid].name} is training`; }
-    if (id === "exped") { const back = S.exped.list.filter(x => expLeft(x) <= 0).length; return back ? `${back} back and waiting` : `${S.exped.list.length} of ${DOCK.slots} away`; }
+    if (id === "exped") { const back = S.exped.list.filter(x => expLeft(x) <= 0).length; return back ? `${back} back and waiting` : `${S.exped.list.length} of ${dockSlots()} away`; }
     if (id === "hatch") { const ready = S.hatch.incub.filter(x => hatchLeft(x) <= 0).length; return ready ? `${ready} egg${ready === 1 ? "" : "s"} ready to hatch` : `${S.hatch.incub.length} of ${S.hatch.slots} incubating · ${eggCount()} eggs waiting`; }
     if (id === "shop") return `${S.coins} coins`;
     if (id === "quests") { ensureQuests(); const ready = [...S.quests.daily, ...S.quests.weekly].filter(q => !q.claimed && questProgress(q) >= q.n).length; return ready ? `${ready} reward${ready === 1 ? "" : "s"} ready to claim` : "No rewards ready yet"; }
@@ -1749,16 +1862,27 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const c = crestName(m.id);
     return (S.items.crests[c] || 0) > 0 ? [btn("crest", m.uid, `Use the ${c} on ${m.name}`, `Evolves it into ${SP[m.id].forms[2]}`, true)] : [];
   }
-  function shopButtons(ids) {
+  function shopButtons(ids, showLocked) {
     let s = "";
     for (const it of SHOP.filter(x => !ids || ids.includes(x.id))) {
-      const have = S.items[it.id];
+      const have = S.items[it.id] || 0;
+      if (!itemOpen(it.id)) { if (showLocked) s += `<p class="muted">${it.name}: in stock once you reach World ${ITEM_INFO[it.id].w}. ${it.desc}.</p>`; continue; }
       s += S.coins >= it.price ? btn("buy", it.id, `Buy ${it.name} for ${it.price} coins`, `${it.desc} · You have ${have}`) : `<p class="muted">${it.name}: ${it.price} coins. ${it.desc}. You have ${have}. Not enough coins.</p>`;
     }
     return s;
   }
   function tabShop() {
-    let s = `<div class="actions"><p>You have ${S.coins} coins.</p>` + shopButtons();
+    let s = `<div class="actions"><p>You have ${S.coins} coins.</p>` + shopButtons(null, true);
+    const held = Object.entries(S.items.crests).filter(([, n]) => n > 0);
+    if (held.length) {
+      s += sub3("Crest Exchange", true) + `<p class="muted">Trade a crest for a random different crest of the same element, for ${CREST_SWAP} coins each.</p>`;
+      for (const [c, n] of held) {
+        const id = Object.keys(SP).find(x => SP[x].forms.length === 3 && crestName(x) === c);
+        const owned = Object.values(S.mons).some(m => m.id === id);
+        s += S.coins >= CREST_SWAP ? btn("crestx", c, `Exchange the ${c} for another ${SP[id].el} crest`, `You have ${n}${owned ? ` · You own a ${SP[id].forms[0]} line monster that can use it` : ""}`) : `<p class="muted">${c}: you have ${n}. Exchanging costs ${CREST_SWAP} coins.</p>`;
+      }
+      s += sub3("Scrolls", true);
+    }
     for (const [rid, r] of Object.entries(RECIPES)) {
       if (!r.price || S.items.scrolls.includes(rid)) continue;
       if (!worldOpen(elementWorld(r.el))) continue;
@@ -1789,7 +1913,11 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function tabBuild() {
     let s = `<div class="actions">`;
     s += `<div class="row"><p class="nm">Training Yard</p><p class="muted">Train one monster at a time, from your team or base, for a full level's worth of experience. It can still battle while training.</p>`;
-    if (S.yard) s += `<p>Built. Open the Training tab to use it.</p>`;
+    if (S.yard) {
+      const yl = yardLvl();
+      s += `<p>Level ${yl}: each session trains ${yl} level${yl === 1 ? "" : "s"}' worth of experience in ${trainHours()} hours.</p>`;
+      if (yl < 3) s += S.coins >= YARD.up[yl + 1] ? btn("upyard", "", `Upgrade to level ${yl + 1} for ${YARD.up[yl + 1]} coins`, yl + 1 === 2 ? "Sessions train two levels' worth" : "Sessions train three levels' worth and take 2 hours") : `<p class="muted">Upgrade to level ${yl + 1}: ${YARD.up[yl + 1]} coins. You have ${S.coins}.</p>`;
+    }
     else s += S.coins >= YARD.cost ? btn("buildyard", "", `Build for ${YARD.cost} coins`, "", true) : `<p class="muted">Costs ${YARD.cost} coins. You have ${S.coins}.</p>`;
     s += `</div><div class="row"><p class="nm">Shard Mine</p><p class="muted">Earns coins and some elemental shards over time, even while you're away. Holds up to ${MINE.capHours} hours of earnings.</p>`;
     if (S.player.level < MINE.unlock) s += `<p class="muted">Unlocks at Shardbinder level ${MINE.unlock}.</p>`;
@@ -1799,37 +1927,44 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       s += `<p>Level ${lv}. Earns ${MINE.rate[lv]} coins per hour. ${pend} coins ready to collect.</p>`;
       s += btn("collect", "", `Collect ${pend} coins`, "", true);
       if (mineShardsPending()) s += `<p>${mineShardsPending()} elemental shard${mineShardsPending() === 1 ? "" : "s"} also waiting.</p>`;
-      if (lv < 3) s += S.coins >= MINE.cost[lv] ? btn("upmine", "", `Upgrade to level ${lv + 1} for ${MINE.cost[lv]} coins`, `Earns ${MINE.rate[lv + 1]} coins per hour`) : `<p class="muted">Upgrade to level ${lv + 1}: ${MINE.cost[lv]} coins.</p>`;
+      if (lv < MINE.max) s += S.coins >= MINE.cost[lv] ? btn("upmine", "", `Upgrade to level ${lv + 1} for ${MINE.cost[lv]} coins`, `Earns ${MINE.rate[lv + 1]} coins per hour`) : `<p class="muted">Upgrade to level ${lv + 1}: ${MINE.cost[lv]} coins.</p>`;
       s += btn("refresh", "", "Check again", "Updates coins ready to collect");
     }
     s += `</div><div class="row"><p class="nm">Shard Forge</p><p class="muted">Turns elemental shards into items and eggs, and infuses monsters to make them stronger.</p>`;
     if (S.player.level < FORGE.unlock) s += `<p class="muted">Unlocks at Shardbinder level ${FORGE.unlock}.</p>`;
     else if (!S.forge) s += S.coins >= FORGE.cost ? btn("buildforge", "", `Build for ${FORGE.cost} coins`, "", true) : `<p class="muted">Costs ${FORGE.cost} coins. You have ${S.coins}.</p>`;
     else s += `<p>Built. Open the Shard Forge from the main menu.</p>`;
-    s += `</div><div class="row"><p class="nm">Expedition Dock</p><p class="muted">Send up to ${DOCK.slots} base monsters on 1, 4 or 8 hour expeditions for coins, items, experience and sometimes eggs.</p>`;
+    s += `</div><div class="row"><p class="nm">Expedition Dock</p><p class="muted">Send up to ${dockSlots()} base monsters on 1, 4 or 8 hour expeditions for coins, items, experience and sometimes eggs.</p>`;
     if (S.player.level < DOCK.unlock) s += `<p class="muted">Unlocks at Shardbinder level ${DOCK.unlock}.</p>`;
     else if (!S.exped) s += S.coins >= DOCK.cost ? btn("builddock", "", `Build for ${DOCK.cost} coins`, "", true) : `<p class="muted">Costs ${DOCK.cost} coins. You have ${S.coins}.</p>`;
-    else s += `<p>Built. Open the Expeditions tab to use it.</p>`;
-    s += `</div><div class="row"><p class="nm">Hatchery</p><p class="muted">Incubates eggs for ${HATCHERY.hours} hours until they hatch into a random monster of their element.</p>`;
+    else {
+      s += `<p>Built with ${dockSlots()} expedition slots. Open the Expeditions tab to use it.</p>`;
+      if (!S.exped.big) s += S.coins >= DOCK.upgrade ? btn("updock", "", `Expand to ${DOCK.bigSlots} slots for ${DOCK.upgrade} coins`) : `<p class="muted">Expanding to ${DOCK.bigSlots} slots costs ${DOCK.upgrade} coins.</p>`;
+    }
+    s += `</div><div class="row"><p class="nm">Hatchery</p><p class="muted">Incubates eggs for ${hatchHours()} hours until they hatch into a random monster of their element.</p>`;
     if (S.player.level < HATCHERY.unlock) s += `<p class="muted">Unlocks at Shardbinder level ${HATCHERY.unlock}.</p>`;
     else if (!S.hatch) s += S.coins >= HATCHERY.cost ? btn("buildhatch", "", `Build for ${HATCHERY.cost} coins`, "One incubator", true) : `<p class="muted">Costs ${HATCHERY.cost} coins. You have ${S.coins}.</p>`;
     else if (S.hatch.slots < 2) s += S.coins >= HATCHERY.upgrade ? btn("uphatch", "", `Add a second incubator for ${HATCHERY.upgrade} coins`) : `<p class="muted">Built with 1 incubator. A second costs ${HATCHERY.upgrade} coins.</p>`;
-    else s += `<p>Built with 2 incubators. Open the Hatchery tab to use it.</p>`;
+    else {
+      s += `<p>Built with ${S.hatch.slots} incubators. Eggs take ${hatchHours()} hours. Open the Hatchery tab to use it.</p>`;
+      if (!S.hatch.fast) s += S.coins >= HATCHERY.fastCost ? btn("fasthatch", "", `Warm the incubators for ${HATCHERY.fastCost} coins`, `Eggs hatch in ${HATCHERY.fastHours} hours instead of ${HATCHERY.hours}`) : `<p class="muted">Warmer incubators (eggs hatch in ${HATCHERY.fastHours} hours): ${HATCHERY.fastCost} coins.</p>`;
+      if (S.hatch.slots < 3) s += S.coins >= HATCHERY.slot3 ? btn("hatch3", "", `Add a third incubator for ${HATCHERY.slot3} coins`) : `<p class="muted">A third incubator costs ${HATCHERY.slot3} coins.</p>`;
+    }
     return s + `</div></div>`;
   }
   function tabTrain() {
     const T = S.training, st = trainingStatus();
     let s = `<div class="actions">`;
-    s += `<p>Training mode: ${T.mode === "time" ? `time-based, ${TRAIN.hours} hours of real time` : `experience-based, finishes after you earn ${TRAIN.pxp} Shardbinder experience`}.</p>`;
+    s += `<p>Training mode: ${T.mode === "time" ? `time-based, ${trainHours()} hours of real time` : `experience-based, finishes after you earn ${TRAIN.pxp} Shardbinder experience`}.</p>`;
     if (!T.session) s += btn("mode", "", `Switch to ${T.mode === "time" ? "experience-based" : "time-based"} training`, T.mode === "time" ? "Good for long play sessions" : "Good for a few minutes a day");
     else s += `<p class="muted">You can change modes once this session is finished.</p>`;
     if (T.session) {
       const m = S.mons[T.session.uid];
       s += `<div class="row"><p class="nm">${m.name} is training</p><p>${st.text}</p>`;
-      s += st.done ? btn("trainclaim", "", `Finish training`, `${m.name} gains ${xpNeed(m.level)} experience`, true) : btn("refresh", "", "Check again", "Updates the time left");
+      s += st.done ? btn("trainclaim", "", `Finish training`, `${m.name} gains ${trainAmount(m)} experience`, true) : btn("refresh", "", "Check again", "Updates the time left");
       s += `</div>`;
     } else {
-      for (const m of [...teamMons(), ...Object.values(S.mons).filter(m => !S.team.includes(m.uid) && !onExped(m.uid))]) s += btn("train", m.uid, `Train ${m.name}`, `${S.team.includes(m.uid) ? "On your team" : "In your base"} · Level ${m.level} · Will gain ${xpNeed(m.level)} experience`);
+      for (const m of [...teamMons(), ...Object.values(S.mons).filter(m => !S.team.includes(m.uid) && !onExped(m.uid))]) s += btn("train", m.uid, `Train ${m.name}`, `${S.team.includes(m.uid) ? "On your team" : "In your base"} · Level ${m.level} · Will gain ${trainAmount(m)} experience`);
     }
     return s + `</div>`;
   }
@@ -1856,8 +1991,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   }
   function tabExped() {
     const E = S.exped;
-    let s = `<div class="actions"><p class="muted">Send monsters from your base on expeditions. While away they can't battle, train or be used in synthesis. Up to ${DOCK.slots} at a time.</p>`;
-    s += sub3(`Away now (${E.list.length} of ${DOCK.slots})`);
+    let s = `<div class="actions"><p class="muted">Send monsters from your base on expeditions. While away they can't battle, train or be used in synthesis. Up to ${dockSlots()} at a time.</p>`;
+    s += sub3(`Away now (${E.list.length} of ${dockSlots()})`);
     if (!E.list.length) s += `<p class="muted">No one is away.</p>`;
     let pending = false;
     E.list.forEach((x, i) => {
@@ -1866,7 +2001,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       s += `<div class="row"><p class="nm">${m.name}</p><p class="muted">${x.hours}-hour expedition · ${left <= 0 ? "Back now" : dur(left) + " left"}</p>${left <= 0 ? btn("expcollect", i, `Welcome ${m.name} back`, "Collect what it found", true) : ""}</div>`;
     });
     if (pending) s += btn("refresh", "", "Check again", "Updates the time left");
-    if (E.list.length < DOCK.slots) {
+    if (E.list.length < dockSlots()) {
       s += sub3("Send a monster", true) + `<div class="pair">`;
       for (const h of DOCK.hours) s += btn("expdur", h, `${h} hour${h > 1 ? "s" : ""}${S.expDur === h ? " (chosen)" : ""}`, h === 8 ? "Chance of an egg" : "", S.expDur === h, S.expDur === h);
       s += `</div>`;
@@ -1878,7 +2013,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   }
   function tabHatch() {
     const H = S.hatch;
-    let s = `<div class="actions"><p class="muted">Eggs hatch after ${HATCHERY.hours} hours into a random monster of their element, usually Common or Uncommon, sometimes rarer. Find eggs in treasure chests, from level bosses and world bosses, on 8-hour expeditions, in Arena milestones and from weekly quests.</p>`;
+    let s = `<div class="actions"><p class="muted">Eggs hatch after ${hatchHours()} hours into a random monster of their element, usually Common or Uncommon, sometimes rarer. Find eggs in treasure chests, from level bosses and world bosses, on 8-hour expeditions, in Arena milestones and from weekly quests.</p>`;
     s += sub3(`Incubators (${H.incub.length} of ${H.slots} in use)`);
     let pending = false;
     H.incub.forEach((x, i) => {
@@ -1905,7 +2040,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     s += `</div>`;
     const el = S.forgeEl, n = S.items.shards[el] || 0;
     s += sub3(`Forge with ${el} Shards (you have ${n})`, true);
-    for (const r of FORGE_ITEMS) s += n >= r.cost ? btn("forge", r.id, `Forge ${r.name} from ${r.cost} ${el} Shards`, r.desc) : `<p class="muted">${cap(r.name)}: ${r.cost} ${el} Shards. ${r.desc}.</p>`;
+    for (const r of FORGE_ITEMS.filter(r => itemOpen(r.id))) s += n >= r.cost ? btn("forge", r.id, `Forge ${r.name} from ${r.cost} ${el} Shards`, r.desc) : `<p class="muted">${cap(r.name)}: ${r.cost} ${el} Shards. ${r.desc}.</p>`;
     s += sub3(`Infuse ${el} monsters`, true);
     const mons = Object.values(S.mons).filter(m => m.el === el);
     if (!mons.length) s += `<p class="muted">You don't have any ${el} monsters.</p>`;
@@ -1985,7 +2120,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       <p class="stat">Space ${L.pos + 1} of ${BOARD_SIZE}. The boss is ${BOARD_SIZE - 1 - L.pos} spaces away.</p>
       ${L.storm ? `<p>A shard storm is raging. Shardborn are ten times more likely for the rest of this level.</p>` : ""}
       ${track}${rollBtns}</div>`);
-    if (L.shopOpen && !autoOn()) h += sec("h-merchant", "Wandering merchant", `<div class="actions"><p>You have ${S.coins} coins.</p>${shopButtons(["potion", "orb", "die"])}${btn("merchleave", "", "Leave the merchant", "Back to the board", true)}</div>`);
+    if (L.shopOpen && !autoOn()) h += sec("h-merchant", "Wandering merchant", `<div class="actions"><p>You have ${S.coins} coins.</p>${shopButtons(["potion", "superpotion", "revive", "orb", "gorb", "fury", "ward", "die"])}${btn("merchleave", "", "Leave the merchant", "Back to the board", true)}</div>`);
     let ahead = `<ol class="clean">`;
     for (let i = L.pos + 1; i <= Math.min(BOARD_SIZE - 1, L.pos + 6); i++) ahead += `<li>Space ${i + 1}: ${spaceLabel(i)}</li>`;
     h += sec("h-ahead", "Look ahead", ahead + `</ol>`);
@@ -1995,12 +2130,13 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       const b = [];
       if (autoOn()) { tm += `</div>`; continue; }
       if (m.hp > 0 && m.uid !== L.lead) b.push(btn("lead", m.uid, `Make ${m.name} the lead`));
-      if (m.hp > 0 && m.hp < m.maxHp && S.items.potion > 0) b.push(btn("potionboard", m.uid, `Use Potion on ${m.name}`, `${S.items.potion} left`));
+      for (const id of ["potion", "superpotion"]) if (itemOpen(id) && m.hp > 0 && m.hp < m.maxHp && S.items[id] > 0) b.push(btn("useboard", `${id}:${m.uid}`, `Use ${an(iname(id, 1))} on ${m.name}`, `${S.items[id]} left`));
+      if (itemOpen("revive") && m.hp <= 0 && S.items.revive > 0) b.push(btn("useboard", `revive:${m.uid}`, `Use a Revive Shard on ${m.name}`, `${S.items.revive} left · Back with half its health`));
       if (b.length) tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div>`;
       tm += `</div>`;
     }
     h += sec("h-lteam", "Your team", tm + `</div>`);
-    h += sec("h-bag", "Bag", `<p>${itemsLine()}</p>`);
+    h += sec("h-bag", "Bag", `<div class="actions"><p>${itemsLine()}</p>${!autoOn() && itemOpen("tonic") && S.items.tonic > 0 && teamMons().some(m => m.hp > 0 && m.hp < m.maxHp) ? btn("useboard", "tonic", "Use a Team Tonic", `${S.items.tonic} left · Heals every standing team monster by half`) : ""}</div>`);
     if (autoOn()) return h;
     let lv;
     if (S.confirm === "leave") lv = `<div class="actions"><p>Leave the level? It counts as a failed attempt, but you keep captures and experience.</p><div class="pair">${btn("leaveyes", "", "Yes, leave")}${btn("cancel", "", "Keep playing", "", true)}</div></div>`;
@@ -2047,12 +2183,23 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       let it = `<div class="actions">`;
       if (B.boss) it += `<p class="muted">${B.wboss ? "World bosses" : B.arena ? "Rival monsters" : "Level bosses"} can't be captured.</p>`;
       else {
-        const pct = Math.round(captureChance(e, "orb") * 100);
-        it += S.items.orb > 0 ? btn("capture", "orb", "Throw Binding Shard", `${S.items.orb} left · ${pct}% chance on ${e.name}${e.status ? ` (boosted, it's ${STATUS_WORD[e.status.type]})` : ""} · Uses your turn`) : `<p class="muted">No Binding Shards left.</p>`;
-        it += S.items.perfect > 0 ? btn("capture", "perfect", "Throw Prism Shard", `${S.items.perfect} left · 100% chance`) : `<p class="muted">No Prism Shards left.</p>`;
+        let any = false;
+        for (const id of ["orb", "gorb", "grorb"]) {
+          if (!itemOpen(id) || !(S.items[id] > 0)) continue;
+          any = true;
+          const pct = Math.round(captureChance(e, id) * 100);
+          it += btn("capture", id, `Throw ${an(iname(id, 1))}`, `${S.items[id]} left · ${pct}% chance on ${e.name}${e.status ? ` (boosted, it's ${STATUS_WORD[e.status.type]})` : ""} · Uses your turn`);
+        }
+        if (S.items.perfect > 0) { any = true; it += btn("capture", "perfect", "Throw a Prism Shard", `${S.items.perfect} left · 100% chance`); }
+        if (!any) it += `<p class="muted">No capture items left.</p>`;
       }
-      if (S.items.potion > 0 && p.hp < p.maxHp) it += btn("potion", "", `Use Potion on ${p.name}`, `${S.items.potion} left · Heals half of its health · Uses your turn`);
-      else it += `<p class="muted">Potions: ${S.items.potion} left${p.hp >= p.maxHp ? `, and ${p.name} is at full health` : ""}.</p>`;
+      for (const id of ["potion", "superpotion"]) if (itemOpen(id) && S.items[id] > 0 && (p.hp < p.maxHp || (id === "superpotion" && p.status))) it += btn("use", `${id}:${p.uid}`, `Use ${an(iname(id, 1))} on ${p.name}`, `${S.items[id]} left · ${id === "potion" ? "Heals half of its health" : "Fully heals it"} · Uses your turn`);
+      if (itemOpen("tonic") && S.items.tonic > 0 && teamMons().some(m => m.hp > 0 && m.hp < m.maxHp)) it += btn("use", "tonic", "Use a Team Tonic", `${S.items.tonic} left · Heals every standing team monster by half · Uses your turn`);
+      if (itemOpen("revive") && S.items.revive > 0) for (const m of teamMons()) if (m.hp <= 0) it += btn("use", `revive:${m.uid}`, `Use a Revive Shard on ${m.name}`, `${S.items.revive} left · Back with half its health · Uses your turn`);
+      for (const id of ["fury", "ward"]) if (itemOpen(id) && S.items[id] > 0 && !B[id]) it += btn("use", id, `Crush ${an(iname(id, 1))}`, `${S.items[id]} left · ${id === "fury" ? "50% more damage" : "A third less damage taken"} for the rest of this battle · Uses your turn`);
+      const active = ["fury", "ward"].filter(id => B[id]).map(id => iname(id, 1));
+      if (active.length) it += `<p>Active this battle: ${active.join(" and ")}.</p>`;
+      it += `<p class="muted">Healing: ${["potion", "superpotion", "revive", "tonic"].filter(itemOpen).map(id => `${S.items[id] || 0} ${iname(id, S.items[id] || 0)}`).join(", ")}.</p>`;
       if (B.wboss) it += btn("retreat", "", "Retreat", "End this fight now and keep the damage you've dealt");
       h += sec("h-items", B.boss ? "Items" : "Capture and items", it + `</div>`);
     }
@@ -2118,11 +2265,26 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       case "arenanext": if (S.battle && S.battle.over === "arenawin") msgs = arenaFloor(S.battle.floor + 1, false); break;
       case "builddock": if (!S.exped && S.player.level >= DOCK.unlock && S.coins >= DOCK.cost) { S.coins -= DOCK.cost; S.exped = { list: [] }; sfx("coin"); msgs = ["You built the Expedition Dock. Open the Expeditions tab to send monsters out."]; } break;
       case "buildhatch": if (!S.hatch && S.player.level >= HATCHERY.unlock && S.coins >= HATCHERY.cost) { S.coins -= HATCHERY.cost; S.hatch = { slots: 1, incub: [] }; sfx("coin"); msgs = ["You built the Hatchery. Open the Hatchery tab to incubate eggs."]; } break;
+      case "upyard": { const yl = yardLvl(); if (yl >= 1 && yl < 3 && S.coins >= YARD.up[yl + 1]) { S.coins -= YARD.up[yl + 1]; S.yardLvl = yl + 1; sfx("coin"); msgs = [`Training Yard upgraded to level ${yl + 1}. Sessions now train ${yl + 1} levels' worth of experience in ${trainHours()} hours.`]; } break; }
+      case "updock": if (S.exped && !S.exped.big && S.coins >= DOCK.upgrade) { S.coins -= DOCK.upgrade; S.exped.big = true; sfx("coin"); msgs = [`The Expedition Dock now has ${DOCK.bigSlots} slots.`]; } break;
+      case "fasthatch": if (S.hatch && !S.hatch.fast && S.coins >= HATCHERY.fastCost) { S.coins -= HATCHERY.fastCost; S.hatch.fast = true; sfx("coin"); msgs = [`The incubators are warmer. Eggs now hatch in ${HATCHERY.fastHours} hours.`]; } break;
+      case "hatch3": if (S.hatch && S.hatch.slots === 2 && S.coins >= HATCHERY.slot3) { S.coins -= HATCHERY.slot3; S.hatch.slots = 3; sfx("coin"); msgs = ["You added a third incubator."]; } break;
+      case "crestx": {
+        const c = arg, from = Object.keys(SP).find(id => SP[id].forms.length === 3 && crestName(id) === c);
+        if (!from || !(S.items.crests[c] > 0) || S.coins < CREST_SWAP) break;
+        const options = crestSpecies(SP[from].el).filter(id => id !== from);
+        const to = crestName(pickFrom(options));
+        S.coins -= CREST_SWAP; S.items.crests[c]--; addCrest(to); sfx("forge");
+        msgs = [`You exchanged the ${c} for the ${to}.`];
+        const fits = crestFits(to);
+        if (fits) msgs.push(fits);
+        break;
+      }
       case "uphatch": if (S.hatch && S.hatch.slots < 2 && S.coins >= HATCHERY.upgrade) { S.coins -= HATCHERY.upgrade; S.hatch.slots = 2; sfx("coin"); msgs = ["You added a second incubator."]; } break;
       case "expdur": S.expDur = Number(arg); msgs = [`Expedition length set to ${arg} hour${arg === "1" ? "" : "s"}.`]; break;
-      case "expsend": if (S.exped && S.exped.list.length < DOCK.slots && S.mons[arg] && !S.team.includes(arg) && !onExped(arg) && !inTraining(arg)) { S.exped.list.push({ uid: arg, start: now(), hours: S.expDur }); if (S.synth) S.synth.picks = S.synth.picks.filter(x => x !== arg); msgs = [`${S.mons[arg].name} set out on a ${S.expDur}-hour expedition.`]; } break;
+      case "expsend": if (S.exped && S.exped.list.length < dockSlots() && S.mons[arg] && !S.team.includes(arg) && !onExped(arg) && !inTraining(arg)) { S.exped.list.push({ uid: arg, start: now(), hours: S.expDur }); if (S.synth) S.synth.picks = S.synth.picks.filter(x => x !== arg); msgs = [`${S.mons[arg].name} set out on a ${S.expDur}-hour expedition.`]; } break;
       case "expcollect": { const x = S.exped && S.exped.list[Number(arg)]; if (x && expLeft(x) <= 0) msgs = expCollect(Number(arg)); break; }
-      case "incubate": if (S.hatch && S.hatch.incub.length < S.hatch.slots && S.items.eggs[arg] > 0) { S.items.eggs[arg]--; S.hatch.incub.push({ el: arg, start: now() }); msgs = [`You placed a ${arg} egg in an incubator. It hatches in ${HATCHERY.hours} hours.`]; } break;
+      case "incubate": if (S.hatch && S.hatch.incub.length < S.hatch.slots && S.items.eggs[arg] > 0) { S.items.eggs[arg]--; S.hatch.incub.push({ el: arg, start: now() }); msgs = [`You placed a ${arg} egg in an incubator. It hatches in ${hatchHours()} hours.`]; } break;
       case "hatchnow": { const x = S.hatch && S.hatch.incub[Number(arg)]; if (x && hatchLeft(x) <= 0) msgs = hatchEgg(Number(arg)); break; }
       case "sndtest": {
         if (!S.sound) { msgs = ["Sound effects are off. Turn them on with the button at the top of the page."]; break; }
@@ -2159,19 +2321,19 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       case "remove": if (S.team.length > 1) { S.team = S.team.filter(id => id !== arg); msgs = [`${S.mons[arg].name} was sent to your base. Your team has ${S.team.length} of 4.`]; } break;
       case "add": if (S.team.length < 4 && !S.team.includes(arg) && !onExped(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
       case "crest": { const m = S.mons[arg], c = crestName(m.id); if (m.stage === 1 && S.items.crests[c] > 0) { S.items.crests[c]--; msgs = [`You used the ${c}.`]; evolve(m, msgs); m.hp = m.maxHp; } break; }
-      case "buy": { const it = SHOP.find(x => x.id === arg); if (it && S.coins >= it.price) { S.coins -= it.price; S.items[arg]++; sfx("coin"); msgs = [`You bought a ${it.name} for ${it.price} coins. You have ${S.items[arg]} now and ${S.coins} coins left.`]; } break; }
+      case "buy": { const it = SHOP.find(x => x.id === arg); if (it && itemOpen(arg) && S.coins >= it.price) { S.coins -= it.price; S.items[arg]++; sfx("coin"); msgs = [`You bought a ${it.name} for ${it.price} coins. You have ${S.items[arg]} now and ${S.coins} coins left.`]; } break; }
       case "buyscroll": { const r = RECIPES[arg]; if (r && S.coins >= r.price && !S.items.scrolls.includes(arg)) { S.coins -= r.price; S.items.scrolls.push(arg); sfx("coin"); msgs = [`You bought the ${r.name}. Find it under Synthesis.`]; } break; }
       case "scroll": S.synth = S.synth && S.synth.recipe === arg ? null : { recipe: arg, picks: [] }; msgs = [S.synth ? `${RECIPES[arg].name} is open. ${RECIPES[arg].desc} Choose your ingredients.` : "Scroll closed."]; break;
       case "pick": { const R = RECIPES[S.synth.recipe], P = S.synth.picks, m = S.mons[arg]; if (P.includes(arg)) { S.synth.picks = P.filter(x => x !== arg); msgs = [`Removed ${m.name}. ${S.synth.picks.length} selected.`]; } else if (P.length < R.slots.length) { P.push(arg); msgs = [`Selected ${m.name}. ${P.length} of ${R.slots.length} selected.` + (slotsMatch(R, P.map(id => S.mons[id])) ? " Ready to synthesize." : "")]; } else msgs = ["You've already chosen enough ingredients. Unselect one first."]; break; }
       case "synth": msgs = doSynth(); break;
       case "buildyard": if (!S.yard && S.coins >= YARD.cost) { S.coins -= YARD.cost; S.yard = true; sfx("coin"); msgs = ["You built the Training Yard. Open the Training tab to train a monster."]; } break;
       case "buildmine": if (!S.mine && S.coins >= MINE.cost[0]) { S.coins -= MINE.cost[0]; S.mine = { lvl: 1, last: now() }; sfx("coin"); msgs = [`You built the Shard Mine. It earns ${MINE.rate[1]} coins per hour.`]; } break;
-      case "upmine": { const lv = S.mine.lvl; if (lv < 3 && S.coins >= MINE.cost[lv]) { const p = minePending(); S.coins -= MINE.cost[lv]; S.coins += p; const sm = []; collectMineShards(sm); S.mine = { lvl: lv + 1, last: now() }; sfx("coin"); msgs = [`Shard Mine upgraded to level ${lv + 1}. It now earns ${MINE.rate[lv + 1]} coins per hour.` + (p ? ` ${p} waiting coins were collected.` : "")].concat(sm); } break; }
+      case "upmine": { const lv = S.mine.lvl; if (lv < MINE.max && S.coins >= MINE.cost[lv]) { const p = minePending(); S.coins -= MINE.cost[lv]; S.coins += p; const sm = []; collectMineShards(sm); S.mine = { lvl: lv + 1, last: now() }; sfx("coin"); msgs = [`Shard Mine upgraded to level ${lv + 1}. It now earns ${MINE.rate[lv + 1]} coins per hour.` + (p ? ` ${p} waiting coins were collected.` : "")].concat(sm); } break; }
       case "collect": { const p = minePending(); S.coins += p; msgs = [p ? `You collected ${p} coins. You have ${S.coins} coins.` : "No coins ready yet. Check back later."]; collectMineShards(msgs); S.mine.last = now(); if (p) sfx("coin"); break; }
       case "refresh": msgs = (msgs || []).concat(["Updated."]); break;
       case "mode": if (!S.training.session) { S.training.mode = S.training.mode === "time" ? "xp" : "time"; msgs = [`Training mode is now ${S.training.mode === "time" ? "time-based" : "experience-based"}.`]; } break;
       case "train": if (!S.training.session && S.mons[arg]) { S.training.session = { uid: arg, start: now(), pxpAt: S.pxpLife }; msgs = [`${S.mons[arg].name} started training. ${trainingStatus().text}`]; } break;
-      case "trainclaim": { const s = S.training.session, st = trainingStatus(); if (s && st.done) { const m = S.mons[s.uid], amt = xpNeed(m.level); msgs = [`${m.name} finished training and gained ${amt} experience.`]; S.training.session = null; S.stats.trained++; levelCheck(m, amt, msgs); givePxp(15, msgs); } break; }
+      case "trainclaim": { const s = S.training.session, st = trainingStatus(); if (s && st.done) { const m = S.mons[s.uid], amt = trainAmount(m); msgs = [`${m.name} finished training and gained ${amt} experience.`]; S.training.session = null; S.stats.trained++; levelCheck(m, amt, msgs); givePxp(15, msgs); } break; }
       case "wbfight": if (S.wboss && S.wfights.count > 0 && S.screen === "camp") msgs = wbBattle(false); break;
       case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
       case "resetyes": newGame(); msgs = [S.result]; break;
@@ -2235,6 +2397,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       case "wbignore": if (S.level && S.level.encounter) { S.level.encounter = false; msgs = [`You slip past ${S.wboss.name} for now. It will wait at camp for 24 hours. Roll when ready.`]; } break;
       case "lead": S.level.lead = arg; msgs = [`${S.mons[arg].name} is now your lead monster.`]; break;
       case "potionboard": { const m = []; if (usePotion(S.mons[arg], m)) msgs = m; break; }
+      case "useboard": { const [id, t] = String(arg).split(":"); const m = []; if (useItem(id, t, m, false)) msgs = m; break; }
+      case "use": msgs = act("use", arg); break;
       case "leave": S.confirm = "leave"; msgs = ["Leave the level? Choose Yes, leave, or Keep playing."]; break;
       case "leaveyes": msgs = backToCamp("You left the level and returned to camp. Your team is restored."); break;
       case "continue": S.battle = null; S.screen = "level"; fixLead(); msgs = [`Back on the board at space ${S.level.pos + 1} of ${BOARD_SIZE}. ${leadMon().name} leads. Roll when ready.`]; break;
@@ -2296,7 +2460,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       if (L.encounter) return ["wbignore", ""];
       if (L.shopOpen) return ["merchleave", ""];
       const lead = leadMon();
-      if (A.potions && S.items.potion > 0 && lead.hp > 0 && lead.hp < lead.maxHp * 0.3) return ["potionboard", lead.uid];
+      const potB = S.items.potion > 0 ? "potion" : itemOpen("superpotion") && S.items.superpotion > 0 ? "superpotion" : null;
+      if (A.potions && potB && lead.hp > 0 && lead.hp < lead.maxHp * 0.3) return ["useboard", `${potB}:${lead.uid}`];
       return ["roll", ""];
     }
     if (S.screen === "battle") {
@@ -2314,9 +2479,11 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         const better = alive.filter(m => bestMult(m, e) > bestMult(p, e) && m.hp > m.maxHp * 0.4).sort((a, b) => bestMult(b, e) - bestMult(a, e))[0];
         if (better) { B.autoSw = idx; return ["switch", better.uid]; }
       }
-      if (A.potions && S.items.potion > 0 && p.hp < p.maxHp * 0.3) return ["potion", ""];
-      if (A.capture && !B.boss && S.items.orb > 0 && (!S.dex.includes(e.id) || e.shard)) {
-        if (captureChance(e, "orb") >= 0.5 || e.hp <= e.maxHp * 0.35) return ["capture", "orb"];
+      const pot = S.items.potion > 0 ? "potion" : itemOpen("superpotion") && S.items.superpotion > 0 ? "superpotion" : null;
+      if (A.potions && pot && p.hp < p.maxHp * 0.3) return ["use", `${pot}:${p.uid}`];
+      const bindItem = ["orb", "gorb", "grorb"].find(id => itemOpen(id) && S.items[id] > 0);
+      if (A.capture && !B.boss && bindItem && (!S.dex.includes(e.id) || e.shard)) {
+        if (captureChance(e, bindItem) >= 0.5 || e.hp <= e.maxHp * 0.35) return ["capture", bindItem];
         return ["skill", gentleSkill(p, e)];
       }
       return ["skill", autoSkill(p, e)];
@@ -2408,6 +2575,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (S.wboss) extra.push(`World boss ${S.wboss.name} is active with ${S.wfights.count} fight${S.wfights.count === 1 ? "" : "s"} available.`);
     if (S.screen === "camp" && S.mine && minePending() > 0) extra.push(`Your Shard Mine has ${minePending()} coins ready.`);
     if (S.training.session && trainingStatus().done) extra.push("A monster has finished training.");
+    if (readyCrests().length) extra.push(`You have a crest ready to use on ${readyCrests().map(m => m.name).join(", ")}. Find it in Team and base.`);
     if (autoWasOn) extra.push("Auto-play stopped when the game was closed. You can carry on yourself or start it again from camp.");
     if (S.exped && S.exped.list.some(x => expLeft(x) <= 0)) extra.push("A monster is back from an expedition.");
     if (S.hatch && S.hatch.incub.some(x => hatchLeft(x) <= 0)) extra.push("An egg is ready to hatch.");
