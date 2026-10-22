@@ -243,3 +243,66 @@
     }
     B.over = "arenawin";
   }
+
+  // ---------- Base management ----------
+  // Sorting and filtering the base list, and releasing monsters you don't need.
+  // Released monsters stay counted in the collection, which tracks species caught, not monsters kept.
+  const BASE_SORT = { newest: "Newest first", level: "Highest level first", rarity: "Rarest first", element: "By element", name: "By name" };
+  const RARITY_RANK = { Common: 0, Uncommon: 1, Rare: 2, Epic: 3, Legendary: 4 };
+  function baseSort() { return BASE_SORT[S.baseSort] ? S.baseSort : "newest"; }
+  function baseFilter() { return S.baseFilter || "all"; }
+  function BASE_FILTER_NAME(f) { return f === "all" ? "All" : f === "dupes" ? "Duplicates" : f === "shardborn" ? "Shardborn" : f; }
+  function baseMons() { return Object.values(S.mons).filter(m => !S.team.includes(m.uid)); }
+  function uidNum(m) { return Number(String(m.uid).slice(1)) || 0; }
+  function baseMatching(f) {
+    const base = baseMons();
+    if (f === "all") return base;
+    if (f === "shardborn") return base.filter(m => m.shard);
+    if (f === "dupes") {
+      const n = {};
+      for (const m of Object.values(S.mons)) n[m.id] = (n[m.id] || 0) + 1;
+      return base.filter(m => n[m.id] > 1);
+    }
+    return base.filter(m => m.el === f);
+  }
+  // All, then each element you have in your base, then Duplicates and Shardborn when you have any.
+  function baseFilters() {
+    const f = ["all", ...ELEMENTS.filter(el => baseMatching(el).length), ...["dupes", "shardborn"].filter(x => baseMatching(x).length)];
+    if (!f.includes(baseFilter())) f.push(baseFilter());
+    return f;
+  }
+  function baseShown() {
+    const by = {
+      newest: (a, b) => uidNum(b) - uidNum(a),
+      level: (a, b) => b.level - a.level || a.name.localeCompare(b.name),
+      rarity: (a, b) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.level - a.level,
+      element: (a, b) => ELEMENTS.indexOf(a.el) - ELEMENTS.indexOf(b.el) || RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.level - a.level,
+      name: (a, b) => a.name.localeCompare(b.name) || b.level - a.level
+    }[baseSort()];
+    return baseMatching(baseFilter()).sort(by);
+  }
+  // Releasing gives back elemental shards like a defeat would, plus a little Shard Dust.
+  function releaseValue(m) {
+    return { dust: Math.round(2 * m.level * RARITY_COIN[m.rarity]), shards: SHARD_DROP[m.rarity] * (m.shard ? 3 : 1) };
+  }
+  function releaseText(m) { const v = releaseValue(m); return `Gives ${v.dust} Shard Dust and ${v.shards} ${m.el} Shard${v.shards === 1 ? "" : "s"}`; }
+  function releaseWarn(m) {
+    const v = releaseValue(m), same = Object.values(S.mons).filter(x => x.id === m.id).length, w = [];
+    w.push(`You'll get ${v.dust} Shard Dust and ${v.shards} ${m.el} Shard${v.shards === 1 ? "" : "s"}. It stays counted in your collection.`);
+    if (same === 1) w.push("It's the only one of its kind you own.");
+    if (m.shard) w.push("It's Shardborn.");
+    if (["Epic", "Legendary"].includes(m.rarity)) w.push(`It's ${an(m.rarity)} monster.`);
+    if (m.infuse) w.push(`Its ${m.infuse} infusion${m.infuse === 1 ? "" : "s"} will be lost.`);
+    w.push("This can't be undone.");
+    return w.join(" ");
+  }
+  function canRelease(m) { return !!m && !S.team.includes(m.uid) && !inTraining(m.uid) && !onExped(m.uid); }
+  function doRelease(uid) {
+    const m = S.mons[uid];
+    if (!canRelease(m)) return [`That monster can't be released right now.`];
+    const v = releaseValue(m);
+    delete S.mons[uid];
+    if (S.synth) S.synth.picks = S.synth.picks.filter(x => x !== uid);
+    S.coins += v.dust; addShards(m.el, v.shards); bump("released");
+    return [`You released ${m.name}. You got ${v.dust} Shard Dust and ${v.shards} ${m.el} Shard${v.shards === 1 ? "" : "s"}. ${baseMons().length} monster${baseMons().length === 1 ? "" : "s"} left in your base.`];
+  }

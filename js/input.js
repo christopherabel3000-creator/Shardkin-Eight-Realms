@@ -14,8 +14,8 @@
     if (S.wboss) { const t = []; wbTick(t); if (t.length && S.screen === "camp") msgs = t; }
     switch (a) {
       // Camp
-      case "tab": S.campTab = arg; S.confirm = null; S.synth = null; msgs = (msgs || []).concat([`${tabLabel(arg)}.`]); break;
-      case "menu": S.campTab = null; S.confirm = null; S.synth = null; msgs = (msgs || []).concat(["Main menu."]); break;
+      case "tab": S.campTab = arg; S.confirm = null; S.synth = null; S.swapIn = null; msgs = (msgs || []).concat([`${tabLabel(arg)}.`]); break;
+      case "menu": S.campTab = null; S.confirm = null; S.synth = null; S.swapIn = null; msgs = (msgs || []).concat(["Main menu."]); break;
       case "level": { const [w, n] = arg.split("-").map(Number); if (S.team.length && worldOpen(w) && n <= prog(w).unlocked) msgs = startLevel(w, n); break; }
       case "world": { const w = Number(arg); if (worldOpen(w)) { S.worldView = w; msgs = [`World ${w}: the ${world(w).title}, home of ${world(w).name} Shardkin. ${prog(w).cleared.length} of ${world(w).levels} levels cleared.`]; } break; }
       case "claim": { const [k, i] = arg.split("-"); msgs = claimQuest(k, Number(i)); break; }
@@ -94,6 +94,19 @@
       case "makefirst": S.team = [arg, ...S.team.filter(id => id !== arg)]; msgs = [`${S.mons[arg].name} will lead your team.`]; break;
       case "remove": if (S.team.length > 1) { S.team = S.team.filter(id => id !== arg); msgs = [`${S.mons[arg].name} was sent to your base. Your team has ${S.team.length} of 4.`]; } break;
       case "add": if (S.team.length < 4 && !S.team.includes(arg) && !onExped(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
+      // Base management
+      case "basesort": { const k = Object.keys(BASE_SORT); S.baseSort = k[(k.indexOf(baseSort()) + 1) % k.length]; msgs = [`Sorted: ${BASE_SORT[S.baseSort].toLowerCase()}.`]; break; }
+      case "basefilter": { S.baseFilter = arg; const n = baseShown().length; msgs = [`Showing ${n} ${arg === "all" ? "" : arg === "dupes" ? "duplicate " : BASE_FILTER_NAME(arg) + " "}monster${n === 1 ? "" : "s"} from your base.`]; break; }
+      case "swapin": if (S.mons[arg] && !S.team.includes(arg) && !onExped(arg)) { S.swapIn = arg; S.confirm = null; msgs = [`Who should ${S.mons[arg].name} replace? Choose a team monster to send to base, or cancel.`]; } break;
+      case "swapyes": {
+        const n = S.swapIn, i = S.team.indexOf(arg);
+        if (!n || !S.mons[n] || i < 0 || S.team.includes(n) || onExped(n)) { S.swapIn = null; break; }
+        S.team[i] = n; S.swapIn = null;
+        msgs = [`${S.mons[n].name} joined your team${i === 0 ? " as the lead" : ""}, and ${S.mons[arg].name} went to your base.`];
+        break;
+      }
+      case "release": if (canRelease(S.mons[arg])) { S.confirm = "release"; S.releaseId = arg; S.swapIn = null; msgs = [`Release ${S.mons[arg].name}? What you'd get is just below, then choose Yes or Keep.`]; } break;
+      case "releaseyes": if (S.confirm === "release" && S.releaseId === arg) { S.confirm = null; S.releaseId = null; msgs = doRelease(arg); } break;
       case "crest": { const m = S.mons[arg], c = crestName(m.id); if (m.stage === 1 && S.items.crests[c] > 0) { S.items.crests[c]--; msgs = [`You used the ${c}.`]; evolve(m, msgs); m.hp = m.maxHp; } break; }
       case "buy": { const it = SHOP.find(x => x.id === arg); if (it && itemOpen(arg) && S.coins >= it.price) { S.coins -= it.price; S.items[arg]++; sfx("coin"); msgs = [`You bought a ${it.name} for ${it.price} Shard Dust. You have ${S.items[arg]} now and ${S.coins} Shard Dust left.`]; } break; }
       case "buyscroll": { const r = RECIPES[arg]; if (r && S.coins >= r.price && !S.items.scrolls.includes(arg)) { S.coins -= r.price; S.items.scrolls.push(arg); sfx("coin"); msgs = [`You bought the ${r.name}. Find it under Synthesis.`]; } break; }
@@ -111,7 +124,7 @@
       case "wbfight": if (S.wboss && S.wfights.count > 0 && S.screen === "camp") msgs = wbBattle(false); break;
       case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
       case "resetyes": newGame(); msgs = [S.result]; break;
-      case "cancel": S.confirm = null; pendingImport = null; msgs = ["Okay, nothing changed."]; break;
+      case "cancel": S.confirm = null; S.swapIn = null; S.releaseId = null; pendingImport = null; msgs = ["Okay, nothing changed."]; break;
       case "copysave": {
         exportCode = encodeSave();
         msgs = [`Your save code is ready in the Your save code box below. It's ${exportCode.length.toLocaleString()} characters long.`];

@@ -18,11 +18,25 @@ A playable single-player campaign:
 - **Shardborn variants**, rare crystal versions of every monster, plus elemental shards, the **Shard Forge**, shard storms and the story of the Heartcrystal.
 - **Element-themed attack sounds** that change with each skill's power and name, plus a sound test in Settings.
 - **Two currencies:** everyday Shard Dust, and rare Coins earned from milestones and spent in the Coin Shop on Mythic Eggs, Shardborn Lures, Chosen Crests and more.
+- **Base management:** sort and filter your base, swap a base monster straight onto a full team, and release monsters you don't need for Shard Dust and elemental shards.
 - **Automatic saving** in your browser, plus **save codes** in Settings to back up your game or move it to another device.
 
 ## Accessibility
 Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; each area opens on its own with a Back to main menu button. Every screen section has a heading (for example What happened, Level board, Look ahead, Opponent, Skills, Switch monster), and all actions are buttons. After each action, focus moves to "What happened" so the results of the turn are read aloud right away.
 
 ## Files
-- `index.html` — the game (plain HTML, CSS and JavaScript, no build step)
+- `index.html` — the page; loads the stylesheet and scripts (plain HTML, CSS and JavaScript, no build step)
+- `css/style.css` — the look of every screen, in light and dark mode
+- `js/` — the game code, split by area and loaded in this order (they share one global scope, so order matters):
+  - `data.js` — elements, monsters, rosters, worlds and stat math
+  - `state.js` — items, shop, buildings, saving, save codes, new games and achievements
+  - `sound.js` — sound effects and synthesized attack sounds
+  - `progress.js` — experience, evolution, currencies, shards, expeditions, hatchery, quests, the Arena and base management
+  - `board.js` — dice-board levels and world bosses
+  - `battle.js` — battles, the reward wheel, synthesis and training timers
+  - `screens.js` — drawing every screen and camp area
+  - `input.js` — button handling; every action goes through `doAction`
+  - `autoplay.js` — auto-play, then starting the game (loads last)
+
+When you change a file, bump the `?v=` number on its line in `index.html` so phones don't keep an old copy.
 - `DESIGN.md` — the full game design and build plan

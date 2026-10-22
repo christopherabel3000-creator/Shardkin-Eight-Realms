@@ -155,8 +155,23 @@
     }
     return lv + `</div>`;
   }
+  // A pending swap or release shows first, right after What happened, so it's the next thing read.
+  function teamPrompt() {
+    if (S.swapIn && S.mons[S.swapIn] && !S.team.includes(S.swapIn)) {
+      const n = S.mons[S.swapIn];
+      let p = `<div class="row"><p class="nm">Swap ${n.name} onto your team</p><p class="muted">${monLine(n)}</p><p>Choose who goes to your base in exchange.</p><div class="actions">`;
+      teamMons().forEach((m, i) => { p += btn("swapyes", m.uid, `Send ${m.name} to base`, `${i === 0 ? "Your lead · " : ""}${m.el} · Level ${m.level}${i === 0 ? ` · ${n.name} becomes the lead` : ""}`); });
+      return p + btn("cancel", "", "Cancel the swap", "", true) + `</div></div>`;
+    }
+    if (S.confirm === "release" && S.mons[S.releaseId]) {
+      const m = S.mons[S.releaseId];
+      return `<div class="row"><p class="nm">Release ${m.name}?</p><p class="muted">${monLine(m)}</p><p>${releaseWarn(m)}</p>
+        <div class="pair">${btn("releaseyes", m.uid, `Yes, release ${m.name}`)}${btn("cancel", "", `Keep ${m.name}`, "", true)}</div></div>`;
+    }
+    return "";
+  }
   function tabTeam() {
-    let tm = sub3(`Your team (${S.team.length} of 4)`) + `<div class="actions">`;
+    let tm = teamPrompt() + sub3(`Your team (${S.team.length} of 4)`, !!teamPrompt()) + `<div class="actions">`;
     teamMons().forEach((m, i) => {
       tm += `<div class="row"><p class="nm">${i === 0 ? "Lead: " : ""}${m.name}${inTraining(m.uid) ? " (training)" : ""}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>`;
       const b = [];
@@ -167,18 +182,27 @@
       tm += `</div>`;
     });
     tm += `</div>`;
-    const base = Object.values(S.mons).filter(m => !S.team.includes(m.uid));
+    const base = baseMons();
     tm += sub3(`Your base (${base.length})`, true);
     if (!base.length) tm += `<p class="muted">Nothing here yet. Monsters you capture are sent to your base.</p>`;
     else {
+      const shown = baseShown();
+      tm += `<div class="pair">${btn("basesort", "", `Sort: ${BASE_SORT[baseSort()]}`, "Newest, highest level, rarest, element or name")}</div>`;
+      tm += `<p class="muted" style="margin-top:10px">Show:</p><div class="pair" style="margin-top:6px">`;
+      for (const f of baseFilters()) tm += btn("basefilter", f, BASE_FILTER_NAME(f), `${baseMatching(f).length} monster${baseMatching(f).length === 1 ? "" : "s"}`, false, baseFilter() === f);
+      tm += `</div>`;
+      if (S.team.length >= 4) tm += `<p class="muted" style="margin-top:10px">Your team is full. Choose Swap onto team to trade a base monster for a team monster.</p>`;
+      tm += sub3(`Showing ${shown.length} of ${base.length}: ${BASE_FILTER_NAME(baseFilter())}, ${BASE_SORT[baseSort()].toLowerCase()}`, true);
+      if (!shown.length) tm += `<p class="muted">No monsters match. Choose All to see your whole base.</p>`;
       tm += `<div class="actions">`;
-      for (const m of base) {
-        tm += `<div class="row"><p class="nm">${m.name}${inTraining(m.uid) ? " (training)" : ""}${onExped(m.uid) ? " (on expedition)" : ""}</p><p class="muted">${monLine(m)}${nextForm(m)}</p>`;
+      for (const m of shown) {
+        const busy = inTraining(m.uid) ? " (training)" : onExped(m.uid) ? " (on expedition)" : "";
+        tm += `<div class="row"><p class="nm">${m.name}${busy}</p><p class="muted">${monLine(m)}${nextForm(m)}</p>`;
         const b = [];
-        if (onExped(m.uid)) {} else if (S.team.length < 4) b.push(btn("add", m.uid, `Add ${m.name} to team`));
-        else tm += `<p class="muted">Team is full.</p>`;
+        if (!onExped(m.uid)) b.push(S.team.length < 4 ? btn("add", m.uid, `Add ${m.name} to team`) : btn("swapin", m.uid, `Swap ${m.name} onto team`, "Choose who goes to base"));
         b.push(...crestBtns(m));
-        if (b.length) tm += `<div class="actions">${b.join("")}</div>`;
+        if (!busy) b.push(btn("release", m.uid, `Release ${m.name}`, releaseText(m)));
+        if (b.length) tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div>`;
         tm += `</div>`;
       }
       tm += `</div>`;

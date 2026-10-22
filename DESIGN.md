@@ -401,6 +401,12 @@ Playtest findings: coins piled up (78,000+ with nothing worth buying), the team 
 - World bosses have 16 times normal health and are at least 3 levels above your strongest monster, aiming for about 5 fights.
 - When you hold a crest that fits a monster you own, the Team and base menu button, the welcome message and the crest's own message say so.
 
+## Base Management
+- **Sort** (one button that cycles): newest first (the default), highest level, rarest, by element, or by name.
+- **Show:** All, each element you have in your base, Duplicates (species you own more than one of) and Shardborn. Each filter button says how many monsters it shows. Sort and filter are saved.
+- **Swap onto team:** when the team is full, each base monster has a Swap button. It asks which team monster goes to base; the newcomer takes that monster's place, including the lead spot.
+- **Release:** gives 2 × level × the expedition rarity factor in Shard Dust, plus the monster's elemental shard drop (1 Common or Uncommon, 3 Rare, 5 Epic, 8 Legendary, tripled for Shardborn). Released monsters stay counted in the collection. A confirmation notes if it's the only one of its kind, Shardborn, Epic or Legendary, or infused. Monsters on the team, training or on an expedition can't be released.
+
 ## Currencies
 - **Shard Dust** is the everyday currency (formerly called coins): earned from battles, level clears, chests, the reward wheel, quests and the Shard Mine; spent in the Shop, on buildings and upgrades, and at the Crest Exchange.
 - **Coins** are a rare premium currency, earned only from milestones and never from battles or replays:
