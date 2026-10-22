@@ -267,16 +267,16 @@ Forms are listed in evolution order. Rares evolve at level 16; Epics and Legenda
 - **Wild rarity per monster:** Common 68%, Uncommon 30.75%, Rare 1%, Epic 0.2%, Legendary 0.05% (Rare or better about once per 40 fights).
 - **Player experience:** level clear 40 + 10 × level number (doubled on the first clear), capture 10, synthesis 25, achievement 20, finished training 15. Each Shardbinder level needs 60 × current level.
 - **Shardbinder level unlocks:** 2 Shop and Quests, 3 Training Yard, 4 Shard Mine, 5 Expedition Dock, 6 Hatchery, 7 Arena.
-- **Coins:** 4 per wild monster level after a battle win; 30 + 20 × level number for a level clear.
+- **Shard Dust:** 4 per wild monster level after a battle win; 30 + 20 × level number for a level clear.
 - **Shop:** Potion 40, Binding Shard 60, Loaded Die 120, Prism Shard 1,500, Epic Plant scroll 2,500, Legendary Plant scroll 6,000.
 - **Synthesis scrolls:** Rare Plant (two Common or Uncommon Plant monsters; from the World 1 achievement), Epic Plant (two Rare Plant), Legendary Plant (two Epic Plant plus one Rare Plant). The result's level matches the highest ingredient.
-- **Training Yard:** costs 150 coins. One monster, from the team or the base, trains at a time and can keep battling while it trains. It gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 150 Shardbinder experience.
-- **Shard Mine:** costs 300, then 600 and 1,200 to upgrade. Earns 15, 30 or 50 coins per hour and holds up to 12 hours of earnings.
-- **Reward wheel:** 2 Potions, 3 Binding Shards, 150 coins per world number, 25% of a level's experience for each team monster (based on each monster's own level, fainted ones included), or a Prism Shard. Replays of a world's last level add a chance at a random crest for that world.
+- **Training Yard:** costs 150 Shard Dust. One monster, from the team or the base, trains at a time and can keep battling while it trains. It gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 150 Shardbinder experience.
+- **Shard Mine:** costs 300, then 600 and 1,200 to upgrade. Earns 15, 30 or 50 Shard Dust per hour and holds up to 12 hours of earnings.
+- **Reward wheel:** 2 Potions, 3 Binding Shards, 150 Shard Dust per world number, 25% of a level's experience for each team monster (based on each monster's own level, fainted ones included), or a Prism Shard. Replays of a world's last level add a chance at a random crest for that world.
 - **World progression:** each world opens after clearing the previous world's last level. Wild levels rise by one per level, plus one more at each new world (see the Worlds table).
-- **Combination worlds (9 to 12):** Fire and Water, Electric and Psychic, Earth and Plant, Ghost and Physical, 20 levels each, mixing both elements' monsters. Clearing one gives 2,000 coins, a Prism Shard and a crest from either element.
+- **Combination worlds (9 to 12):** Fire and Water, Electric and Psychic, Earth and Plant, Ghost and Physical, 20 levels each, mixing both elements' monsters. Clearing one gives 2,000 Shard Dust, a Prism Shard and a crest from either element.
 - **Achievements:** a clear achievement for every world (element worlds give that element's Rare scroll and a crest), a Master achievement for collecting each element's 15 monsters, and Shardkin Master for all 120.
-- **World bosses:** 12% chance per level start that one is hiding (only if none is active). It moves to a new space ahead after every roll. It's one of the world's Epics, at least 5 levels above that world's toughest wild monsters and 2 levels above your strongest team monster, with 12 times normal health. You start with 1 fight and earn 1 every 2 hours, up to 5. It leaves after 24 hours. Each fight starts with your team fully healed; you can retreat and keep the damage. Defeating it gives 1,000 coins, a Prism Shard, a crest for that world and 150 Shardbinder experience. In simulated fights a full team at the end of World 1 needed about 8 fights.
+- **World bosses:** 12% chance per level start that one is hiding (only if none is active). It moves to a new space ahead after every roll. It's one of the world's Epics, at least 5 levels above that world's toughest wild monsters and 2 levels above your strongest team monster, with 12 times normal health. You start with 1 fight and earn 1 every 2 hours, up to 5. It leaves after 24 hours. Each fight starts with your team fully healed; you can retreat and keep the damage. Defeating it gives 1,000 Shard Dust, a Prism Shard, a crest for that world and 150 Shardbinder experience. In simulated fights a full team at the end of World 1 needed about 8 fights.
 
 ## Activities Beyond the Campaign
 
@@ -293,12 +293,12 @@ Forms are listed in evolution order. Rares evolve at level 16; Epics and Legenda
 - Rewards: 15 × floor coins each floor; first-time milestones give a Loaded Die every 5 floors, a Prism Shard and an egg every 10, and a crest every 25.
 
 ### Expeditions
-- Expedition Dock: Shardbinder level 5, 400 coins. Up to 3 base monsters away at once, for 1, 4 or 8 hours.
+- Expedition Dock: Shardbinder level 5, 400 Shard Dust. Up to 3 base monsters away at once, for 1, 4 or 8 hours.
 - Returns hours × (10 + level) × a rarity factor in coins, 5% of a level's experience per hour, item chances each hour (Potion 10%, Binding Shard 8%, Loaded Die 3%), and a 15% egg chance on 8-hour trips.
 - Monsters away can't battle, train or be used in synthesis.
 
 ### Hatchery
-- Shardbinder level 6, 500 coins for one incubator; a second costs 1,000.
+- Shardbinder level 6, 500 Shard Dust for one incubator; a second costs 1,000.
 - Eggs take 6 hours and hatch into a monster of their element: Common 50%, Uncommon 35%, Rare 12%, Epic 2.5%, Legendary 0.5%, at that element world's starting level.
 - Egg sources: treasure chests (4%), level bosses (8%), world bosses (always), 8-hour expeditions (15%), Arena milestones every 10 floors, and weekly quests.
 
@@ -311,14 +311,14 @@ New Life (first hatch), Explorer (10 expeditions), Arena Contender (floor 10), A
 - **Prologue:** the Heartcrystal once held the eight elements in balance. It shattered, each shard grew a realm around itself, and the creatures born from its splinters became the Shardkin. The player is a Shardbinder, one of the few who can bind Shardkin to a team, journeying shard by shard to make the crystal whole.
 - **World names:** 1 Verdant Shard (Plant), 2 Tidal Shard (Water), 3 Ember Shard (Fire), 4 Stone Shard (Earth), 5 Storm Shard (Electric), 6 Dream Shard (Psychic), 7 Hollow Shard (Ghost), 8 Iron Shard (Physical). The combination worlds are rifts where two shards ground together: 9 Steam Rift, 10 Mindstorm Rift, 11 Overgrown Rift, 12 Phantom Rift.
 - Each world has a short intro line, shown in Levels, when it opens, and in the **Story** area of camp.
-- **Heartcrystal Restored** achievement for clearing all eight element worlds, with an epilogue that sets up the rifts. Reward: 5,000 coins and 3 Prism Shards.
+- **Heartcrystal Restored** achievement for clearing all eight element worlds, with an epilogue that sets up the rifts. Reward: 5,000 Shard Dust and 3 Prism Shards.
 - "Player level" is now the **Shardbinder level**.
 
 ### Shardborn variants
 - About 1 in 500 wild monsters is Shardborn (for example "Shardborn Mossling"): 10% stronger stats, a "Shardborn" tag, a crystal chime and an announcement when it appears.
 - Captured Shardborn stay Shardborn, including through evolution. Hatched eggs are Shardborn 1 in 250 times and synthesis results 1 in 100.
 - Defeating one drops triple shards. The collection tracks Shardborn caught out of 120.
-- Achievements: Glimmer (first Shardborn, a Prism Shard and 1,000 coins) and Crystal Collector (10 different Shardborn, 5 Prism Shards).
+- Achievements: Glimmer (first Shardborn, a Prism Shard and 1,000 Shard Dust) and Crystal Collector (10 different Shardborn, 5 Prism Shards).
 - Auto-play's catch mode always tries to catch Shardborn.
 
 ### Elemental shards
@@ -326,7 +326,7 @@ New Life (first hatch), Explorer (10 expeditions), Arena Contender (floor 10), A
 - Sources: half of defeated wild monsters (1 for Common and Uncommon, 3 Rare, 5 Epic, 8 Legendary, tripled for Shardborn), level bosses (3 + world number), world bosses (20), treasure chests (2 to 4), shard storms (3 to 6), expeditions (about 1 per 2 hours), Arena floors (1 + floor ÷ 10, random element) and the Shard Mine (1 per 2 hours per mine level, random opened element).
 
 ### Shard Forge
-- A building: Shardbinder level 3, 250 coins. Opens its own area in camp.
+- A building: Shardbinder level 3, 250 Shard Dust. Opens its own area in camp.
 - Forge items from any one element's shards: Potion 2, Binding Shard 3, Loaded Die 8, an egg of that element 25, Prism Shard 120.
 - **Infusion:** spend shards of a monster's own element to raise its stats 3% per infusion, up to 5 (+15%). Costs 10, 20, 30, 40 and 50.
 - Shardsmith achievement for 10 forges or infusions.
@@ -363,7 +363,7 @@ All sound is synthesized in the browser, with no audio files.
 ## Save Codes
 - The game saves automatically in the browser, which is tied to one device.
 - **Copy save code** (Settings) turns the whole game into text starting with `SHARDKIN1.` and tries to copy it to the clipboard; the code is also shown in a box so it can be selected and copied by hand.
-- **Load a save code** accepts a pasted code, ignoring spaces and line breaks, shows what the code contains (Shardbinder level, monsters, coins, furthest world) and asks for confirmation before replacing the current game. Older save formats are upgraded on load.
+- **Load a save code** accepts a pasted code, ignoring spaces and line breaks, shows what the code contains (Shardbinder level, monsters, Shard Dust, furthest world) and asks for confirmation before replacing the current game. Older save formats are upgraded on load.
 - The replaced game is kept as a backup, and **Go back to my game from before the last import** swaps them back.
 
 ## Balance Pass 1 (after first playtest)
@@ -373,13 +373,13 @@ Playtest findings: coins piled up (78,000+ with nothing worth buying), the team 
 - Experience is judged per monster against the monster it defeated or caught: full up to 3 levels above it, then 10% less per extra level, never below 10%. Messages note "(outgrown)".
 - Battle coins, level-clear coins, chest coins and the wheel's coin prize use the team's highest level against the level's monsters.
 - Low-level monsters carried through a level still earn full experience. Auto-play and catching are unchanged.
-- On the playtest save, 10 replays of World 3, Level 10 went from 12,950 coins and 3 to 6 levels per monster to 893 coins and almost no levels.
+- On the playtest save, 10 replays of World 3, Level 10 went from 12,950 Shard Dust and 3 to 6 levels per monster to 893 Shard Dust and almost no levels.
 
 ### Coins
 - Wild battle coins halved (2 per wild monster level instead of 4).
-- Upgrades to spend on: Training Yard level 2 (2,000, trains two levels' worth per session) and level 3 (6,000, three levels' worth in 2 hours); Shard Mine levels 4 and 5 (4,000 and 10,000; 80 and 120 coins per hour); Expedition Dock expansion to 5 slots (4,000); warmer incubators (3,000, eggs in 4 hours) and a third incubator (6,000).
-- **Crest Exchange** in the Shop: trade a crest for a random different crest of the same element for 2,000 coins.
-- Loaded Die now 150 coins and Prism Shard 3,000.
+- Upgrades to spend on: Training Yard level 2 (2,000, trains two levels' worth per session) and level 3 (6,000, three levels' worth in 2 hours); Shard Mine levels 4 and 5 (4,000 and 10,000; 80 and 120 Shard Dust per hour); Expedition Dock expansion to 5 slots (4,000); warmer incubators (3,000, eggs in 4 hours) and a third incubator (6,000).
+- **Crest Exchange** in the Shop: trade a crest for a random different crest of the same element for 2,000 Shard Dust.
+- Loaded Die now 150 Shard Dust and Prism Shard 3,000.
 
 ### Item tiers
 | Item | Unlocks | Shop price | Effect |
@@ -400,6 +400,24 @@ Playtest findings: coins piled up (78,000+ with nothing worth buying), the team 
 ### World bosses and crests
 - World bosses have 16 times normal health and are at least 3 levels above your strongest monster, aiming for about 5 fights.
 - When you hold a crest that fits a monster you own, the Team and base menu button, the welcome message and the crest's own message say so.
+
+## Currencies
+- **Shard Dust** is the everyday currency (formerly called coins): earned from battles, level clears, chests, the reward wheel, quests and the Shard Mine; spent in the Shop, on buildings and upgrades, and at the Crest Exchange.
+- **Coins** are a rare premium currency, earned only from milestones and never from battles or replays:
+  - First-time world clears: 5 + 5 × world number for Worlds 1 to 8 (10 to 45), 75 for each rift
+  - 5 per achievement, 5 per weekly quest, 10 per world boss defeated, 5 per Shardborn caught, 10 per tenth Arena floor (first time)
+  - Saves from before Coins existed are credited for milestones already reached (the playtest save received 120).
+- **Coin Shop** (Camp menu):
+
+| Item | Coins | Effect |
+|---|---|---|
+| Mythic Egg | 100 | Element of your choice (opened worlds); hatches an Epic (80%) or Legendary (20%) |
+| Shardborn Lure | 25 | Shardborn ten times more likely on your next level, including auto-play |
+| 3 Prism Shards | 40 | 100% capture items |
+| Hurry | 5 | Finishes one training, hatching or expedition timer |
+| Chosen Crest | 200 | The exact crest you want, for monsters you own (an exception to random crests) |
+
+- **Egg levels:** eggs now hatch near your team's level: Mythic eggs at your team's average level, other eggs 10 levels below it, never below the element world's starting level.
 
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.

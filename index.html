@@ -160,6 +160,7 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
       <li>About 1 in 500 wild monsters is Shardborn, a crystal variant with 10% stronger stats. A chime marks one when it appears. Shard storms on the board make them ten times more likely for the rest of the level.</li>
       <li>Wild monsters, bosses, chests, storms, expeditions, the Arena and the Shard Mine drop elemental shards. Spend them at the Shard Forge on items and eggs, or to infuse monsters of the same element.</li>
       <li>Rewards shrink once a monster has outgrown a level: full rewards up to 3 levels above its monsters, then less for each extra level. New worlds unlock better items, like Super Potions, Revive Shards and Greater Binding Shards.</li>
+      <li>Shard Dust is the everyday currency from battles, chests and the Shard Mine. Coins are rare and come only from milestones like first-time world clears, achievements, weekly quests and world bosses. Spend Coins in the Coin Shop on Mythic Eggs, Shardborn Lures, Chosen Crests and more.</li>
       <li>Progress saves automatically in this browser on this device. Use Copy save code and Load a save code in Settings to back up your game or move it to another device.</li>
     </ul>
   </details>
@@ -553,7 +554,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const mons = Object.keys(d.mons).length, lvl = d.player ? d.player.level : 1;
     let far = 1;
     for (let w = WORLDS.length; w >= 1; w--) if (d.prog && d.prog[w] && (d.prog[w].cleared.length || w === 1)) { far = w; break; }
-    return `Shardbinder level ${lvl}, ${mons} monster${mons === 1 ? "" : "s"}, ${d.coins} coins, furthest world ${far}`;
+    return `Shardbinder level ${lvl}, ${mons} monster${mons === 1 ? "" : "s"}, ${d.coins} Shard Dust, furthest world ${far}`;
   }
   function hasBackup() { try { return !!localStorage.getItem(BACKUP_KEY); } catch (e) { return false; } }
   function migrate1(d) {
@@ -629,19 +630,19 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   const ACH = [
     { id: "catch1", name: "First Catch", desc: "Capture your first monster.", test: () => S.stats.caught >= 1, reward: "3 Binding Shards", give: () => { S.items.orb += 3; } },
     { id: "clear1", name: "First Steps", desc: "Clear Level 1.", test: () => prog(1).cleared.includes(1), reward: "2 Potions", give: () => { S.items.potion += 2; } },
-    { id: "dex5", name: "Growing Collection", desc: "Collect 5 different monsters.", test: () => S.dex.length >= 5, reward: "100 coins", give: () => { S.coins += 100; } },
-    { id: "evolve1", name: "New Form", desc: "Evolve a monster for the first time.", test: () => S.stats.evolved >= 1, reward: "150 coins", give: () => { S.coins += 150; } },
+    { id: "dex5", name: "Growing Collection", desc: "Collect 5 different monsters.", test: () => S.dex.length >= 5, reward: "100 Shard Dust", give: () => { S.coins += 100; } },
+    { id: "evolve1", name: "New Form", desc: "Evolve a monster for the first time.", test: () => S.stats.evolved >= 1, reward: "150 Shard Dust", give: () => { S.coins += 150; } },
     { id: "plv5", name: "Rising Shardbinder", desc: "Reach Shardbinder level 5.", test: () => S.player.level >= 5, reward: "2 Loaded Dice", give: () => { S.items.die += 2; } },
-    { id: "dex10", name: "Collector", desc: "Collect 10 different monsters.", test: () => S.dex.length >= 10, reward: "300 coins", give: () => { S.coins += 300; } },
+    { id: "dex10", name: "Collector", desc: "Collect 10 different monsters.", test: () => S.dex.length >= 10, reward: "300 Shard Dust", give: () => { S.coins += 300; } },
     { id: "world1", name: "Plant World Cleared", desc: "Complete World 1 by clearing its Level 5.", test: () => worldCleared(1),
       reward: "Scroll of Synthesis: Rare Plant, plus a random Plant final-form crest", give: msgs => { if (!S.items.scrolls.includes("PlantRare")) S.items.scrolls.push("PlantRare"); giveCrest("Plant", msgs); } },
     { id: "world2", name: "Water World Cleared", desc: "Complete World 2 by clearing its Level 5.", test: () => worldCleared(2),
       reward: "Scroll of Synthesis: Rare Water, plus a random Water final-form crest", give: msgs => { if (!S.items.scrolls.includes("WaterRare")) S.items.scrolls.push("WaterRare"); giveCrest("Water", msgs); } },
-    { id: "synth1", name: "Synthesist", desc: "Synthesize a monster for the first time.", test: () => S.stats.synth >= 1, reward: "200 coins", give: () => { S.coins += 200; } },
-    { id: "train1", name: "Hard Work", desc: "Finish your first training session.", test: () => S.stats.trained >= 1, reward: "100 coins", give: () => { S.coins += 100; } },
-    { id: "wb1", name: "Giant Slayer", desc: "Defeat a world boss.", test: () => S.stats.wbKills >= 1, reward: "2 Loaded Dice and 300 coins", give: () => { S.items.die += 2; S.coins += 300; } },
-    { id: "allplant", name: "Plant Master", desc: "Collect all 15 Plant monsters.", test: () => poolIds("Plant").every(id => S.dex.includes(id)), reward: "a Prism Shard and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } },
-    { id: "allwater", name: "Water Master", desc: "Collect all 15 Water monsters.", test: () => poolIds("Water").every(id => S.dex.includes(id)), reward: "a Prism Shard and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } }
+    { id: "synth1", name: "Synthesist", desc: "Synthesize a monster for the first time.", test: () => S.stats.synth >= 1, reward: "200 Shard Dust", give: () => { S.coins += 200; } },
+    { id: "train1", name: "Hard Work", desc: "Finish your first training session.", test: () => S.stats.trained >= 1, reward: "100 Shard Dust", give: () => { S.coins += 100; } },
+    { id: "wb1", name: "Giant Slayer", desc: "Defeat a world boss.", test: () => S.stats.wbKills >= 1, reward: "2 Loaded Dice and 300 Shard Dust", give: () => { S.items.die += 2; S.coins += 300; } },
+    { id: "allplant", name: "Plant Master", desc: "Collect all 15 Plant monsters.", test: () => poolIds("Plant").every(id => S.dex.includes(id)), reward: "a Prism Shard and 500 Shard Dust", give: () => { S.items.perfect += 1; S.coins += 500; } },
+    { id: "allwater", name: "Water Master", desc: "Collect all 15 Water monsters.", test: () => poolIds("Water").every(id => S.dex.includes(id)), reward: "a Prism Shard and 500 Shard Dust", give: () => { S.items.perfect += 1; S.coins += 500; } }
   ];
   for (let w = 3; w <= WORLDS.length; w++) {
     const W = WORLDS[w - 1];
@@ -651,27 +652,28 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         reward: `Scroll of Synthesis: Rare ${el}, plus a random ${el} final-form crest`, give: msgs => { if (!S.items.scrolls.includes(el + "Rare")) S.items.scrolls.push(el + "Rare"); giveCrest(el, msgs); } });
     } else {
       ACH.push({ id: "world" + w, name: `${W.title} Conquered`, desc: `Complete World ${w} by clearing its Level ${W.levels}.`, test: () => worldCleared(w),
-        reward: "2000 coins, a Prism Shard and a random final-form crest from either element", give: msgs => { S.coins += 2000; S.items.perfect++; giveCrest(worldEl(w), msgs); } });
+        reward: "2000 Shard Dust, a Prism Shard and a random final-form crest from either element", give: msgs => { S.coins += 2000; S.items.perfect++; giveCrest(worldEl(w), msgs); } });
     }
   }
   for (const el of ELEMENTS.slice(2)) {
-    ACH.push({ id: "all" + el.toLowerCase(), name: `${el} Master`, desc: `Collect all 15 ${el} monsters.`, test: () => poolIds(el).every(id => S.dex.includes(id)), reward: "a Prism Shard and 500 coins", give: () => { S.items.perfect += 1; S.coins += 500; } });
+    ACH.push({ id: "all" + el.toLowerCase(), name: `${el} Master`, desc: `Collect all 15 ${el} monsters.`, test: () => poolIds(el).every(id => S.dex.includes(id)), reward: "a Prism Shard and 500 Shard Dust", give: () => { S.items.perfect += 1; S.coins += 500; } });
   }
-  ACH.push({ id: "hatch1", name: "New Life", desc: "Hatch your first egg.", test: () => (S.counts.hatches || 0) >= 1, reward: "300 coins", give: () => { S.coins += 300; } });
-  ACH.push({ id: "exp10", name: "Explorer", desc: "Finish 10 expeditions.", test: () => (S.counts.exps || 0) >= 10, reward: "500 coins", give: () => { S.coins += 500; } });
+  ACH.push({ id: "hatch1", name: "New Life", desc: "Hatch your first egg.", test: () => (S.counts.hatches || 0) >= 1, reward: "300 Shard Dust", give: () => { S.coins += 300; } });
+  ACH.push({ id: "exp10", name: "Explorer", desc: "Finish 10 expeditions.", test: () => (S.counts.exps || 0) >= 10, reward: "500 Shard Dust", give: () => { S.coins += 500; } });
   ACH.push({ id: "arena10", name: "Arena Contender", desc: "Reach Arena floor 10.", test: () => S.arena.best >= 10, reward: "2 Loaded Dice", give: () => { S.items.die += 2; } });
   ACH.push({ id: "arena50", name: "Arena Legend", desc: "Reach Arena floor 50.", test: () => S.arena.best >= 50, reward: "3 Prism Shards", give: () => { S.items.perfect += 3; } });
-  ACH.push({ id: "shard1", name: "Glimmer", desc: "Catch a Shardborn monster.", test: () => S.shardDex.length >= 1, reward: "a Prism Shard and 1000 coins", give: () => { S.items.perfect++; S.coins += 1000; } });
+  ACH.push({ id: "shard1", name: "Glimmer", desc: "Catch a Shardborn monster.", test: () => S.shardDex.length >= 1, reward: "a Prism Shard and 1000 Shard Dust", give: () => { S.items.perfect++; S.coins += 1000; } });
   ACH.push({ id: "shard10", name: "Crystal Collector", desc: "Catch 10 different Shardborn monsters.", test: () => S.shardDex.length >= 10, reward: "5 Prism Shards", give: () => { S.items.perfect += 5; } });
-  ACH.push({ id: "forge10", name: "Shardsmith", desc: "Forge or infuse 10 times at the Shard Forge.", test: () => (S.counts.forged || 0) >= 10, reward: "300 coins and 2 Loaded Dice", give: () => { S.coins += 300; S.items.die += 2; } });
-  ACH.push({ id: "heart", name: "Heartcrystal Restored", desc: "Clear all eight element worlds.", test: () => [1, 2, 3, 4, 5, 6, 7, 8].every(worldCleared), reward: "5000 coins and 3 Prism Shards", give: msgs => { S.coins += 5000; S.items.perfect += 3; msgs.push(EPILOGUE); } });
-  ACH.push({ id: "all120", name: "Shardkin Master", desc: "Collect all 120 monsters.", test: () => ELEMENTS.every(el => poolIds(el).every(id => S.dex.includes(id))), reward: "5 Prism Shards and 10000 coins", give: () => { S.items.perfect += 5; S.coins += 10000; } });
+  ACH.push({ id: "forge10", name: "Shardsmith", desc: "Forge or infuse 10 times at the Shard Forge.", test: () => (S.counts.forged || 0) >= 10, reward: "300 Shard Dust and 2 Loaded Dice", give: () => { S.coins += 300; S.items.die += 2; } });
+  ACH.push({ id: "heart", name: "Heartcrystal Restored", desc: "Clear all eight element worlds.", test: () => [1, 2, 3, 4, 5, 6, 7, 8].every(worldCleared), reward: "5000 Shard Dust and 3 Prism Shards", give: msgs => { S.coins += 5000; S.items.perfect += 3; msgs.push(EPILOGUE); } });
+  ACH.push({ id: "all120", name: "Shardkin Master", desc: "Collect all 120 monsters.", test: () => ELEMENTS.every(el => poolIds(el).every(id => S.dex.includes(id))), reward: "5 Prism Shards and 10000 Shard Dust", give: () => { S.items.perfect += 5; S.coins += 10000; } });
   function checkAch(msgs) {
     for (let pass = 0; pass < 3; pass++) {
       let got = false;
       for (const a of ACH) {
         if (S.ach.includes(a.id) || !a.test()) continue;
         S.ach.push(a.id); got = true;
+        giveGems(GEM.achievement, msgs, "You also earned");
         msgs.push(`Achievement unlocked: ${a.name}. Reward: ${a.reward}.`); sfx("win");
         a.give(msgs);
         givePxp(20, msgs);
@@ -978,9 +980,24 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     S.items.shards = S.items.shards || {};
     S.shardDex = S.shardDex || [];
     if (S.forge === undefined) S.forge = false;
+    if (S.gems === undefined) {
+      // Saves from before Coins existed get credit for milestones already reached.
+      let g = (S.ach || []).length * GEM.achievement + (S.stats && S.stats.wbKills || 0) * GEM.worldBoss + (S.shardDex || []).length * GEM.shardborn;
+      for (let w = 1; w <= WORLDS.length; w++) if (S.prog && S.prog[w] && S.prog[w].cleared.includes(world(w).levels)) g += worldCoins(w);
+      S.gems = g; S.gemsBackfill = g;
+    }
+    S.items.mythic = S.items.mythic || {};
+    if (S.lure === undefined) S.lure = false;
     for (const id of Object.keys(ITEM_INFO)) if (typeof S.items[id] !== "number") S.items[id] = 0;
     if (S.yard && !S.yardLvl) S.yardLvl = 1;
   }
+  // ---------- Premium Coins ----------
+  // Coins are scarce: earned only from first-time milestones, never from battles or replays.
+  const GEM = { achievement: 5, weeklyQuest: 5, worldBoss: 10, arena10: 10, shardborn: 5 };
+  function worldCoins(w) { return w <= 8 ? 5 + 5 * w : 75; }
+  function giveGems(n, msgs, why) { if (n <= 0) return; S.gems = (S.gems || 0) + n; if (msgs) msgs.push(`${why || "You earned"} ${n} Coin${n === 1 ? "" : "s"}.`); sfx("coin"); }
+  const PREMIUM = { mythic: 100, lure: 25, hurry: 5, prisms: 40, crest: 200 };
+
   // ---------- Shards ----------
   const SHARDBORN = { chance: 1 / 500, stormMult: 10, hatch: 1 / 250, synth: 1 / 100 };
   function shardRoll(mult) { return Math.random() < SHARDBORN.chance * (mult || 1); }
@@ -1025,7 +1042,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     S.exped.list.splice(i, 1);
     const coins = Math.round(x.hours * (10 + m.level) * RARITY_COIN[m.rarity]);
     S.coins += coins; sfx("coin");
-    msgs.push(`${m.name} returned from a ${x.hours}-hour expedition with ${coins} coins.`);
+    msgs.push(`${m.name} returned from a ${x.hours}-hour expedition with ${coins} Shard Dust.`);
     let pot = 0, orb = 0, die = 0;
     for (let h = 0; h < x.hours; h++) { if (Math.random() < 0.1) pot++; if (Math.random() < 0.08) orb++; if (Math.random() < 0.03) die++; }
     if (pot) { S.items.potion += pot; msgs.push(`It also brought back ${pot} Potion${pot > 1 ? "s" : ""}.`); }
@@ -1049,12 +1066,16 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function hatchEgg(i) {
     const x = S.hatch.incub[i];
     S.hatch.incub.splice(i, 1);
-    const tier = pickWeighted(HATCH_WEIGHT), id = pickFrom(POOLS[x.el][tier]);
+    const tier = x.mythic ? (Math.random() < 0.2 ? "Legendary" : "Epic") : pickWeighted(HATCH_WEIGHT), id = pickFrom(POOLS[x.el][tier]);
     const fresh = !S.dex.includes(id);
-    const m = addMon(makeMon(id, wildRange(elementWorld(x.el), 1)[0], Math.random() < SHARDBORN.hatch), false);
+    // Eggs hatch near your team's level so they stay useful: Mythic eggs at your team's average level, others 10 below it,
+    // and never below the starting level of that element's world.
+    const avg = Math.round(teamMons().reduce((t, m) => t + m.level, 0) / Math.max(1, S.team.length));
+    const lvl = Math.max(wildRange(elementWorld(x.el), 1)[0], x.mythic ? avg : avg - 10);
+    const m = addMon(makeMon(id, lvl, Math.random() < SHARDBORN.hatch), false);
     if (m.shard) sfx("shardborn");
     bump("hatches"); sfx("evolve");
-    return [`The ${x.el} egg hatched into ${m.name}, ${an(m.rarity)} ${m.el} monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It's in your base.`];
+    return [`The ${x.mythic ? "Mythic " : ""}${x.el} egg hatched into ${m.name}, ${an(m.rarity)} ${m.el} monster at level ${m.level}${fresh ? ", new to your collection" : ""}! It's in your base.`];
   }
 
   // ---------- Quests ----------
@@ -1088,7 +1109,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     return pickFrom([{ coins: 500 + 50 * L, perfect: 1 }, { coins: 500 + 50 * L, die: 2 }, { coins: 500 + 50 * L, egg: 1 }]);
   }
   function rewardText(r) {
-    const p = [`${r.coins} coins`];
+    const p = [`${r.coins} Shard Dust`];
     if (r.potion) p.push(`${r.potion} Potions`); if (r.orb) p.push(`${r.orb} Binding Shards`); if (r.perfect) p.push("a Prism Shard");
     if (r.die) p.push(`${r.die} Loaded Dice`); if (r.egg) p.push("a random egg");
     return p.join(", ");
@@ -1108,6 +1129,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     S.coins += r.coins; S.items.potion += r.potion || 0; S.items.orb += r.orb || 0; S.items.perfect += r.perfect || 0; S.items.die += r.die || 0;
     if (r.egg) addEgg(pickFrom(openElements()), msgs, "And");
     givePxp(kind === "weekly" ? 60 : 15, msgs);
+    if (kind === "weekly") giveGems(GEM.weeklyQuest, msgs, "You also earned");
     sfx("win");
     return msgs;
   }
@@ -1137,12 +1159,12 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const coins = 15 * f;
     S.coins += coins; bump("floors"); sfx("win");
     addShards(pickFrom(ELEMENTS), 1 + Math.floor(f / 10), msgs, "You picked up");
-    msgs.push(`You beat ${B.rival} and cleared Arena floor ${f}! You earned ${coins} coins.`);
+    msgs.push(`You beat ${B.rival} and cleared Arena floor ${f}! You earned ${coins} Shard Dust.`);
     if (f > S.arena.best) { S.arena.best = f; msgs.push(`New best floor: ${f}.`); }
     if (!S.arena.claimed.includes(f) && f % 5 === 0) {
       S.arena.claimed.push(f);
       if (f % 25 === 0) { msgs.push("Milestone reward:"); giveCrest(pickFrom(ELEMENTS), msgs); }
-      if (f % 10 === 0) { S.items.perfect++; msgs.push(`Milestone reward for floor ${f}: a Prism Shard.`); addEgg(pickFrom(openElements()), msgs, "And"); }
+      if (f % 10 === 0) { S.items.perfect++; msgs.push(`Milestone reward for floor ${f}: a Prism Shard.`); addEgg(pickFrom(openElements()), msgs, "And"); giveGems(GEM.arena10, msgs, "Plus"); }
       else { S.items.die++; msgs.push(`Milestone reward for floor ${f}: a Loaded Die.`); }
     }
     B.over = "arenawin";
@@ -1182,12 +1204,14 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function startLevel(w, n) {
     restoreAll();
     S.level = { w, n, board: genBoard(w, n), pos: 0, used: Array(BOARD_SIZE).fill(false), lead: S.team[0], failed: false,
-      replay: prog(w).cleared.includes(n), wb: null, shopOpen: false, encounter: false };
+      replay: prog(w).cleared.includes(n), wb: null, shopOpen: false, encounter: false, lure: !!S.lure };
+    const lureMsg = S.lure ? " Your Shardborn Lure glimmers: Shardborn are ten times more likely on this level." : "";
+    S.lure = false;
     // A hidden world boss can lurk here if none is active. It moves every roll.
     if (!S.wboss && Math.random() < WB.chance) S.level.wb = rand(3, BOARD_SIZE - 3);
     S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "level";
     const [lo, hi] = wildRange(w, n);
-    return [`World ${w}, the ${world(w).title}, Level ${n} begins. You're on space 1 of ${BOARD_SIZE}, and the level boss waits on space ${BOARD_SIZE}. Wild ${world(w).name} monsters here are level ${lo} to ${hi}. ${leadMon().name} leads your team.`];
+    return [`World ${w}, the ${world(w).title}, Level ${n} begins. You're on space 1 of ${BOARD_SIZE}, and the level boss waits on space ${BOARD_SIZE}. Wild ${world(w).name} monsters here are level ${lo} to ${hi}. ${leadMon().name} leads your team.${lureMsg}`];
   }
   function roll(chosen) {
     const L = S.level, msgs = [];
@@ -1243,7 +1267,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       else if (found === "orb") prize = "orb";
       if (prize === "shards") addShards(worldEl(L.w), rand(2, 4), msgs, "You open the chest and find");
       if (prize === "egg") addEgg(worldEl(L.w), msgs, "You open the chest and find");
-      if (prize === "coins") { const c = Math.max(1, Math.round(rand(20, 40) * L.w * outgrowMult(teamTop(), levelRef()))); S.coins += c; msgs.push(`You open the chest and find ${c} coins.`); }
+      if (prize === "coins") { const c = Math.max(1, Math.round(rand(20, 40) * L.w * outgrowMult(teamTop(), levelRef()))); S.coins += c; msgs.push(`You open the chest and find ${c} Shard Dust.`); }
       else if (prize === "potion") { S.items.potion++; msgs.push("You open the chest and find a Potion."); }
       else if (prize === "orb") { const c = rand(1, 2); S.items.orb += c; msgs.push(`You open the chest and find ${c} Binding Shard${c > 1 ? "s" : ""}.`); }
       else if (prize === "die") { S.items.die++; msgs.push("You open the chest and find a Loaded Die!"); }
@@ -1256,7 +1280,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       msgs.push(`Crystals rain from the sky! You gather ${n} ${el} Shards. While the shard storm lasts, the rest of this level, Shardborn are ten times more likely to appear.`);
     } else if (type === "merchant") {
       L.shopOpen = true;
-      msgs.push(`A wandering merchant waves you over. You have ${S.coins} coins. Buy what you need, then leave the merchant to keep rolling.`);
+      msgs.push(`A wandering merchant waves you over. You have ${S.coins} Shard Dust. Buy what you need, then leave the merchant to keep rolling.`);
     } else if (type === "portal") {
       if (!allowPortal) { msgs.push("The portal flickers but stays quiet."); return; }
       let dest = p;
@@ -1328,7 +1352,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   }
   function wbVictory(msgs) {
     const W = S.wboss;
-    msgs.push(`You defeated the world boss ${W.name}! Reward: 1000 coins, a Prism Shard and a ${W.el} final-form crest.`);
+    msgs.push(`You defeated the world boss ${W.name}! Reward: 1000 Shard Dust, a Prism Shard and a ${W.el} final-form crest.`);
     S.coins += 1000; S.items.perfect++;
     giveCrest(W.el, msgs);
     addEgg(W.el, msgs, "It left behind");
@@ -1336,6 +1360,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     teamXp(Math.round(W.maxHp / 6), msgs, true);
     givePxp(150, msgs);
     S.stats.wbKills++;
+    giveGems(GEM.worldBoss, msgs, "You also earned");
     S.wboss = null; S.wfights = null;
     S.battle.over = "wbwin";
     sfx("win");
@@ -1345,7 +1370,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function pickWild(w, n) {
     const tier = pickWeighted(RARITY_WEIGHT);
     const [lo, hi] = wildRange(w, n);
-    return makeMon(pickFrom(worldPool(w, tier)), tier === "Common" || tier === "Uncommon" ? rand(lo, hi) : hi + 1, shardRoll(S.level && S.level.storm ? SHARDBORN.stormMult : 1));
+    return makeMon(pickFrom(worldPool(w, tier)), tier === "Common" || tier === "Uncommon" ? rand(lo, hi) : hi + 1, shardRoll((S.level && S.level.storm ? SHARDBORN.stormMult : 1) * (S.level && S.level.lure ? 10 : 1)));
   }
   function pickBoss(w, n) {
     const tier = Math.random() < 0.2 ? "Rare" : "Uncommon";
@@ -1468,8 +1493,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         addShards(worldEl(w), 3 + w, msgs, "The boss shattered into");
         let t = `You defeated the level boss! World ${w}, Level ${n} complete.`;
         if (first && n < world(w).levels) t += ` Level ${n + 1} is unlocked.`;
+        if (first && n === world(w).levels) giveGems(worldCoins(w), msgs, `For clearing World ${w} you earned`);
         if (first && n === world(w).levels && WORLDS[w]) { t += ` World ${w + 1}, the ${WORLDS[w].title}, is now open! ${WORLDS[w].lore}`; S.worldView = w + 1; }
-        msgs.push(t + ` You earned ${coins} coins.`);
+        msgs.push(t + ` You earned ${coins} Shard Dust.`);
         givePxp((40 + 10 * n + 50 * (w - 1)) * (first ? 2 : 1), msgs);
         bump("levels");
         if (Math.random() < 0.08) addEgg(worldEl(w), msgs, "The boss dropped");
@@ -1478,7 +1504,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         const k = outgrowMult(teamTop(), Math.max(...B.enemies.map(e => e.level)));
         const coins = Math.max(1, Math.round(B.enemies.reduce((s, e) => s + e.level * 2, 0) * k));
         S.coins += coins; sfx("coin");
-        msgs.push(`You won the battle and earned ${coins} coins${k < 1 ? " (reduced: your team has outgrown this level)" : ""}! Continue on the board when ready.`);
+        msgs.push(`You won the battle and earned ${coins} Shard Dust${k < 1 ? " (reduced: your team has outgrown this level)" : ""}! Continue on the board when ready.`);
       }
     } else failLevel(msgs);
   }
@@ -1519,7 +1545,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         addMon(makeMon(e.id, e.level, e.shard), false);
         S.stats.caught++; bump("caps"); S.counts.capEl[e.el] = (S.counts.capEl[e.el] || 0) + 1;
         msgs.push(`You threw a ${orbName}. Success! You captured wild ${e.name}${isNew ? ", a new monster for your collection" : ""}. It was sent to your base.`); sfx("catch");
-        if (e.shard) { bump("shardcaps"); msgs.push("You caught a Shardborn! Its crystal body makes it stronger than others of its kind."); sfx("shardborn"); }
+        if (e.shard) { bump("shardcaps"); msgs.push("You caught a Shardborn! Its crystal body makes it stronger than others of its kind."); sfx("shardborn"); giveGems(GEM.shardborn, msgs, "You earned"); }
         teamXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs, false, e.level);
         givePxp(10, msgs);
         const next = foe();
@@ -1588,7 +1614,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const list = [
       { w: 22, label: icount(heal[0], heal[1]), give: () => { S.items[heal[0]] += heal[1]; } },
       { w: 22, label: icount(bind[0], bind[1]), give: () => { S.items[bind[0]] += bind[1]; } },
-      { w: 22, label: `${coins} coins${k < 1 ? " (reduced: outgrown)" : ""}`, give: () => { S.coins += coins; } },
+      { w: 22, label: `${coins} Shard Dust${k < 1 ? " (reduced: outgrown)" : ""}`, give: () => { S.coins += coins; } },
       { w: 18, label: "a quarter of a level's experience for each team monster", give: msgs => {
           // 25% of what each monster needs for its next level, reduced if it has outgrown this level.
           const parts = teamMons().map(m => [m, Math.max(1, Math.ceil(xpNeed(m.level) / 4 * outgrowMult(m.level, levelRef())))]);
@@ -1713,11 +1739,12 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const crests = Object.entries(S.items.crests).filter(([, n]) => n > 0).map(([c, n]) => pl(n, c, c + "s"));
     const items = ["potion", "superpotion", "revive", "tonic", "orb", "gorb", "grorb", "perfect", "fury", "ward", "die"]
       .filter(id => (S.items[id] || 0) > 0 || ["potion", "orb"].includes(id)).map(id => pl(S.items[id] || 0, ITEM_INFO[id].name, ITEM_INFO[id].plural));
-    return [pl(S.coins, "coin", "coins"), ...items, pl(eggCount(), "egg", "eggs"), pl(shardCount(), "elemental shard", "elemental shards"), ...crests].join(" · ");
+    const myth = Object.values(S.items.mythic || {}).reduce((a, b) => a + b, 0);
+    return [`${S.coins} Shard Dust`, `${S.gems || 0} Coin${S.gems === 1 ? "" : "s"}`, ...items, ...(myth ? [`${myth} Mythic egg${myth === 1 ? "" : "s"}`] : []), pl(eggCount(), "egg", "eggs"), pl(shardCount(), "elemental shard", "elemental shards"), ...crests].join(" · ");
   }
 
   const TABS = [
-    ["levels", "Levels"], ["team", "Team and base"], ["quests", "Quests"], ["arena", "Arena"], ["shop", "Shop"], ["synth", "Synthesis"],
+    ["levels", "Levels"], ["team", "Team and base"], ["quests", "Quests"], ["arena", "Arena"], ["shop", "Shop"], ["premium", "Coin Shop"], ["synth", "Synthesis"],
     ["build", "Buildings"], ["train", "Training"], ["exped", "Expeditions"], ["hatch", "Hatchery"], ["ach", "Achievements"], ["forge", "Shard Forge"], ["story", "Story"], ["save", "Settings"]
   ];
   function tabLocked(t) {
@@ -1736,7 +1763,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   const MENU = [
     ["Adventure", ["levels", "arena"]],
     ["Monsters", ["team", "synth", "train", "exped", "hatch"]],
-    ["Camp", ["shop", "forge", "quests", "build", "ach", "story", "save"]]
+    ["Camp", ["shop", "premium", "forge", "quests", "build", "ach", "story", "save"]]
   ];
   function tabLabel(id) { return TABS.find(t => t[0] === id)[1]; }
   // A short note on each menu button, so you can see what needs attention without opening it.
@@ -1754,9 +1781,10 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (id === "train") { const st = trainingStatus(); return !st ? "Nothing training" : st.done ? "Training complete, ready to finish" : `${S.mons[S.training.session.uid].name} is training`; }
     if (id === "exped") { const back = S.exped.list.filter(x => expLeft(x) <= 0).length; return back ? `${back} back and waiting` : `${S.exped.list.length} of ${dockSlots()} away`; }
     if (id === "hatch") { const ready = S.hatch.incub.filter(x => hatchLeft(x) <= 0).length; return ready ? `${ready} egg${ready === 1 ? "" : "s"} ready to hatch` : `${S.hatch.incub.length} of ${S.hatch.slots} incubating · ${eggCount()} eggs waiting`; }
-    if (id === "shop") return `${S.coins} coins`;
+    if (id === "shop") return `${S.coins} Shard Dust`;
+    if (id === "premium") return `${S.gems || 0} Coins${S.lure ? " · Shardborn Lure ready" : ""}`;
     if (id === "quests") { ensureQuests(); const ready = [...S.quests.daily, ...S.quests.weekly].filter(q => !q.claimed && questProgress(q) >= q.n).length; return ready ? `${ready} reward${ready === 1 ? "" : "s"} ready to claim` : "No rewards ready yet"; }
-    if (id === "build") { const p = minePending(); return p > 0 ? `${p} coins ready at the Shard Mine` : ""; }
+    if (id === "build") { const p = minePending(); return p > 0 ? `${p} Shard Dust ready at the Shard Mine` : ""; }
     if (id === "ach") return `${S.ach.length} of ${ACH.length} earned`;
     if (id === "save") return "Sound test, save codes and backups";
     if (id === "forge") return `${shardCount()} elemental shards`;
@@ -1781,7 +1809,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     const lab = tabLabel(S.campTab), lock = tabLocked(S.campTab);
     const back = `<div class="actions">${btn("menu", "", "Back to main menu", "")}</div>`;
     const body = lock ? `<p class="muted">${lab} is locked: it ${lock}.</p>`
-      : { levels: tabLevels, team: tabTeam, quests: tabQuests, arena: tabArena, shop: tabShop, synth: tabSynth, build: tabBuild, train: tabTrain, exped: tabExped, hatch: tabHatch, ach: tabAch, forge: tabForge, story: tabStory, save: tabSave }[S.campTab]();
+      : { levels: tabLevels, team: tabTeam, quests: tabQuests, arena: tabArena, shop: tabShop, premium: tabPremium, synth: tabSynth, build: tabBuild, train: tabTrain, exped: tabExped, hatch: tabHatch, ach: tabAch, forge: tabForge, story: tabStory, save: tabSave }[S.campTab]();
     return back + sec("h-tab", lab, body) + back;
   }
   function wbPanel() {
@@ -1867,26 +1895,46 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     for (const it of SHOP.filter(x => !ids || ids.includes(x.id))) {
       const have = S.items[it.id] || 0;
       if (!itemOpen(it.id)) { if (showLocked) s += `<p class="muted">${it.name}: in stock once you reach World ${ITEM_INFO[it.id].w}. ${it.desc}.</p>`; continue; }
-      s += S.coins >= it.price ? btn("buy", it.id, `Buy ${it.name} for ${it.price} coins`, `${it.desc} · You have ${have}`) : `<p class="muted">${it.name}: ${it.price} coins. ${it.desc}. You have ${have}. Not enough coins.</p>`;
+      s += S.coins >= it.price ? btn("buy", it.id, `Buy ${it.name} for ${it.price} Shard Dust`, `${it.desc} · You have ${have}`) : `<p class="muted">${it.name}: ${it.price} Shard Dust. ${it.desc}. You have ${have}. Not enough Shard Dust.</p>`;
     }
     return s;
   }
   function tabShop() {
-    let s = `<div class="actions"><p>You have ${S.coins} coins.</p>` + shopButtons(null, true);
+    let s = `<div class="actions"><p>You have ${S.coins} Shard Dust.</p>` + shopButtons(null, true);
     const held = Object.entries(S.items.crests).filter(([, n]) => n > 0);
     if (held.length) {
-      s += sub3("Crest Exchange", true) + `<p class="muted">Trade a crest for a random different crest of the same element, for ${CREST_SWAP} coins each.</p>`;
+      s += sub3("Crest Exchange", true) + `<p class="muted">Trade a crest for a random different crest of the same element, for ${CREST_SWAP} Shard Dust each.</p>`;
       for (const [c, n] of held) {
         const id = Object.keys(SP).find(x => SP[x].forms.length === 3 && crestName(x) === c);
         const owned = Object.values(S.mons).some(m => m.id === id);
-        s += S.coins >= CREST_SWAP ? btn("crestx", c, `Exchange the ${c} for another ${SP[id].el} crest`, `You have ${n}${owned ? ` · You own a ${SP[id].forms[0]} line monster that can use it` : ""}`) : `<p class="muted">${c}: you have ${n}. Exchanging costs ${CREST_SWAP} coins.</p>`;
+        s += S.coins >= CREST_SWAP ? btn("crestx", c, `Exchange the ${c} for another ${SP[id].el} crest`, `You have ${n}${owned ? ` · You own a ${SP[id].forms[0]} line monster that can use it` : ""}`) : `<p class="muted">${c}: you have ${n}. Exchanging costs ${CREST_SWAP} Shard Dust.</p>`;
       }
       s += sub3("Scrolls", true);
     }
     for (const [rid, r] of Object.entries(RECIPES)) {
       if (!r.price || S.items.scrolls.includes(rid)) continue;
       if (!worldOpen(elementWorld(r.el))) continue;
-      s += S.coins >= r.price ? btn("buyscroll", rid, `Buy ${r.name} for ${r.price} coins`, r.desc + " Scrolls are never used up.") : `<p class="muted">${r.name}: ${r.price} coins. ${r.desc} Not enough coins.</p>`;
+      s += S.coins >= r.price ? btn("buyscroll", rid, `Buy ${r.name} for ${r.price} Shard Dust`, r.desc + " Scrolls are never used up.") : `<p class="muted">${r.name}: ${r.price} Shard Dust. ${r.desc} Not enough Shard Dust.</p>`;
+    }
+    return s + `</div>`;
+  }
+  function tabPremium() {
+    const G = S.gems || 0;
+    let s = `<div class="actions"><p>You have ${G} Coin${G === 1 ? "" : "s"}.</p><p class="muted">Coins are rare. You earn them only from milestones: ${GEM.achievement} per achievement, ${GEM.weeklyQuest} per weekly quest, ${GEM.worldBoss} per world boss, ${GEM.shardborn} per Shardborn caught, ${GEM.arena10} per tenth Arena floor, and more for clearing each world for the first time (${worldCoins(1)} for World 1, rising to ${worldCoins(8)} for World 8).</p>`;
+    const can = n => G >= n;
+    s += sub3("Mythic Egg", true) + `<p class="muted">Guaranteed to hatch an Epic (80%) or a Legendary (20%) of the element you choose. Costs ${PREMIUM.mythic} Coins. Hatch it in the Hatchery like any egg.</p>`;
+    for (const el of openElements()) s += can(PREMIUM.mythic) ? btn("buymythic", el, `Buy a Mythic ${el} egg for ${PREMIUM.mythic} Coins`) : "";
+    if (!can(PREMIUM.mythic)) s += `<p class="muted">You need ${PREMIUM.mythic - G} more Coins.</p>`;
+    s += sub3("Shardborn Lure", true) + `<p class="muted">Makes Shardborn ten times more likely for your next level, including auto-play. Costs ${PREMIUM.lure} Coins.</p>`;
+    s += S.lure ? `<p>A lure is ready. It will be used on the next level you start.</p>` : can(PREMIUM.lure) ? btn("buylure", "", `Buy a Shardborn Lure for ${PREMIUM.lure} Coins`) : `<p class="muted">You need ${PREMIUM.lure - G} more Coins.</p>`;
+    s += sub3("Prism Shards", true) + (can(PREMIUM.prisms) ? btn("buyprisms", "", `Buy 3 Prism Shards for ${PREMIUM.prisms} Coins`, "100% capture chance each") : `<p class="muted">3 Prism Shards cost ${PREMIUM.prisms} Coins.</p>`);
+    s += sub3("Hurry", true) + `<p class="muted">Finish a training session, an egg or an expedition right away for ${PREMIUM.hurry} Coins each. Look for Finish now buttons in Training, Hatchery and Expeditions.</p>`;
+    s += sub3("Chosen Crest", true) + `<p class="muted">Pick the exact final-form crest you want for ${PREMIUM.crest} Coins. Crests for monsters you own are listed.</p>`;
+    const owned = [...new Set(Object.values(S.mons).filter(m => SP[m.id].forms.length === 3).map(m => m.id))];
+    if (!owned.length) s += `<p class="muted">You don't own any Epic or Legendary monsters yet.</p>`;
+    for (const id of owned) {
+      const c = crestName(id);
+      s += can(PREMIUM.crest) ? btn("buycrest", id, `Buy the ${c} for ${PREMIUM.crest} Coins`, `For ${SP[id].forms[0]}'s line · You have ${S.items.crests[c] || 0}`) : `<p class="muted">${c}: ${PREMIUM.crest} Coins. You have ${S.items.crests[c] || 0}.</p>`;
     }
     return s + `</div>`;
   }
@@ -1916,39 +1964,39 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (S.yard) {
       const yl = yardLvl();
       s += `<p>Level ${yl}: each session trains ${yl} level${yl === 1 ? "" : "s"}' worth of experience in ${trainHours()} hours.</p>`;
-      if (yl < 3) s += S.coins >= YARD.up[yl + 1] ? btn("upyard", "", `Upgrade to level ${yl + 1} for ${YARD.up[yl + 1]} coins`, yl + 1 === 2 ? "Sessions train two levels' worth" : "Sessions train three levels' worth and take 2 hours") : `<p class="muted">Upgrade to level ${yl + 1}: ${YARD.up[yl + 1]} coins. You have ${S.coins}.</p>`;
+      if (yl < 3) s += S.coins >= YARD.up[yl + 1] ? btn("upyard", "", `Upgrade to level ${yl + 1} for ${YARD.up[yl + 1]} Shard Dust`, yl + 1 === 2 ? "Sessions train two levels' worth" : "Sessions train three levels' worth and take 2 hours") : `<p class="muted">Upgrade to level ${yl + 1}: ${YARD.up[yl + 1]} Shard Dust. You have ${S.coins}.</p>`;
     }
-    else s += S.coins >= YARD.cost ? btn("buildyard", "", `Build for ${YARD.cost} coins`, "", true) : `<p class="muted">Costs ${YARD.cost} coins. You have ${S.coins}.</p>`;
-    s += `</div><div class="row"><p class="nm">Shard Mine</p><p class="muted">Earns coins and some elemental shards over time, even while you're away. Holds up to ${MINE.capHours} hours of earnings.</p>`;
+    else s += S.coins >= YARD.cost ? btn("buildyard", "", `Build for ${YARD.cost} Shard Dust`, "", true) : `<p class="muted">Costs ${YARD.cost} Shard Dust. You have ${S.coins}.</p>`;
+    s += `</div><div class="row"><p class="nm">Shard Mine</p><p class="muted">Earns Shard Dust and some elemental shards over time, even while you're away. Holds up to ${MINE.capHours} hours of earnings.</p>`;
     if (S.player.level < MINE.unlock) s += `<p class="muted">Unlocks at Shardbinder level ${MINE.unlock}.</p>`;
-    else if (!S.mine) s += S.coins >= MINE.cost[0] ? btn("buildmine", "", `Build for ${MINE.cost[0]} coins`, `Earns ${MINE.rate[1]} coins per hour`, true) : `<p class="muted">Costs ${MINE.cost[0]} coins. You have ${S.coins}.</p>`;
+    else if (!S.mine) s += S.coins >= MINE.cost[0] ? btn("buildmine", "", `Build for ${MINE.cost[0]} Shard Dust`, `Earns ${MINE.rate[1]} Shard Dust per hour`, true) : `<p class="muted">Costs ${MINE.cost[0]} Shard Dust. You have ${S.coins}.</p>`;
     else {
       const lv = S.mine.lvl, pend = minePending();
-      s += `<p>Level ${lv}. Earns ${MINE.rate[lv]} coins per hour. ${pend} coins ready to collect.</p>`;
-      s += btn("collect", "", `Collect ${pend} coins`, "", true);
+      s += `<p>Level ${lv}. Earns ${MINE.rate[lv]} Shard Dust per hour. ${pend} Shard Dust ready to collect.</p>`;
+      s += btn("collect", "", `Collect ${pend} Shard Dust`, "", true);
       if (mineShardsPending()) s += `<p>${mineShardsPending()} elemental shard${mineShardsPending() === 1 ? "" : "s"} also waiting.</p>`;
-      if (lv < MINE.max) s += S.coins >= MINE.cost[lv] ? btn("upmine", "", `Upgrade to level ${lv + 1} for ${MINE.cost[lv]} coins`, `Earns ${MINE.rate[lv + 1]} coins per hour`) : `<p class="muted">Upgrade to level ${lv + 1}: ${MINE.cost[lv]} coins.</p>`;
-      s += btn("refresh", "", "Check again", "Updates coins ready to collect");
+      if (lv < MINE.max) s += S.coins >= MINE.cost[lv] ? btn("upmine", "", `Upgrade to level ${lv + 1} for ${MINE.cost[lv]} Shard Dust`, `Earns ${MINE.rate[lv + 1]} Shard Dust per hour`) : `<p class="muted">Upgrade to level ${lv + 1}: ${MINE.cost[lv]} Shard Dust.</p>`;
+      s += btn("refresh", "", "Check again", "Updates Shard Dust ready to collect");
     }
     s += `</div><div class="row"><p class="nm">Shard Forge</p><p class="muted">Turns elemental shards into items and eggs, and infuses monsters to make them stronger.</p>`;
     if (S.player.level < FORGE.unlock) s += `<p class="muted">Unlocks at Shardbinder level ${FORGE.unlock}.</p>`;
-    else if (!S.forge) s += S.coins >= FORGE.cost ? btn("buildforge", "", `Build for ${FORGE.cost} coins`, "", true) : `<p class="muted">Costs ${FORGE.cost} coins. You have ${S.coins}.</p>`;
+    else if (!S.forge) s += S.coins >= FORGE.cost ? btn("buildforge", "", `Build for ${FORGE.cost} Shard Dust`, "", true) : `<p class="muted">Costs ${FORGE.cost} Shard Dust. You have ${S.coins}.</p>`;
     else s += `<p>Built. Open the Shard Forge from the main menu.</p>`;
-    s += `</div><div class="row"><p class="nm">Expedition Dock</p><p class="muted">Send up to ${dockSlots()} base monsters on 1, 4 or 8 hour expeditions for coins, items, experience and sometimes eggs.</p>`;
+    s += `</div><div class="row"><p class="nm">Expedition Dock</p><p class="muted">Send up to ${dockSlots()} base monsters on 1, 4 or 8 hour expeditions for Shard Dust, items, experience and sometimes eggs.</p>`;
     if (S.player.level < DOCK.unlock) s += `<p class="muted">Unlocks at Shardbinder level ${DOCK.unlock}.</p>`;
-    else if (!S.exped) s += S.coins >= DOCK.cost ? btn("builddock", "", `Build for ${DOCK.cost} coins`, "", true) : `<p class="muted">Costs ${DOCK.cost} coins. You have ${S.coins}.</p>`;
+    else if (!S.exped) s += S.coins >= DOCK.cost ? btn("builddock", "", `Build for ${DOCK.cost} Shard Dust`, "", true) : `<p class="muted">Costs ${DOCK.cost} Shard Dust. You have ${S.coins}.</p>`;
     else {
       s += `<p>Built with ${dockSlots()} expedition slots. Open the Expeditions tab to use it.</p>`;
-      if (!S.exped.big) s += S.coins >= DOCK.upgrade ? btn("updock", "", `Expand to ${DOCK.bigSlots} slots for ${DOCK.upgrade} coins`) : `<p class="muted">Expanding to ${DOCK.bigSlots} slots costs ${DOCK.upgrade} coins.</p>`;
+      if (!S.exped.big) s += S.coins >= DOCK.upgrade ? btn("updock", "", `Expand to ${DOCK.bigSlots} slots for ${DOCK.upgrade} Shard Dust`) : `<p class="muted">Expanding to ${DOCK.bigSlots} slots costs ${DOCK.upgrade} Shard Dust.</p>`;
     }
     s += `</div><div class="row"><p class="nm">Hatchery</p><p class="muted">Incubates eggs for ${hatchHours()} hours until they hatch into a random monster of their element.</p>`;
     if (S.player.level < HATCHERY.unlock) s += `<p class="muted">Unlocks at Shardbinder level ${HATCHERY.unlock}.</p>`;
-    else if (!S.hatch) s += S.coins >= HATCHERY.cost ? btn("buildhatch", "", `Build for ${HATCHERY.cost} coins`, "One incubator", true) : `<p class="muted">Costs ${HATCHERY.cost} coins. You have ${S.coins}.</p>`;
-    else if (S.hatch.slots < 2) s += S.coins >= HATCHERY.upgrade ? btn("uphatch", "", `Add a second incubator for ${HATCHERY.upgrade} coins`) : `<p class="muted">Built with 1 incubator. A second costs ${HATCHERY.upgrade} coins.</p>`;
+    else if (!S.hatch) s += S.coins >= HATCHERY.cost ? btn("buildhatch", "", `Build for ${HATCHERY.cost} Shard Dust`, "One incubator", true) : `<p class="muted">Costs ${HATCHERY.cost} Shard Dust. You have ${S.coins}.</p>`;
+    else if (S.hatch.slots < 2) s += S.coins >= HATCHERY.upgrade ? btn("uphatch", "", `Add a second incubator for ${HATCHERY.upgrade} Shard Dust`) : `<p class="muted">Built with 1 incubator. A second costs ${HATCHERY.upgrade} Shard Dust.</p>`;
     else {
       s += `<p>Built with ${S.hatch.slots} incubators. Eggs take ${hatchHours()} hours. Open the Hatchery tab to use it.</p>`;
-      if (!S.hatch.fast) s += S.coins >= HATCHERY.fastCost ? btn("fasthatch", "", `Warm the incubators for ${HATCHERY.fastCost} coins`, `Eggs hatch in ${HATCHERY.fastHours} hours instead of ${HATCHERY.hours}`) : `<p class="muted">Warmer incubators (eggs hatch in ${HATCHERY.fastHours} hours): ${HATCHERY.fastCost} coins.</p>`;
-      if (S.hatch.slots < 3) s += S.coins >= HATCHERY.slot3 ? btn("hatch3", "", `Add a third incubator for ${HATCHERY.slot3} coins`) : `<p class="muted">A third incubator costs ${HATCHERY.slot3} coins.</p>`;
+      if (!S.hatch.fast) s += S.coins >= HATCHERY.fastCost ? btn("fasthatch", "", `Warm the incubators for ${HATCHERY.fastCost} Shard Dust`, `Eggs hatch in ${HATCHERY.fastHours} hours instead of ${HATCHERY.hours}`) : `<p class="muted">Warmer incubators (eggs hatch in ${HATCHERY.fastHours} hours): ${HATCHERY.fastCost} Shard Dust.</p>`;
+      if (S.hatch.slots < 3) s += S.coins >= HATCHERY.slot3 ? btn("hatch3", "", `Add a third incubator for ${HATCHERY.slot3} Shard Dust`) : `<p class="muted">A third incubator costs ${HATCHERY.slot3} Shard Dust.</p>`;
     }
     return s + `</div></div>`;
   }
@@ -1961,7 +2009,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (T.session) {
       const m = S.mons[T.session.uid];
       s += `<div class="row"><p class="nm">${m.name} is training</p><p>${st.text}</p>`;
-      s += st.done ? btn("trainclaim", "", `Finish training`, `${m.name} gains ${trainAmount(m)} experience`, true) : btn("refresh", "", "Check again", "Updates the time left");
+      s += st.done ? btn("trainclaim", "", `Finish training`, `${m.name} gains ${trainAmount(m)} experience`, true) : btn("refresh", "", "Check again", "Updates the time left") + btn("hurry", "train", `Finish now for ${PREMIUM.hurry} Coins`, `You have ${S.gems || 0} Coins`);
       s += `</div>`;
     } else {
       for (const m of [...teamMons(), ...Object.values(S.mons).filter(m => !S.team.includes(m.uid) && !onExped(m.uid))]) s += btn("train", m.uid, `Train ${m.name}`, `${S.team.includes(m.uid) ? "On your team" : "In your base"} · Level ${m.level} · Will gain ${trainAmount(m)} experience`);
@@ -1983,7 +2031,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     return s + `</div>`;
   }
   function tabArena() {
-    let s = `<div class="actions"><p>Best floor: ${S.arena.best}.</p><p class="muted">Each floor is a rival's team, and every tenth floor is a champion with four monsters. Your team's health carries over between floors, so potions matter. Rewards: coins every floor, a Loaded Die every 5 floors, a Prism Shard and an egg every 10, and a crest every 25. Milestone rewards are paid the first time you reach them.</p>`;
+    let s = `<div class="actions"><p>Best floor: ${S.arena.best}.</p><p class="muted">Each floor is a rival's team, and every tenth floor is a champion with four monsters. Your team's health carries over between floors, so potions matter. Rewards: Shard Dust every floor, a Loaded Die every 5 floors, a Prism Shard and an egg every 10, and a crest every 25. Milestone rewards are paid the first time you reach them.</p>`;
     const cps = [1];
     for (let c = 11; c <= S.arena.best + 1; c += 10) cps.push(c);
     cps.reverse().forEach((c, i) => { s += btn("arenastart", c, `Start at floor ${c}`, `Rivals at level ${4 + 2 * c} · Your team starts fully healed`, i === 0); });
@@ -1998,7 +2046,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     E.list.forEach((x, i) => {
       const m = S.mons[x.uid], left = expLeft(x);
       if (left > 0) pending = true;
-      s += `<div class="row"><p class="nm">${m.name}</p><p class="muted">${x.hours}-hour expedition · ${left <= 0 ? "Back now" : dur(left) + " left"}</p>${left <= 0 ? btn("expcollect", i, `Welcome ${m.name} back`, "Collect what it found", true) : ""}</div>`;
+      s += `<div class="row"><p class="nm">${m.name}</p><p class="muted">${x.hours}-hour expedition · ${left <= 0 ? "Back now" : dur(left) + " left"}</p>${left <= 0 ? btn("expcollect", i, `Welcome ${m.name} back`, "Collect what it found", true) : btn("hurry", `exp:${i}`, `Bring ${m.name} back now for ${PREMIUM.hurry} Coins`, `You have ${S.gems || 0} Coins`)}</div>`;
     });
     if (pending) s += btn("refresh", "", "Check again", "Updates the time left");
     if (E.list.length < dockSlots()) {
@@ -2007,7 +2055,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       s += `</div>`;
       const avail = Object.values(S.mons).filter(m => !S.team.includes(m.uid) && !onExped(m.uid) && !inTraining(m.uid));
       if (!avail.length) s += `<p class="muted">No monsters free in your base. Send a monster from your team to base first.</p>`;
-      for (const m of avail) s += btn("expsend", m.uid, `Send ${m.name} for ${S.expDur} hour${S.expDur > 1 ? "s" : ""}`, `${m.rarity} · Level ${m.level} · About ${Math.round(S.expDur * (10 + m.level) * RARITY_COIN[m.rarity])} coins`);
+      for (const m of avail) s += btn("expsend", m.uid, `Send ${m.name} for ${S.expDur} hour${S.expDur > 1 ? "s" : ""}`, `${m.rarity} · Level ${m.level} · About ${Math.round(S.expDur * (10 + m.level) * RARITY_COIN[m.rarity])} Shard Dust`);
     }
     return s + `</div>`;
   }
@@ -2019,13 +2067,15 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     H.incub.forEach((x, i) => {
       const left = hatchLeft(x);
       if (left > 0) pending = true;
-      s += `<div class="row"><p class="nm">${x.el} egg</p><p class="muted">${left <= 0 ? "Ready to hatch" : dur(left) + " left"}</p>${left <= 0 ? btn("hatchnow", i, `Hatch the ${x.el} egg`, "", true) : ""}</div>`;
+      const eggName = `${x.mythic ? "Mythic " : ""}${x.el} egg`;
+      s += `<div class="row"><p class="nm">${eggName}</p><p class="muted">${left <= 0 ? "Ready to hatch" : dur(left) + " left"}</p>${left <= 0 ? btn("hatchnow", i, `Hatch the ${eggName}`, "", true) : btn("hurry", `hatch:${i}`, `Hatch it now for ${PREMIUM.hurry} Coins`, `You have ${S.gems || 0} Coins`)}</div>`;
     });
     if (pending) s += btn("refresh", "", "Check again", "Updates the time left");
     if (H.incub.length < H.slots) {
       const eggs = Object.entries(S.items.eggs).filter(([, n]) => n > 0);
+      for (const [el, n] of Object.entries(S.items.mythic || {})) if (n > 0) s += btn("incubate", `mythic:${el}`, `Incubate a Mythic ${el} egg`, `You have ${n} · Hatches an Epic or Legendary`, true);
       s += sub3("Your eggs", true);
-      if (!eggs.length) s += `<p class="muted">No eggs yet.</p>`;
+      if (!eggs.length && !Object.values(S.items.mythic || {}).some(n => n > 0)) s += `<p class="muted">No eggs yet.</p>`;
       for (const [el, n] of eggs) s += btn("incubate", el, `Incubate a ${el} egg`, `You have ${n}`);
     }
     return s + `</div>`;
@@ -2118,9 +2168,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     }
     h += sec("h-board", `World ${L.w}, Level ${L.n} board`, `<div class="actions">
       <p class="stat">Space ${L.pos + 1} of ${BOARD_SIZE}. The boss is ${BOARD_SIZE - 1 - L.pos} spaces away.</p>
-      ${L.storm ? `<p>A shard storm is raging. Shardborn are ten times more likely for the rest of this level.</p>` : ""}
+      ${L.lure ? `<p>Your Shardborn Lure is active for this level.</p>` : ""}${L.storm ? `<p>A shard storm is raging. Shardborn are ten times more likely for the rest of this level.</p>` : ""}
       ${track}${rollBtns}</div>`);
-    if (L.shopOpen && !autoOn()) h += sec("h-merchant", "Wandering merchant", `<div class="actions"><p>You have ${S.coins} coins.</p>${shopButtons(["potion", "superpotion", "revive", "orb", "gorb", "fury", "ward", "die"])}${btn("merchleave", "", "Leave the merchant", "Back to the board", true)}</div>`);
+    if (L.shopOpen && !autoOn()) h += sec("h-merchant", "Wandering merchant", `<div class="actions"><p>You have ${S.coins} Shard Dust.</p>${shopButtons(["potion", "superpotion", "revive", "orb", "gorb", "fury", "ward", "die"])}${btn("merchleave", "", "Leave the merchant", "Back to the board", true)}</div>`);
     let ahead = `<ol class="clean">`;
     for (let i = L.pos + 1; i <= Math.min(BOARD_SIZE - 1, L.pos + 6); i++) ahead += `<li>Space ${i + 1}: ${spaceLabel(i)}</li>`;
     h += sec("h-ahead", "Look ahead", ahead + `</ol>`);
@@ -2284,7 +2334,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
       case "expdur": S.expDur = Number(arg); msgs = [`Expedition length set to ${arg} hour${arg === "1" ? "" : "s"}.`]; break;
       case "expsend": if (S.exped && S.exped.list.length < dockSlots() && S.mons[arg] && !S.team.includes(arg) && !onExped(arg) && !inTraining(arg)) { S.exped.list.push({ uid: arg, start: now(), hours: S.expDur }); if (S.synth) S.synth.picks = S.synth.picks.filter(x => x !== arg); msgs = [`${S.mons[arg].name} set out on a ${S.expDur}-hour expedition.`]; } break;
       case "expcollect": { const x = S.exped && S.exped.list[Number(arg)]; if (x && expLeft(x) <= 0) msgs = expCollect(Number(arg)); break; }
-      case "incubate": if (S.hatch && S.hatch.incub.length < S.hatch.slots && S.items.eggs[arg] > 0) { S.items.eggs[arg]--; S.hatch.incub.push({ el: arg, start: now() }); msgs = [`You placed a ${arg} egg in an incubator. It hatches in ${hatchHours()} hours.`]; } break;
+      case "incubate": if (String(arg).startsWith("mythic:")) { const el = arg.slice(7); if (S.hatch && S.hatch.incub.length < S.hatch.slots && S.items.mythic[el] > 0) { S.items.mythic[el]--; S.hatch.incub.push({ el, start: now(), mythic: true }); msgs = [`You placed a Mythic ${el} egg in an incubator. It hatches in ${hatchHours()} hours.`]; } break; }
+        if (S.hatch && S.hatch.incub.length < S.hatch.slots && S.items.eggs[arg] > 0) { S.items.eggs[arg]--; S.hatch.incub.push({ el: arg, start: now() }); msgs = [`You placed a ${arg} egg in an incubator. It hatches in ${hatchHours()} hours.`]; } break;
       case "hatchnow": { const x = S.hatch && S.hatch.incub[Number(arg)]; if (x && hatchLeft(x) <= 0) msgs = hatchEgg(Number(arg)); break; }
       case "sndtest": {
         if (!S.sound) { msgs = ["Sound effects are off. Turn them on with the button at the top of the page."]; break; }
@@ -2317,19 +2368,34 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
         }
         break;
       }
+      case "buymythic": if (S.gems >= PREMIUM.mythic && openElements().includes(arg)) { S.gems -= PREMIUM.mythic; S.items.mythic[arg] = (S.items.mythic[arg] || 0) + 1; sfx("chest"); msgs = [`You bought a Mythic ${arg} egg. ${S.hatch ? "Incubate it in the Hatchery." : "Build the Hatchery to hatch it."} You have ${S.gems} Coins left.`]; } break;
+      case "buylure": if (!S.lure && S.gems >= PREMIUM.lure) { S.gems -= PREMIUM.lure; S.lure = true; sfx("shardborn"); msgs = [`You bought a Shardborn Lure. Shardborn will be ten times more likely on the next level you start. You have ${S.gems} Coins left.`]; } break;
+      case "buyprisms": if (S.gems >= PREMIUM.prisms) { S.gems -= PREMIUM.prisms; S.items.perfect += 3; sfx("coin"); msgs = [`You bought 3 Prism Shards. You have ${S.items.perfect} now and ${S.gems} Coins left.`]; } break;
+      case "buycrest": if (S.gems >= PREMIUM.crest && SP[arg] && SP[arg].forms.length === 3) { S.gems -= PREMIUM.crest; const c = crestName(arg); addCrest(c); sfx("forge"); msgs = [`You bought the ${c}. You have ${S.gems} Coins left.`]; const f = crestFits(c); if (f) msgs.push(f); } break;
+      case "hurry": {
+        if (!(S.gems >= PREMIUM.hurry)) { msgs = [`Finishing a timer costs ${PREMIUM.hurry} Coins.`]; break; }
+        const [kind, i] = String(arg).split(":");
+        if (kind === "train" && S.training.session && !trainingStatus().done) { S.training.session.start = now() - trainHours() * HOUR; S.training.session.pxpAt = S.pxpLife - TRAIN.pxp; }
+        else if (kind === "hatch" && S.hatch && S.hatch.incub[Number(i)] && hatchLeft(S.hatch.incub[Number(i)]) > 0) S.hatch.incub[Number(i)].start = now() - hatchHours() * HOUR;
+        else if (kind === "exp" && S.exped && S.exped.list[Number(i)] && expLeft(S.exped.list[Number(i)]) > 0) { const x = S.exped.list[Number(i)]; x.start = now() - x.hours * HOUR; }
+        else break;
+        S.gems -= PREMIUM.hurry; sfx("coin");
+        msgs = [`Done. That timer is finished. You have ${S.gems} Coins left.`];
+        break;
+      }
       case "makefirst": S.team = [arg, ...S.team.filter(id => id !== arg)]; msgs = [`${S.mons[arg].name} will lead your team.`]; break;
       case "remove": if (S.team.length > 1) { S.team = S.team.filter(id => id !== arg); msgs = [`${S.mons[arg].name} was sent to your base. Your team has ${S.team.length} of 4.`]; } break;
       case "add": if (S.team.length < 4 && !S.team.includes(arg) && !onExped(arg)) { S.team.push(arg); msgs = [`${S.mons[arg].name} joined your team. Your team has ${S.team.length} of 4.`]; } break;
       case "crest": { const m = S.mons[arg], c = crestName(m.id); if (m.stage === 1 && S.items.crests[c] > 0) { S.items.crests[c]--; msgs = [`You used the ${c}.`]; evolve(m, msgs); m.hp = m.maxHp; } break; }
-      case "buy": { const it = SHOP.find(x => x.id === arg); if (it && itemOpen(arg) && S.coins >= it.price) { S.coins -= it.price; S.items[arg]++; sfx("coin"); msgs = [`You bought a ${it.name} for ${it.price} coins. You have ${S.items[arg]} now and ${S.coins} coins left.`]; } break; }
+      case "buy": { const it = SHOP.find(x => x.id === arg); if (it && itemOpen(arg) && S.coins >= it.price) { S.coins -= it.price; S.items[arg]++; sfx("coin"); msgs = [`You bought a ${it.name} for ${it.price} Shard Dust. You have ${S.items[arg]} now and ${S.coins} Shard Dust left.`]; } break; }
       case "buyscroll": { const r = RECIPES[arg]; if (r && S.coins >= r.price && !S.items.scrolls.includes(arg)) { S.coins -= r.price; S.items.scrolls.push(arg); sfx("coin"); msgs = [`You bought the ${r.name}. Find it under Synthesis.`]; } break; }
       case "scroll": S.synth = S.synth && S.synth.recipe === arg ? null : { recipe: arg, picks: [] }; msgs = [S.synth ? `${RECIPES[arg].name} is open. ${RECIPES[arg].desc} Choose your ingredients.` : "Scroll closed."]; break;
       case "pick": { const R = RECIPES[S.synth.recipe], P = S.synth.picks, m = S.mons[arg]; if (P.includes(arg)) { S.synth.picks = P.filter(x => x !== arg); msgs = [`Removed ${m.name}. ${S.synth.picks.length} selected.`]; } else if (P.length < R.slots.length) { P.push(arg); msgs = [`Selected ${m.name}. ${P.length} of ${R.slots.length} selected.` + (slotsMatch(R, P.map(id => S.mons[id])) ? " Ready to synthesize." : "")]; } else msgs = ["You've already chosen enough ingredients. Unselect one first."]; break; }
       case "synth": msgs = doSynth(); break;
       case "buildyard": if (!S.yard && S.coins >= YARD.cost) { S.coins -= YARD.cost; S.yard = true; sfx("coin"); msgs = ["You built the Training Yard. Open the Training tab to train a monster."]; } break;
-      case "buildmine": if (!S.mine && S.coins >= MINE.cost[0]) { S.coins -= MINE.cost[0]; S.mine = { lvl: 1, last: now() }; sfx("coin"); msgs = [`You built the Shard Mine. It earns ${MINE.rate[1]} coins per hour.`]; } break;
-      case "upmine": { const lv = S.mine.lvl; if (lv < MINE.max && S.coins >= MINE.cost[lv]) { const p = minePending(); S.coins -= MINE.cost[lv]; S.coins += p; const sm = []; collectMineShards(sm); S.mine = { lvl: lv + 1, last: now() }; sfx("coin"); msgs = [`Shard Mine upgraded to level ${lv + 1}. It now earns ${MINE.rate[lv + 1]} coins per hour.` + (p ? ` ${p} waiting coins were collected.` : "")].concat(sm); } break; }
-      case "collect": { const p = minePending(); S.coins += p; msgs = [p ? `You collected ${p} coins. You have ${S.coins} coins.` : "No coins ready yet. Check back later."]; collectMineShards(msgs); S.mine.last = now(); if (p) sfx("coin"); break; }
+      case "buildmine": if (!S.mine && S.coins >= MINE.cost[0]) { S.coins -= MINE.cost[0]; S.mine = { lvl: 1, last: now() }; sfx("coin"); msgs = [`You built the Shard Mine. It earns ${MINE.rate[1]} Shard Dust per hour.`]; } break;
+      case "upmine": { const lv = S.mine.lvl; if (lv < MINE.max && S.coins >= MINE.cost[lv]) { const p = minePending(); S.coins -= MINE.cost[lv]; S.coins += p; const sm = []; collectMineShards(sm); S.mine = { lvl: lv + 1, last: now() }; sfx("coin"); msgs = [`Shard Mine upgraded to level ${lv + 1}. It now earns ${MINE.rate[lv + 1]} Shard Dust per hour.` + (p ? ` ${p} waiting Shard Dust was collected.` : "")].concat(sm); } break; }
+      case "collect": { const p = minePending(); S.coins += p; msgs = [p ? `You collected ${p} Shard Dust. You have ${S.coins} Shard Dust.` : "No Shard Dust ready yet. Check back later."]; collectMineShards(msgs); S.mine.last = now(); if (p) sfx("coin"); break; }
       case "refresh": msgs = (msgs || []).concat(["Updated."]); break;
       case "mode": if (!S.training.session) { S.training.mode = S.training.mode === "time" ? "xp" : "time"; msgs = [`Training mode is now ${S.training.mode === "time" ? "time-based" : "experience-based"}.`]; } break;
       case "train": if (!S.training.session && S.mons[arg]) { S.training.session = { uid: arg, start: now(), pxpAt: S.pxpLife }; msgs = [`${S.mons[arg].name} started training. ${trainingStatus().text}`]; } break;
@@ -2506,7 +2572,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (S.screen === "battle" && S.battle) { const e = foe(), p = you(); st += e ? `Battle: your ${p.name}, ${p.hp} of ${p.maxHp} health, against ${e.name}, ${e.hp} of ${e.maxHp}.` : "Battle won."; }
     else if (S.screen === "level" && S.level) st += `Space ${S.level.pos + 1} of ${BOARD_SIZE}.`;
     else if (S.screen === "wheel") st += "Reward wheel.";
-    st += ` So far: ${S.coins - Au.coins0} coins and ${(S.counts.caps || 0) - Au.caps0} captures.`;
+    st += ` So far: ${S.coins - Au.coins0} Shard Dust and ${(S.counts.caps || 0) - Au.caps0} captures.`;
     document.getElementById("autostatus").textContent = st;
     const set = (id, text, pressed) => { const b = document.getElementById(id); b.textContent = text; if (pressed !== undefined) b.setAttribute("aria-pressed", String(pressed)); };
     set("ap-speed", `Speed: ${SPEED_NAME[A.speed]}`);
@@ -2544,7 +2610,7 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     if (!Au) return;
     S.auto = null;
     const coins = S.coins - Au.coins0, caps = (S.counts.caps || 0) - Au.caps0;
-    S.result = `Auto-play stopped: ${reason}. ${Au.runs} run${Au.runs === 1 ? "" : "s"}, ${coins} coins earned, ${caps} monster${caps === 1 ? "" : "s"} captured. You're in control now.`;
+    S.result = `Auto-play stopped: ${reason}. ${Au.runs} run${Au.runs === 1 ? "" : "s"}, ${coins} Shard Dust earned, ${caps} monster${caps === 1 ? "" : "s"} captured. You're in control now.`;
     render();
     updateAutobar();
     document.getElementById("result").focus();
@@ -2573,9 +2639,10 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     wbTick(extra);
     checkAch(extra);
     if (S.wboss) extra.push(`World boss ${S.wboss.name} is active with ${S.wfights.count} fight${S.wfights.count === 1 ? "" : "s"} available.`);
-    if (S.screen === "camp" && S.mine && minePending() > 0) extra.push(`Your Shard Mine has ${minePending()} coins ready.`);
+    if (S.screen === "camp" && S.mine && minePending() > 0) extra.push(`Your Shard Mine has ${minePending()} Shard Dust ready.`);
     if (S.training.session && trainingStatus().done) extra.push("A monster has finished training.");
     if (readyCrests().length) extra.push(`You have a crest ready to use on ${readyCrests().map(m => m.name).join(", ")}. Find it in Team and base.`);
+    if (S.gemsBackfill) { extra.push(`New: Coins are now a rare premium currency, and your old coins are now called Shard Dust. You've been given ${S.gemsBackfill} Coins for the milestones you've already reached. Spend them in the Coin Shop.`); delete S.gemsBackfill; }
     if (autoWasOn) extra.push("Auto-play stopped when the game was closed. You can carry on yourself or start it again from camp.");
     if (S.exped && S.exped.list.some(x => expLeft(x) <= 0)) extra.push("A monster is back from an expedition.");
     if (S.hatch && S.hatch.incub.some(x => hatchLeft(x) <= 0)) extra.push("An egg is ready to hatch.");
