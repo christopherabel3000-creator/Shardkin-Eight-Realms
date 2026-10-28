@@ -35,18 +35,19 @@
     return m.stage === 0 ? ` · Evolves into ${f[1]} at level ${EVOLVE_LEVEL}` : ` · Final form ${f[2]} needs the ${crestName(m.id)}`;
   }
   function monLine(m) { return `${m.el} · ${m.rarity}${m.shard ? " Shardborn" : ""} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${m.infuse ? ` · Infused ${m.infuse} of 5` : ""}${statusText(m)}`; }
+  // The items you can use on the board. Everything else (eggs, shards, crests, scrolls) is in the Bag area at camp.
   function itemsLine() {
-    const pl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-    const crests = Object.entries(S.items.crests).filter(([, n]) => n > 0).map(([c, n]) => pl(n, c, c + "s"));
     const items = ["potion", "superpotion", "revive", "tonic", "orb", "gorb", "grorb", "perfect", "fury", "ward", "die"]
-      .filter(id => (S.items[id] || 0) > 0 || ["potion", "orb"].includes(id)).map(id => pl(S.items[id] || 0, ITEM_INFO[id].name, ITEM_INFO[id].plural));
-    const myth = Object.values(S.items.mythic || {}).reduce((a, b) => a + b, 0);
-    return [`${S.coins} Shard Dust`, `${S.gems || 0} Coin${S.gems === 1 ? "" : "s"}`, ...items, ...(myth ? [`${myth} Mythic egg${myth === 1 ? "" : "s"}`] : []), pl(eggCount(), "egg", "eggs"), pl(shardCount(), "elemental shard", "elemental shards"), ...crests].join(" · ");
+      .filter(id => (S.items[id] || 0) > 0 || ["potion", "orb"].includes(id)).map(id => `${fmt(S.items[id] || 0)} ${iname(id, S.items[id] || 0)}`);
+    return [`${fmt(S.coins)} Shard Dust`, ...items].join(" · ");
   }
+  function menuLine() { return `${fmt(S.coins)} Shard Dust · ${fmt(S.gems || 0)} Coin${S.gems === 1 ? "" : "s"}`; }
+  const sumOf = obj => Object.values(obj || {}).reduce((a, b) => a + b, 0);
 
   const TABS = [
-    ["levels", "Levels"], ["team", "Team and base"], ["quests", "Quests"], ["arena", "Arena"], ["shop", "Shop"], ["premium", "Coin Shop"], ["synth", "Synthesis"],
-    ["build", "Buildings"], ["train", "Training"], ["exped", "Expeditions"], ["hatch", "Hatchery"], ["ach", "Achievements"], ["forge", "Shard Forge"], ["story", "Story"], ["save", "Settings"]
+    ["levels", "Levels"], ["trials", "Trials"], ["team", "Team and base"], ["collection", "Collection"], ["quests", "Quests"], ["arena", "Arena"], ["bag", "Bag"],
+    ["shop", "Shop"], ["premium", "Coin Shop"], ["synth", "Synthesis"], ["build", "Buildings"], ["train", "Training"], ["exped", "Expeditions"], ["hatch", "Hatchery"],
+    ["ach", "Achievements"], ["forge", "Shard Forge"], ["story", "Story"], ["save", "Settings"]
   ];
   function tabLocked(t) {
     if (t === "shop") return S.player.level < 2 ? "unlocks at Shardbinder level 2" : "";
@@ -58,13 +59,14 @@
     if (t === "exped") return S.exped ? "" : "needs the Expedition Dock";
     if (t === "hatch") return S.hatch ? "" : "needs the Hatchery";
     if (t === "forge") return S.forge ? "" : (S.player.level < FORGE.unlock ? `unlocks at Shardbinder level ${FORGE.unlock}` : "needs the Shard Forge building");
+    if (t === "trials") return trialsOpen() ? "" : "opens when the Heartcrystal is restored, after all eight element worlds";
     return "";
   }
   // The main menu groups every camp area; opening one shows only that area, with a way back.
   const MENU = [
-    ["Adventure", ["levels", "arena"]],
-    ["Monsters", ["team", "synth", "train", "exped", "hatch"]],
-    ["Camp", ["shop", "premium", "forge", "quests", "build", "ach", "story", "save"]]
+    ["Adventure", ["levels", "trials", "arena"]],
+    ["Monsters", ["team", "collection", "synth", "train", "exped", "hatch"]],
+    ["Camp", ["bag", "shop", "premium", "forge", "quests", "build", "ach", "story", "save"]]
   ];
   function tabLabel(id) { return TABS.find(t => t[0] === id)[1]; }
   // A short note on each menu button, so you can see what needs attention without opening it.
@@ -77,18 +79,24 @@
       return notes.join(" · ");
     }
     if (id === "arena") return `Best floor ${S.arena.best}`;
+    if (id === "trials") return `Best tier ${S.trials.best} · Tier ${S.trials.best + 1} open`;
+    if (id === "collection") return `${S.dex.length} of 120 caught · ${S.shardDex.length} Shardborn`;
+    if (id === "bag") {
+      const c = S.items.crestChoice;
+      return [c ? `${c} Crest Choice${c === 1 ? "" : "s"} to use` : "", `${eggCount() + sumOf(S.items.mythic)} eggs`, `${fmt(shardCount())} elemental shards`, `${sumOf(S.items.crests)} crests`].filter(Boolean).join(" · ");
+    }
     if (id === "team") { const rc = readyCrests(); return `${S.team.length} of 4 on your team · ${Object.keys(S.mons).length - S.team.length} in your base${rc.length ? ` · Crest ready for ${rc.map(m => m.name).join(", ")}` : ""}`; }
     if (id === "synth") return `${S.items.scrolls.length} scroll${S.items.scrolls.length === 1 ? "" : "s"}`;
     if (id === "train") { const st = trainingStatus(); return !st ? "Nothing training" : st.done ? "Training complete, ready to finish" : `${S.mons[S.training.session.uid].name} is training`; }
     if (id === "exped") { const back = S.exped.list.filter(x => expLeft(x) <= 0).length; return back ? `${back} back and waiting` : `${S.exped.list.length} of ${dockSlots()} away`; }
     if (id === "hatch") { const ready = S.hatch.incub.filter(x => hatchLeft(x) <= 0).length; return ready ? `${ready} egg${ready === 1 ? "" : "s"} ready to hatch` : `${S.hatch.incub.length} of ${S.hatch.slots} incubating · ${eggCount()} eggs waiting`; }
-    if (id === "shop") return `${S.coins} Shard Dust`;
-    if (id === "premium") return `${S.gems || 0} Coins${S.lure ? " · Shardborn Lure ready" : ""}`;
+    if (id === "shop") return `${fmt(S.coins)} Shard Dust`;
+    if (id === "premium") return `${fmt(S.gems || 0)} Coins${S.lure ? " · Shardborn Lure ready" : ""}`;
     if (id === "quests") { ensureQuests(); const ready = [...S.quests.daily, ...S.quests.weekly].filter(q => !q.claimed && questProgress(q) >= q.n).length; return ready ? `${ready} reward${ready === 1 ? "" : "s"} ready to claim` : "No rewards ready yet"; }
     if (id === "build") { const p = minePending(); return p > 0 ? `${p} Shard Dust ready at the Shard Mine` : ""; }
     if (id === "ach") return `${S.ach.length} of ${ACH.length} earned`;
     if (id === "save") return "Sound test, save codes and backups";
-    if (id === "forge") return `${shardCount()} elemental shards`;
+    if (id === "forge") return `${fmt(shardCount())} elemental shards${fusionOpen() ? " · Heartcrystal fusion open" : ""}`;
     if (id === "story") return "The tale of the Heartcrystal";
     return "";
   }
@@ -99,7 +107,7 @@
       let h = sec("h-camp", "Main menu", `<div class="actions">
         <p>Shardbinder level ${P.level}. ${P.xp} of ${pNeed(P.level)} experience to level ${P.level + 1}.</p>
         <div class="bar xpbar" aria-hidden="true"><i style="width:${(P.xp / pNeed(P.level) * 100).toFixed(1)}%"></i></div>
-        <p class="muted">${itemsLine()}</p></div>`);
+        <p class="muted">${menuLine()}</p></div>`);
       for (const [group, ids] of MENU) {
         let nav = `<div class="pair">`;
         for (const id of ids) nav += btn("tab", id, tabLabel(id), tabNote(id), false);
@@ -110,7 +118,8 @@
     const lab = tabLabel(S.campTab), lock = tabLocked(S.campTab);
     const back = `<div class="actions">${btn("menu", "", "Back to main menu", "")}</div>`;
     const body = lock ? `<p class="muted">${lab} is locked: it ${lock}.</p>`
-      : { levels: tabLevels, team: tabTeam, quests: tabQuests, arena: tabArena, shop: tabShop, premium: tabPremium, synth: tabSynth, build: tabBuild, train: tabTrain, exped: tabExped, hatch: tabHatch, ach: tabAch, forge: tabForge, story: tabStory, save: tabSave }[S.campTab]();
+      : { levels: tabLevels, trials: tabTrials, team: tabTeam, collection: tabCollection, quests: tabQuests, arena: tabArena, bag: tabBag, shop: tabShop, premium: tabPremium,
+        synth: tabSynth, build: tabBuild, train: tabTrain, exped: tabExped, hatch: tabHatch, ach: tabAch, forge: tabForge, story: tabStory, save: tabSave }[S.campTab]();
     return back + sec("h-tab", lab, body) + back;
   }
   function wbPanel() {
@@ -120,7 +129,7 @@
       <p>${W.el} · Level ${W.level} · Health ${W.hp} of ${W.maxHp} · Leaves in ${dur(W.expires - now())}</p>
       ${hpBar(W)}
       <p class="muted">Fights available: ${F.count} of ${WB.maxFights}${F.count < WB.maxFights ? ` · Next fight in ${dur(F.last + WB.fightEvery - now())}` : ""}</p>`;
-    t += F.count > 0 ? btn("wbfight", "", `Fight ${W.name}`, "Your team starts fully healed. Damage carries over.", true) : btn("refresh", "", "Check again", "Updates fights available");
+    t += F.count > 0 ? btn("wbfight", "", `Fight ${W.name}`, `Your team starts fully healed. Damage carries over. Up to ${ITEM_CAP} items per fight.`, true) : btn("refresh", "", "Check again", "Updates fights available");
     return t + `</div>`;
   }
   function tabLevels() {
@@ -328,16 +337,16 @@
   function tabTrain() {
     const T = S.training, st = trainingStatus();
     let s = `<div class="actions">`;
-    s += `<p>Training mode: ${T.mode === "time" ? `time-based, ${trainHours()} hours of real time` : `experience-based, finishes after you earn ${TRAIN.pxp} Shardbinder experience`}.</p>`;
+    s += `<p>Training mode: ${T.mode === "time" ? `time-based, ${trainHours()} hours of real time` : `experience-based, finishes after you earn ${fmt(T.session ? trainNeed(T.session) : trainPxp())} Shardbinder experience`}.</p>`;
     if (!T.session) s += btn("mode", "", `Switch to ${T.mode === "time" ? "experience-based" : "time-based"} training`, T.mode === "time" ? "Good for long play sessions" : "Good for a few minutes a day");
     else s += `<p class="muted">You can change modes once this session is finished.</p>`;
     if (T.session) {
       const m = S.mons[T.session.uid];
       s += `<div class="row"><p class="nm">${m.name} is training</p><p>${st.text}</p>`;
-      s += st.done ? btn("trainclaim", "", `Finish training`, `${m.name} gains ${trainAmount(m)} experience`, true) : btn("refresh", "", "Check again", "Updates the time left") + btn("hurry", "train", `Finish now for ${PREMIUM.hurry} Coins`, `You have ${S.gems || 0} Coins`);
+      s += st.done ? btn("trainclaim", "", `Finish training`, `${m.name} gains ${fmt(trainAmount(m))} experience`, true) : btn("refresh", "", "Check again", "Updates the time left") + btn("hurry", "train", `Finish now for ${PREMIUM.hurry} Coins`, `You have ${S.gems || 0} Coins`);
       s += `</div>`;
     } else {
-      for (const m of [...teamMons(), ...Object.values(S.mons).filter(m => !S.team.includes(m.uid) && !onExped(m.uid))]) s += btn("train", m.uid, `Train ${m.name}`, `${S.team.includes(m.uid) ? "On your team" : "In your base"} · Level ${m.level} · Will gain ${trainAmount(m)} experience`);
+      for (const m of [...teamMons(), ...Object.values(S.mons).filter(m => !S.team.includes(m.uid) && !onExped(m.uid))]) s += btn("train", m.uid, `Train ${m.name}`, `${S.team.includes(m.uid) ? "On your team" : "In your base"} · Level ${m.level} · Will gain ${fmt(trainAmount(m))} experience`);
     }
     return s + `</div>`;
   }
@@ -360,6 +369,103 @@
     const cps = [1];
     for (let c = 11; c <= S.arena.best + 1; c += 10) cps.push(c);
     cps.reverse().forEach((c, i) => { s += btn("arenastart", c, `Start at floor ${c}`, `Rivals at level ${4 + 2 * c} · Your team starts fully healed`, i === 0); });
+    return s + `</div>`;
+  }
+  function tabTrials() {
+    const best = S.trials.best, next = best + 1, w = trialWorld(), [lo, hi] = trialRange(next), inf = trialInfuse(next);
+    let s = `<div class="actions"><p>${best ? `Highest tier cleared: ${best}.` : "No tiers cleared yet."} Tier ${next} is open, with monsters at level ${lo} to ${hi}${inf ? `, infused ${inf} of 5` : ""}.</p>`;
+    s += `<p class="muted">Trials have three-monster wild teams with more Rares, Epics and Legendaries, and an infused final-form boss. Each run allows ${ITEM_CAP} items, not counting capture items. Shardborn are three times as likely, and you can catch Trial monsters as usual. First clears pay Coins, plus a Mythic egg every ${TRIAL.mythicEvery} tiers and a Crest Choice every ${TRIAL.choiceEvery}. Prizes come in the host world's element.</p>`;
+    s += sub3("Host world", true) + `<div class="pair">`;
+    for (const x of trialWorlds()) s += btn("trialworld", x, `World ${x}: The ${world(x).title}${x === w ? " (chosen)" : ""}`, `${world(x).name} monsters`, x === w, x === w);
+    s += `</div>` + sub3("Play", true);
+    s += btn("trial", next, `Play Trial tier ${next}`, `In World ${w}, the ${world(w).title} · Level ${lo} to ${hi}`, true);
+    if (best) {
+      const [blo, bhi] = trialRange(best);
+      s += btn("trial", best, `Replay tier ${best}`, `Level ${blo} to ${bhi} · Smaller rewards`);
+      s += btn("autotrial", best, `Auto-play tier ${best}`, `Rolls and fights for you${prefs().repeat ? " · Repeats until stopped" : ""}`);
+    }
+    return s + `</div>`;
+  }
+
+  // ---------- Collection ----------
+  const RARITIES = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
+  function colFilter() { return ["missing", "caught", "all"].includes(S.colFilter) ? S.colFilter : (S.dex.length < 120 ? "missing" : "all"); }
+  function worldsText(el) { return joinAnd(elementWorlds(el).map(w => `World ${w}${worldOpen(w) ? "" : " (not open yet)"}`)); }
+  // How to get each rarity, said once at the top of the Collection rather than for every monster.
+  function colRules() {
+    const t = trialsOpen();
+    return `Commons and Uncommons live in the wild and hatch from eggs. Rares come from Rare synthesis (two Common or Uncommon monsters make a random Rare), from eggs 12% of the time, and rarely from the wild.`
+      + ` Epics come from Epic synthesis (two Rares make a random Epic) and from Mythic eggs 80% of the time. Legendaries come from Legendary synthesis (two Epics and a Rare always make that element's Legendary) and from Mythic eggs 20% of the time.`
+      + ` Mythic eggs ${t ? "can be forged or fused at the Shard Forge, or bought" : "can be bought"} in the Coin Shop${t ? ", and Trials bring wild Rares, Epics and Legendaries" : ""}.`;
+  }
+  // Where to look for one element's missing monsters: its worlds and the scrolls that matter.
+  function colWhere(el, missing) {
+    const scrolls = ["Rare", "Epic", "Legendary"].filter(r => missing.includes(r)).map(r => {
+      const rid = el + r;
+      return `${r}, ${S.items.scrolls.includes(rid) ? "you have it" : RECIPES[rid].price ? `${fmt(RECIPES[rid].price)} Shard Dust in the Shop` : `from clearing World ${elementWorld(el)}`}`;
+    });
+    return `${scrolls.length ? `${el} scrolls: ${scrolls.join("; ")}. ` : ""}${el} monsters live in ${worldsText(el)}.`;
+  }
+  function colLine(id) {
+    const s = SP[id], own = Object.values(S.mons).filter(m => m.id === id);
+    let t = `${s.forms[0]}${s.forms.length > 1 ? ` (later ${s.forms.slice(1).join(" and ")})` : ""}, ${s.rarity}`;
+    if (!S.dex.includes(id)) return t + ": not caught";
+    t += `: caught${S.shardDex.includes(id) ? ", Shardborn too" : ""}${own.length ? `, you own ${own.length}` : ", none kept"}`;
+    if (s.forms.length === 3 && own.length && own.every(m => m.stage < 2)) t += `. Its final form needs the ${crestName(id)}, and you have ${S.items.crests[crestName(id)] || 0}`;
+    return t;
+  }
+  function tabCollection() {
+    const f = colFilter(), caught = S.dex.length;
+    let s = `<div class="actions"><p>${caught} of 120 monsters caught. Shardborn caught: ${S.shardDex.length} of 120.</p>`;
+    s += `<p class="muted">${ELEMENTS.map(el => `${el} ${poolIds(el).filter(id => S.dex.includes(id)).length}`).join(", ")}, out of 15 each.</p><div class="pair">`;
+    for (const [k, label, n] of [["missing", "Missing", 120 - caught], ["caught", "Caught", caught], ["all", "All", 120]]) s += btn("colfilter", k, label, `${n} monster${n === 1 ? "" : "s"}`, false, f === k);
+    s += `</div>`;
+    if (f === "missing" && caught === 120) return s + `<p>You've caught all 120 Shardkin.</p></div>`;
+    if (f !== "caught" && caught < 120) s += `<p class="muted">${colRules()}</p>`;
+    s += `</div>`;
+    for (const el of ELEMENTS) {
+      const ids = RARITIES.flatMap(r => POOLS[el][r]), have = ids.filter(id => S.dex.includes(id)).length;
+      const shown = ids.filter(id => f === "all" || (f === "missing") !== S.dex.includes(id));
+      if (!shown.length) continue;
+      s += sub3(`${el}: ${have} of 15${have === 15 ? ", complete" : ""}`, true) + `<ul class="clean">${shown.map(id => `<li>${colLine(id)}.</li>`).join("")}</ul>`;
+      const missing = RARITIES.filter(r => POOLS[el][r].some(id => !S.dex.includes(id)));
+      if (f !== "caught" && missing.length) s += `<p class="muted" style="margin-top:6px">${colWhere(el, missing)}</p>`;
+    }
+    return s;
+  }
+
+  // ---------- Bag ----------
+  function crestNote(c) {
+    const id = Object.keys(SP).find(x => SP[x].forms.length === 3 && crestName(x) === c);
+    const own = Object.values(S.mons).filter(m => m.id === id), ready = own.find(m => m.stage === 1), later = own.find(m => m.stage === 0);
+    if (ready) return `fits your ${ready.name} now, in Team and base`;
+    if (later) return `fits your ${later.name} once it evolves at level ${EVOLVE_LEVEL}`;
+    if (own.length) return `your ${own[0].name} is already in its final form`;
+    return `for the ${SP[id].forms[0]} line, which you don't own`;
+  }
+  function lineOwners(id) { return joinAnd([...new Set(Object.values(S.mons).filter(m => m.id === id).map(m => m.name))]); }
+  function tabBag() {
+    const li = arr => `<ul class="clean">${arr.map(x => `<li>${x}</li>`).join("")}</ul>`;
+    const it = id => `${fmt(S.items[id] || 0)} ${iname(id, S.items[id] || 0)}`;
+    const none = what => `<p class="muted">No ${what}.</p>`;
+    let s = `<div class="actions">` + sub3("Currencies") + li([`${fmt(S.coins)} Shard Dust`, `${fmt(S.gems || 0)} Coin${S.gems === 1 ? "" : "s"}`]);
+    s += sub3("Healing", true) + li(["potion", "superpotion", "revive", "tonic"].filter(itemOpen).map(it));
+    s += sub3("Capture", true) + li(["orb", "gorb", "grorb", "perfect"].filter(itemOpen).map(it));
+    s += sub3("Battle and board", true) + li(["fury", "ward", "die"].filter(itemOpen).map(it));
+    const myth = Object.entries(S.items.mythic || {}).filter(([, n]) => n > 0), eggs = Object.entries(S.items.eggs).filter(([, n]) => n > 0);
+    s += sub3(`Eggs: ${eggCount() + sumOf(S.items.mythic)}`, true);
+    s += myth.length || eggs.length ? li([...myth.map(([el, n]) => `${n} Mythic ${el} egg${n === 1 ? "" : "s"}`), ...eggs.map(([el, n]) => `${n} ${el} egg${n === 1 ? "" : "s"}`)]) : none("eggs");
+    const sh = ELEMENTS.filter(el => (S.items.shards[el] || 0) > 0);
+    s += sub3(`Elemental shards: ${fmt(shardCount())}`, true) + (sh.length ? li(sh.map(el => `${fmt(S.items.shards[el])} ${el}`)) : none("shards"));
+    const crests = Object.entries(S.items.crests).filter(([, n]) => n > 0);
+    s += sub3(`Crests: ${sumOf(S.items.crests)}`, true) + (crests.length ? li(crests.map(([c, n]) => `${n === 1 ? c : `${n} ${c}s`}: ${crestNote(c)}`)) : none("crests"));
+    if (S.items.crestChoice > 0) {
+      const opts = choiceTargets();
+      s += sub3(`Crest Choices: ${S.items.crestChoice}`, true);
+      if (!opts.length) s += `<p class="muted">None of your monsters is waiting on a crest right now, so your Crest Choice will keep until one is.</p>`;
+      for (const id of opts) s += btn("choosecrest", id, `Take the ${crestName(id)}`, `For your ${lineOwners(id)} · You have ${S.items.crests[crestName(id)] || 0}`);
+    }
+    s += sub3("Scrolls of Synthesis", true) + (S.items.scrolls.length ? li(S.items.scrolls.filter(r => RECIPES[r]).map(r => RECIPES[r].name.replace("Scroll of Synthesis: ", ""))) : none("scrolls"));
     return s + `</div>`;
   }
   function tabExped() {
@@ -388,6 +494,8 @@
     const H = S.hatch;
     let s = `<div class="actions"><p class="muted">Eggs hatch after ${hatchHours()} hours into a random monster of their element, usually Common or Uncommon, sometimes rarer. Find eggs in treasure chests, from level bosses and world bosses, on 8-hour expeditions, in Arena milestones and from weekly quests.</p>`;
     s += sub3(`Incubators (${H.incub.length} of ${H.slots} in use)`);
+    const ready = H.incub.filter(x => hatchLeft(x) <= 0).length;
+    if (ready >= 2) s += btn("hatchall", "", `Hatch all ${ready} ready eggs`, "", true);
     let pending = false;
     H.incub.forEach((x, i) => {
       const left = hatchLeft(x);
@@ -397,25 +505,31 @@
     });
     if (pending) s += btn("refresh", "", "Check again", "Updates the time left");
     if (H.incub.length < H.slots) {
-      const eggs = Object.entries(S.items.eggs).filter(([, n]) => n > 0);
-      for (const [el, n] of Object.entries(S.items.mythic || {})) if (n > 0) s += btn("incubate", `mythic:${el}`, `Incubate a Mythic ${el} egg`, `You have ${n} · Hatches an Epic or Legendary`, true);
+      const eggs = Object.entries(S.items.eggs).filter(([, n]) => n > 0), free = H.slots - H.incub.length, plan = fillPlan();
       s += sub3("Your eggs", true);
+      if (free >= 2 && plan.length >= 2) s += btn("fillincub", "", plan.length === free ? "Fill every free incubator" : `Fill ${plan.length} incubators`, `With ${eggListText(plan)}`, true);
+      for (const [el, n] of Object.entries(S.items.mythic || {})) if (n > 0) s += btn("incubate", `mythic:${el}`, `Incubate a Mythic ${el} egg`, `You have ${n} · Hatches an Epic or Legendary`);
       if (!eggs.length && !Object.values(S.items.mythic || {}).some(n => n > 0)) s += `<p class="muted">No eggs yet.</p>`;
-      for (const [el, n] of eggs) s += btn("incubate", el, `Incubate a ${el} egg`, `You have ${n}`);
+      for (const [el, n] of eggs) s += btn("incubate", el, `Incubate ${an(el)} egg`, `You have ${n}`);
     }
     return s + `</div>`;
   }
   function tabForge() {
     let s = `<div class="actions"><p class="muted">Spend elemental shards to forge items, or infuse a monster with shards of its own element to raise its stats by 3%, up to 5 times. Shards drop from wild monsters, level bosses, world bosses, treasure chests, shard storms, expeditions, the Arena and the Shard Mine.</p>`;
-    const have = ELEMENTS.filter(el => (S.items.shards[el] || 0) > 0);
+    // Once fusion is open, every opened element can be chosen, so eggs can be fused into any of them.
+    const have = ELEMENTS.filter(el => (S.items.shards[el] || 0) > 0 || (fusionOpen() && openElements().includes(el)));
     if (!have.length) return s + `<p>You don't have any shards yet.</p></div>`;
     if (!S.forgeEl || !have.includes(S.forgeEl)) S.forgeEl = have[0];
     s += sub3("Choose an element") + `<div class="pair">`;
-    for (const el of have) { const sel = S.forgeEl === el; s += btn("forgeel", el, `${el}: ${S.items.shards[el]} shards${sel ? " (open)" : ""}`, "", sel, sel); }
+    for (const el of have) { const sel = S.forgeEl === el; s += btn("forgeel", el, `${el}: ${fmt(S.items.shards[el] || 0)} shards${sel ? " (open)" : ""}`, "", sel, sel); }
     s += `</div>`;
     const el = S.forgeEl, n = S.items.shards[el] || 0;
-    s += sub3(`Forge with ${el} Shards (you have ${n})`, true);
+    s += sub3(`Forge with ${el} Shards (you have ${fmt(n)})`, true);
     for (const r of FORGE_ITEMS.filter(r => itemOpen(r.id))) s += n >= r.cost ? btn("forge", r.id, `Forge ${r.name} from ${r.cost} ${el} Shards`, r.desc) : `<p class="muted">${cap(r.name)}: ${r.cost} ${el} Shards. ${r.desc}.</p>`;
+    if (fusionOpen()) {
+      const cost = `${FUSE.mythicShards} ${el} Shards and ${fmt(FUSE.mythicDust)} Shard Dust`;
+      s += n >= FUSE.mythicShards && S.coins >= FUSE.mythicDust ? btn("forgemythic", el, `Forge a Mythic ${el} egg`, `${cost} · Hatches an Epic or Legendary`) : `<p class="muted">A Mythic ${el} egg: ${cost}. Hatches an Epic or Legendary.</p>`;
+    }
     s += sub3(`Infuse ${el} monsters`, true);
     const mons = Object.values(S.mons).filter(m => m.el === el);
     if (!mons.length) s += `<p class="muted">You don't have any ${el} monsters.</p>`;
@@ -424,7 +538,23 @@
       const c = infuseCost(m);
       s += n >= c ? btn("infuse", m.uid, `Infuse ${m.name} for ${c} ${el} Shards`, `Infusion ${m.infuse || 0} of 5 · Level ${m.level} · 3% stronger`) : `<p class="muted">${m.name}, level ${m.level}: infusion ${m.infuse || 0} of 5. The next costs ${c} ${el} Shards.</p>`;
     }
-    return s + `</div>`;
+    return s + fusionSection(el) + `</div>`;
+  }
+  // Heartcrystal fusion: eggs into a Mythic egg of the chosen element, and spare crests into one a monster needs.
+  function fusionSection(el) {
+    let s = sub3("Heartcrystal fusion", true);
+    if (!fusionOpen()) return s + `<p class="muted">Opens when the Heartcrystal is restored, after all eight element worlds.</p>`;
+    const plan = eggFusePlan(), eggs = eggCount();
+    s += plan && S.coins >= FUSE.eggDust ? btn("fuseeggs", el, `Fuse ${FUSE.eggs} eggs into a Mythic ${el} egg`, `Uses ${eggPlanText(plan)} · ${fmt(FUSE.eggDust)} Shard Dust`)
+      : `<p class="muted">Fuse ${FUSE.eggs} eggs of any element and ${fmt(FUSE.eggDust)} Shard Dust into a Mythic ${el} egg. You have ${eggs} egg${eggs === 1 ? "" : "s"}.</p>`;
+    const targets = crestFuseTargets();
+    if (!targets.length) return s + `<p class="muted">Crest fusion: none of your monsters is waiting on a crest right now.</p>`;
+    for (const id of targets) {
+      const p = crestFusePlan(id), c = crestName(id);
+      s += p && S.coins >= FUSE.crestDust ? btn("fusecrest", id, `Fuse ${FUSE.crests} ${SP[id].el} crests into the ${c}`, `Uses ${crestPlanText(p)} · ${fmt(FUSE.crestDust)} Shard Dust · For your ${lineOwners(id)}`)
+        : `<p class="muted">The ${c}, for your ${lineOwners(id)}: fusing it takes ${FUSE.crests} other ${SP[id].el} crests that no monster of yours needs, and ${fmt(FUSE.crestDust)} Shard Dust.</p>`;
+    }
+    return s;
   }
   function tabStory() {
     let s = `<div class="actions"><p>${PROLOGUE}</p>`;
@@ -468,7 +598,7 @@
   function renderLevel() {
     const L = S.level, lead = leadMon();
     let h = "";
-    if (L.failed) return sec("h-board", `Level ${L.n} failed`, `<div class="actions">${btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true)}</div>`);
+    if (L.failed) return sec("h-board", `${L.trial ? `Trial tier ${L.trial}` : `Level ${L.n}`} failed`, `<div class="actions">${btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true)}</div>`);
     if (L.encounter && autoOn()) return sec("h-wbfound", "World boss found", `<div class="actions">${monCard(S.wboss, "World boss ", "")}<p>Auto-play will slip past it. Fight it from camp within 24 hours.</p></div>`);
     if (L.encounter) {
       return sec("h-wbfound", "World boss found", `<div class="actions">${monCard(S.wboss, "World boss ", `<p class="muted">Fights available: ${S.wfights.count}. You earn one more every 2 hours, up to ${WB.maxFights}.</p>`)}
@@ -489,10 +619,10 @@
       rollBtns += `</div>${btn("diecancel", "", "Cancel", "Keep your Loaded Die")}`;
     } else {
       rollBtns = btn("roll", "", "Roll the die", `${lead.name} leads · Health ${lead.hp} of ${lead.maxHp}`, true);
-      if (S.items.die > 0) rollBtns += btn("die", "", "Use a Loaded Die", `${S.items.die} left · Choose your roll`);
+      if (S.items.die > 0 && itemsLeft() > 0) rollBtns += btn("die", "", "Use a Loaded Die", `${S.items.die} left · Choose your roll`);
     }
-    h += sec("h-board", `World ${L.w}, Level ${L.n} board`, `<div class="actions">
-      <p class="stat">Space ${L.pos + 1} of ${BOARD_SIZE}. The boss is ${BOARD_SIZE - 1 - L.pos} spaces away.</p>
+    h += sec("h-board", `${L.trial ? `Trial tier ${L.trial}, World ${L.w}` : `World ${L.w}, Level ${L.n}`} board`, `<div class="actions">
+      <p class="stat">Space ${L.pos + 1} of ${BOARD_SIZE}. The boss is ${BOARD_SIZE - 1 - L.pos} spaces away.</p>${L.trial ? `<p>${capLine()}</p>` : ""}
       ${L.lure ? `<p>Your Shardborn Lure is active for this level.</p>` : ""}${L.storm ? `<p>A shard storm is raging. Shardborn are ten times more likely for the rest of this level.</p>` : ""}
       ${track}${rollBtns}</div>`);
     if (L.shopOpen && !autoOn()) h += sec("h-merchant", "Wandering merchant", `<div class="actions"><p>You have ${S.coins} Shard Dust.</p>${shopButtons(["potion", "superpotion", "revive", "orb", "gorb", "fury", "ward", "die"])}${btn("merchleave", "", "Leave the merchant", "Back to the board", true)}</div>`);
@@ -505,13 +635,14 @@
       const b = [];
       if (autoOn()) { tm += `</div>`; continue; }
       if (m.hp > 0 && m.uid !== L.lead) b.push(btn("lead", m.uid, `Make ${m.name} the lead`));
-      for (const id of ["potion", "superpotion"]) if (itemOpen(id) && m.hp > 0 && m.hp < m.maxHp && S.items[id] > 0) b.push(btn("useboard", `${id}:${m.uid}`, `Use ${an(iname(id, 1))} on ${m.name}`, `${S.items[id]} left`));
-      if (itemOpen("revive") && m.hp <= 0 && S.items.revive > 0) b.push(btn("useboard", `revive:${m.uid}`, `Use a Revive Shard on ${m.name}`, `${S.items.revive} left · Back with half its health`));
+      const can = itemsLeft() > 0;
+      for (const id of ["potion", "superpotion"]) if (can && itemOpen(id) && m.hp > 0 && m.hp < m.maxHp && S.items[id] > 0) b.push(btn("useboard", `${id}:${m.uid}`, `Use ${an(iname(id, 1))} on ${m.name}`, `${S.items[id]} left`));
+      if (can && itemOpen("revive") && m.hp <= 0 && S.items.revive > 0) b.push(btn("useboard", `revive:${m.uid}`, `Use a Revive Shard on ${m.name}`, `${S.items.revive} left · Back with half its health`));
       if (b.length) tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div>`;
       tm += `</div>`;
     }
     h += sec("h-lteam", "Your team", tm + `</div>`);
-    h += sec("h-bag", "Bag", `<div class="actions"><p>${itemsLine()}</p>${!autoOn() && itemOpen("tonic") && S.items.tonic > 0 && teamMons().some(m => m.hp > 0 && m.hp < m.maxHp) ? btn("useboard", "tonic", "Use a Team Tonic", `${S.items.tonic} left · Heals every standing team monster by half`) : ""}</div>`);
+    h += sec("h-bag", "Bag", `<div class="actions"><p>${itemsLine()}</p>${!autoOn() && itemsLeft() > 0 && itemOpen("tonic") && S.items.tonic > 0 && teamMons().some(m => m.hp > 0 && m.hp < m.maxHp) ? btn("useboard", "tonic", "Use a Team Tonic", `${S.items.tonic} left · Heals every standing team monster by half`) : ""}</div>`);
     if (autoOn()) return h;
     let lv;
     if (S.confirm === "leave") lv = `<div class="actions"><p>Leave the level? It counts as a failed attempt, but you keep captures and experience.</p><div class="pair">${btn("leaveyes", "", "Yes, leave")}${btn("cancel", "", "Keep playing", "", true)}</div></div>`;
@@ -522,7 +653,7 @@
   function renderBattle() {
     const B = S.battle, e = foe(), p = you();
     const shownFoe = e || B.enemies[B.enemies.length - 1];
-    const heading = B.wboss ? "World boss" : B.arena ? `Arena floor ${B.floor}: ${B.rival}` : B.boss ? "Level boss" : "Opponent";
+    const heading = B.wboss ? "World boss" : B.arena ? `Arena floor ${B.floor}: ${B.rival}` : B.boss ? (S.level && S.level.trial ? "Trial boss" : "Level boss") : "Opponent";
     let h = sec("h-foe", heading, monCard(shownFoe, foeWord() + " ",
       B.boss && !B.arena ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`));
     h += sec("h-you", "Your monster", monCard(p, "", xpLine(p)));
@@ -556,7 +687,7 @@
     h += sec("h-switch", "Switch monster (free)", sw + `</div>`);
     if (!B.forced) {
       let it = `<div class="actions">`;
-      if (B.boss) it += `<p class="muted">${B.wboss ? "World bosses" : B.arena ? "Rival monsters" : "Level bosses"} can't be captured.</p>`;
+      if (B.boss) it += `<p class="muted">${B.wboss ? "World bosses" : B.arena ? "Rival monsters" : S.level && S.level.trial ? "Trial bosses" : "Level bosses"} can't be captured.</p>`;
       else {
         let any = false;
         for (const id of ["orb", "gorb", "grorb"]) {
@@ -568,12 +699,14 @@
         if (S.items.perfect > 0) { any = true; it += btn("capture", "perfect", "Throw a Prism Shard", `${S.items.perfect} left · 100% chance`); }
         if (!any) it += `<p class="muted">No capture items left.</p>`;
       }
-      for (const id of ["potion", "superpotion"]) if (itemOpen(id) && S.items[id] > 0 && (p.hp < p.maxHp || (id === "superpotion" && p.status))) it += btn("use", `${id}:${p.uid}`, `Use ${an(iname(id, 1))} on ${p.name}`, `${S.items[id]} left · ${id === "potion" ? "Heals half of its health" : "Fully heals it"} · Uses your turn`);
-      if (itemOpen("tonic") && S.items.tonic > 0 && teamMons().some(m => m.hp > 0 && m.hp < m.maxHp)) it += btn("use", "tonic", "Use a Team Tonic", `${S.items.tonic} left · Heals every standing team monster by half · Uses your turn`);
-      if (itemOpen("revive") && S.items.revive > 0) for (const m of teamMons()) if (m.hp <= 0) it += btn("use", `revive:${m.uid}`, `Use a Revive Shard on ${m.name}`, `${S.items.revive} left · Back with half its health · Uses your turn`);
-      for (const id of ["fury", "ward"]) if (itemOpen(id) && S.items[id] > 0 && !B[id]) it += btn("use", id, `Crush ${an(iname(id, 1))}`, `${S.items[id]} left · ${id === "fury" ? "50% more damage" : "A third less damage taken"} for the rest of this battle · Uses your turn`);
+      const can = itemsLeft() > 0;
+      for (const id of ["potion", "superpotion"]) if (can && itemOpen(id) && S.items[id] > 0 && (p.hp < p.maxHp || (id === "superpotion" && p.status))) it += btn("use", `${id}:${p.uid}`, `Use ${an(iname(id, 1))} on ${p.name}`, `${S.items[id]} left · ${id === "potion" ? "Heals half of its health" : "Fully heals it"} · Uses your turn`);
+      if (can && itemOpen("tonic") && S.items.tonic > 0 && teamMons().some(m => m.hp > 0 && m.hp < m.maxHp)) it += btn("use", "tonic", "Use a Team Tonic", `${S.items.tonic} left · Heals every standing team monster by half · Uses your turn`);
+      if (can && itemOpen("revive") && S.items.revive > 0) for (const m of teamMons()) if (m.hp <= 0) it += btn("use", `revive:${m.uid}`, `Use a Revive Shard on ${m.name}`, `${S.items.revive} left · Back with half its health · Uses your turn`);
+      for (const id of ["fury", "ward"]) if (can && itemOpen(id) && S.items[id] > 0 && !B[id]) it += btn("use", id, `Crush ${an(iname(id, 1))}`, `${S.items[id]} left · ${id === "fury" ? "50% more damage" : "A third less damage taken"} for the rest of this battle · Uses your turn`);
       const active = ["fury", "ward"].filter(id => B[id]).map(id => iname(id, 1));
       if (active.length) it += `<p>Active this battle: ${active.join(" and ")}.</p>`;
+      if (capHolder()) it += `<p>${capLine()}</p>`;
       it += `<p class="muted">Healing: ${["potion", "superpotion", "revive", "tonic"].filter(itemOpen).map(id => `${S.items[id] || 0} ${iname(id, S.items[id] || 0)}`).join(", ")}.</p>`;
       if (B.wboss) it += btn("retreat", "", "Retreat", "End this fight now and keep the damage you've dealt");
       h += sec("h-items", B.boss ? "Items" : "Capture and items", it + `</div>`);
@@ -596,7 +729,7 @@
   function render() {
     document.getElementById("result").textContent = S.result;
     const L = S.level, B = S.battle;
-    const where = L ? `World ${L.w}, ${world(L.w).title} · Level ${L.n}` : "";
+    const where = L ? (L.trial ? `Trial tier ${L.trial} · World ${L.w}, ${world(L.w).title}` : `World ${L.w}, ${world(L.w).title} · Level ${L.n}`) : "";
     const sub = { camp: S.campTab ? `Camp · ${tabLabel(S.campTab)}` : "Camp · Main menu", level: where, battle: B && B.wboss ? "World boss fight" : B && B.arena ? `Arena · Floor ${B.floor}` : `${where} · Battle`, wheel: `${where} complete` };
     document.getElementById("subtitle").textContent = sub[S.screen];
     const r = { camp: renderCamp, level: renderLevel, battle: renderBattle, wheel: renderWheel };

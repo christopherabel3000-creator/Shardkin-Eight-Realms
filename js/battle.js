@@ -13,13 +13,15 @@
     return makeMon(pickFrom(worldPool(w, tier)), wildRange(w, n)[1] + 2);
   }
   function startBattle(boss, msgs) {
-    const { w, n } = S.level;
-    S.battle = { boss, enemies: boss ? [pickBoss(w, n)] : [pickWild(w, n), pickWild(w, n)], active: S.level.lead, forced: false, over: null, log: [] };
+    const { w, n, trial } = S.level;
+    const enemies = trial ? (boss ? [pickTrialBoss(w, trial)] : [pickTrialWild(w, trial), pickTrialWild(w, trial), pickTrialWild(w, trial)])
+      : boss ? [pickBoss(w, n)] : [pickWild(w, n), pickWild(w, n)];
+    S.battle = { boss, enemies, active: S.level.lead, forced: false, over: null, log: [] };
     S.screen = "battle";
     const e = foe();
-    if (boss) { sfx("boss"); msgs.push(`The level boss appears: ${e.name}, ${an(e.rarity)} ${e.el} monster at level ${e.level}. Bosses must be defeated, not captured.`); }
+    if (boss) { sfx("boss"); msgs.push(`The ${trial ? "Trial" : "level"} boss appears: ${e.name}, ${an(e.rarity)} ${e.el} monster at level ${e.level}${e.infuse ? `, infused ${e.infuse} of 5` : ""}. Bosses must be defeated, not captured.`); }
     else {
-      sfx("ambush"); msgs.push(`A wild team of two ambushes you. Wild ${e.name} steps forward, ${an(e.rarity)} ${e.el} monster at level ${e.level}.`);
+      sfx("ambush"); msgs.push(`A wild team of ${enemies.length === 3 ? "three" : "two"} ambushes you. Wild ${e.name} steps forward, ${an(e.rarity)} ${e.el} monster at level ${e.level}.`);
       const rare = S.battle.enemies.find(x => ["Rare", "Epic", "Legendary"].includes(x.rarity));
       if (rare) msgs.push(`Something rare is on this team: ${rare.name}, ${an(rare.rarity)} monster!`);
       const sb = S.battle.enemies.find(x => x.shard);
@@ -120,7 +122,8 @@
     if (kind === "win" && B.arena) { arenaWin(msgs); return; }
     if (kind === "win") {
       sfx("win");
-      if (B.boss) {
+      if (B.boss && S.level && S.level.trial) trialClear(msgs);
+      else if (B.boss) {
         const { w, n } = S.level, P = prog(w), first = !P.cleared.includes(n);
         if (first) P.cleared.push(n);
         P.unlocked = Math.max(P.unlocked, Math.min(world(w).levels, n + 1));
@@ -204,8 +207,25 @@
     return msgs;
   }
   function usePotion(m, msgs) { return useItem("potion", m.uid, msgs, false); }
+  // Trials and world boss fights allow a few items: ITEM_CAP per Trial run, or per world boss fight.
+  // Healing items, Fury and Ward Shards and Loaded Dice count; capture items don't.
+  const ITEM_CAP = 5;
+  function capHolder() { return S.battle && S.battle.wboss ? S.battle : S.level && S.level.trial ? S.level : null; }
+  function itemsLeft() { const h = capHolder(); return h ? Math.max(0, ITEM_CAP - (h.itemsUsed || 0)) : Infinity; }
+  function spendCap(msgs) {
+    const h = capHolder();
+    if (!h) return;
+    h.itemsUsed = (h.itemsUsed || 0) + 1;
+    msgs.push(`${itemsLeft()} of ${ITEM_CAP} items left for this ${S.battle && S.battle.wboss ? "fight" : "Trial"}.`);
+  }
+  function capLine() { const h = capHolder(); return h ? `${S.battle && S.battle.wboss ? "World boss fights" : "Trials"} allow ${ITEM_CAP} items, not counting capture items: ${itemsLeft()} left.` : ""; }
   // Healing, reviving and battle boosts. Returns false (and changes nothing) if the item can't be used.
   function useItem(id, target, msgs, inBattle) {
+    if (itemsLeft() <= 0 || !applyItem(id, target, msgs, inBattle)) return false;
+    spendCap(msgs);
+    return true;
+  }
+  function applyItem(id, target, msgs, inBattle) {
     if (!(S.items[id] > 0) || !itemOpen(id)) return false;
     if (id === "potion" || id === "superpotion") {
       const m = S.mons[target];
@@ -242,7 +262,19 @@
   }
 
   // ---------- Reward wheel ----------
+  // 25% of what each monster needs for its next level, reduced if it has outgrown this board.
+  function quarterXp(msgs) {
+    const parts = teamMons().map(m => [m, Math.max(1, Math.ceil(xpNeed(m.level) / 4 * outgrowMult(m.level, levelRef())))]);
+    msgs.push(parts.map(([m, amt]) => `${m.name} gained ${amt} experience`).join(", ") + ".");
+    for (const [m, amt] of parts) levelCheck(m, amt, msgs);
+  }
+  // Expected damage, matching the attack formula without the random spread.
+  function estDmg(att, def, sk) {
+    const base = ((2 * att.level / 5 + 2) * sk.power * att.atk / def.def) / 50 + 2;
+    return base * (sk.el === att.el ? 1.2 : 1) * mult(sk.el, def.el) * 0.93;
+  }
   function prizes() {
+    if (S.level && S.level.trial) return trialPrizes();
     const L = S.level, w = L.w, k = outgrowMult(teamTop(), levelRef());
     const coins = Math.max(1, Math.round(150 * w * k));
     const heal = itemOpen("tonic") && w >= 6 ? ["tonic", 1] : itemOpen("superpotion") && w >= 3 ? ["superpotion", 2] : ["potion", 2];
@@ -251,12 +283,7 @@
       { w: 22, label: icount(heal[0], heal[1]), give: () => { S.items[heal[0]] += heal[1]; } },
       { w: 22, label: icount(bind[0], bind[1]), give: () => { S.items[bind[0]] += bind[1]; } },
       { w: 22, label: `${coins} Shard Dust${k < 1 ? " (reduced: outgrown)" : ""}`, give: () => { S.coins += coins; } },
-      { w: 18, label: "a quarter of a level's experience for each team monster", give: msgs => {
-          // 25% of what each monster needs for its next level, reduced if it has outgrown this level.
-          const parts = teamMons().map(m => [m, Math.max(1, Math.ceil(xpNeed(m.level) / 4 * outgrowMult(m.level, levelRef())))]);
-          msgs.push(parts.map(([m, amt]) => `${m.name} gained ${amt} experience`).join(", ") + ".");
-          for (const [m, amt] of parts) levelCheck(m, amt, msgs);
-        } },
+      { w: 18, label: "a quarter of a level's experience for each team monster", give: quarterXp },
       { w: w >= 2 ? 8 : 0, label: "a Fury Shard and a Ward Shard", give: () => { S.items.fury++; S.items.ward++; } },
       { w: w >= 4 ? 6 : 0, label: "a Revive Shard", give: () => { S.items.revive++; } },
       { w: 3, label: "a Prism Shard", give: () => { S.items.perfect += 1; } }
@@ -333,6 +360,6 @@
       const left = s.start + trainHours() * HOUR - now();
       return { done: left <= 0, text: left <= 0 ? "Training is complete." : `${dur(left)} left.` };
     }
-    const left = s.pxpAt + TRAIN.pxp - S.pxpLife;
-    return { done: left <= 0, text: left <= 0 ? "Training is complete." : `Earn ${left} more Shardbinder experience to finish.` };
+    const left = s.pxpAt + trainNeed(s) - S.pxpLife;
+    return { done: left <= 0, text: left <= 0 ? "Training is complete." : `Earn ${fmt(left)} more Shardbinder experience to finish.` };
   }

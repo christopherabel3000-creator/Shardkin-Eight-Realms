@@ -45,6 +45,20 @@
     const [lo, hi] = wildRange(w, n);
     return [`World ${w}, the ${world(w).title}, Level ${n} begins. You're on space 1 of ${BOARD_SIZE}, and the level boss waits on space ${BOARD_SIZE}. Wild ${world(w).name} monsters here are level ${lo} to ${hi}. ${leadMon().name} leads your team.${lureMsg}`];
   }
+  // A Trial plays on the board of a cleared world, at the density of that world's last level, with no hidden world boss.
+  function startTrial(w, t) {
+    restoreAll();
+    const n = world(w).levels;
+    S.level = { w, n, trial: t, board: genBoard(w, n), pos: 0, used: Array(BOARD_SIZE).fill(false), lead: S.team[0], failed: false,
+      replay: t <= S.trials.best, wb: null, shopOpen: false, encounter: false, lure: !!S.lure };
+    const lureMsg = S.lure ? " Your Shardborn Lure glimmers: Shardborn are ten times more likely on this Trial." : "";
+    S.lure = false;
+    S.trials.world = w;
+    S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "level";
+    const [lo, hi] = trialRange(t), inf = trialInfuse(t);
+    return [`Trial tier ${t} begins in World ${w}, the ${world(w).title}. Trial monsters here are level ${lo} to ${hi}, three to a team${inf ? `, with ${inf} infusion${inf === 1 ? "" : "s"}` : ""}, and the boss on space ${BOARD_SIZE} is an infused final form. ${leadMon().name} leads your team.${lureMsg}`];
+  }
+  function levelName(L) { return L.trial ? `Trial tier ${L.trial}` : `World ${L.w}, Level ${L.n}`; }
   function roll(chosen) {
     const L = S.level, msgs = [];
     const r = chosen || rand(1, 6);
@@ -130,7 +144,7 @@
   }
   function failLevel(msgs) {
     S.level.failed = true;
-    msgs.push(`Your whole team has fainted. Level ${S.level.n} failed. You keep your captures and experience. Return to camp to restore your team and try again.`);
+    msgs.push(`Your whole team has fainted. ${S.level.trial ? `Trial tier ${S.level.trial}` : `Level ${S.level.n}`} failed. You keep your captures and experience. Return to camp to restore your team and try again.`);
     sfx("lose");
   }
 
@@ -153,17 +167,30 @@
     const L = S.level, el = worldEl(L.w);
     const id = pickFrom(POOLS[el].Epic);
     // At least 5 levels above the world's toughest wild monsters, and always above your strongest team monster.
-    const top = Math.max(...teamMons().map(x => x.level));
+    const team = teamMons(), top = Math.max(...team.map(x => x.level));
     const m = makeMon(id, Math.max(wildRange(L.w, world(L.w).levels)[1] + WB.levelBonus, top + WB.levelOverTeam));
-    S.wboss = { id, name: m.name, el: m.el, rarity: m.rarity, level: m.level, stage: m.stage, maxHp: m.maxHp * WB.hpMult, hp: m.maxHp * WB.hpMult, expires: now() + WB.lifetime, world: L.w };
+    // It grows with your team: a final form once your team has one, infused as much as your team is on average.
+    if (team.some(x => x.stage === 2)) m.stage = 2;
+    m.infuse = Math.round(team.reduce((a, x) => a + (x.infuse || 0), 0) / team.length);
+    m.name = formName(m); calc(m);
+    const hp = wbHealth(m, team);
+    S.wboss = { id, name: m.name, el: m.el, rarity: m.rarity, level: m.level, stage: m.stage, infuse: m.infuse, maxHp: hp, hp, expires: now() + WB.lifetime, world: L.w };
     S.wfights = { count: 1, last: now() };
     L.wb = null; L.encounter = true;
     sfx("giant");
     msgs.push(`Space ${L.pos + 1} looked ordinary, but a world boss was hiding here! ${m.name}, a towering level ${m.level} ${m.el} monster with ${S.wboss.maxHp} health. It stays for 24 hours. Fight it now, which ends this level attempt, or ignore it and fight it later from camp.`);
   }
+  // Health for a world boss: enough that your team needs about WB.fights fights to bring it down, estimated from how hard
+  // each team monster hits it and how long each one lasts against it. fightCal corrects the estimate, which runs a little high.
+  function wbHealth(m, team) {
+    const best = (a, d) => Math.max(1, ...unlocked(a).map(s => estDmg(a, d, s) * s.acc / 100));
+    const perFight = team.reduce((sum, p) => sum + best(p, m) * Math.max(1, p.maxHp / best(m, p)), 0);
+    return Math.round(Math.max(m.maxHp * WB.minHpMult, perFight * WB.fights * WB.fightCal));
+  }
   function wbBattle(fromLevel) {
     const W = S.wboss;
     const e = makeMon(W.id, W.level);
+    e.stage = W.stage || e.stage; e.infuse = W.infuse || 0; calc(e);
     e.maxHp = W.maxHp; e.hp = W.hp; e.name = W.name;
     S.wfights.count--; bump("wbfights");
     if (S.wfights.count === WB.maxFights - 1) S.wfights.last = now();

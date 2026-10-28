@@ -35,7 +35,7 @@ Each element has 15 monsters, 120 in total.
 
 ### Final forms
 - Each Epic and Legendary monster has its own unique final-form item, consumed on use.
-- Completing an element's world awards a random final-form item for that element.
+- Completing an element's world awards a random final-form item for that element, except World 3, which always gives the starter's Infernox Crest.
 - Replaying the last level of a completed world gives a chance (not guaranteed) at another one on the reward wheel.
 - The randomness is deliberate: it encourages collecting every monster and replaying old levels.
 
@@ -270,7 +270,7 @@ Forms are listed in evolution order. Rares evolve at level 16; Epics and Legenda
 - **Shard Dust:** 4 per wild monster level after a battle win; 30 + 20 × level number for a level clear.
 - **Shop:** Potion 40, Binding Shard 60, Loaded Die 120, Prism Shard 1,500, Epic Plant scroll 2,500, Legendary Plant scroll 6,000.
 - **Synthesis scrolls:** Rare Plant (two Common or Uncommon Plant monsters; from the World 1 achievement), Epic Plant (two Rare Plant), Legendary Plant (two Epic Plant plus one Rare Plant). The result's level matches the highest ingredient.
-- **Training Yard:** costs 150 Shard Dust. One monster, from the team or the base, trains at a time and can keep battling while it trains. It gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 150 Shardbinder experience.
+- **Training Yard:** costs 150 Shard Dust. One monster, from the team or the base, trains at a time and can keep battling while it trains. It gains one full level's worth of experience. Time-based mode takes 3 hours; experience-based mode finishes after 30 Shardbinder experience per Shardbinder level, never under 150 (see Endgame Update).
 - **Shard Mine:** costs 300, then 600 and 1,200 to upgrade. Earns 15, 30 or 50 Shard Dust per hour and holds up to 12 hours of earnings.
 - **Reward wheel:** 2 Potions, 3 Binding Shards, 150 Shard Dust per world number, 25% of a level's experience for each team monster (based on each monster's own level, fainted ones included), or a Prism Shard. Replays of a world's last level add a chance at a random crest for that world.
 - **World progression:** each world opens after clearing the previous world's last level. Wild levels rise by one per level, plus one more at each new world (see the Worlds table).
@@ -338,7 +338,7 @@ New Life (first hatch), Explorer (10 expeditions), Arena Contender (floor 10), A
 - Capture Orb is now the **Binding Shard**, and Perfect Orb is now the **Prism Shard**.
 
 ## Camp Menu
-- Camp opens on a main menu showing Shardbinder level, experience and items, then menu buttons in three headed groups: **Adventure** (Levels, Arena), **Monsters** (Team and base, Synthesis, Training, Expeditions, Hatchery) and **Camp** (Shop, Shard Forge, Quests, Buildings, Achievements, Story, Settings).
+- Camp opens on a main menu showing Shardbinder level, experience, Shard Dust and Coins, then menu buttons in three headed groups: **Adventure** (Levels, Trials, Arena), **Monsters** (Team and base, Collection, Synthesis, Training, Expeditions, Hatchery) and **Camp** (Bag, Shop, Coin Shop, Shard Forge, Quests, Buildings, Achievements, Story, Settings).
 - Each button notes its status: why it's locked, or what's waiting (quest rewards to claim, expeditions back, eggs ready, training complete, Shard Mine coins, an active world boss).
 - Choosing one opens only that area, with a Back to main menu button at the top and bottom.
 - Finishing or leaving a level returns to the Levels area. Reopening the game at camp starts on the main menu.
@@ -398,7 +398,7 @@ Playtest findings: coins piled up (78,000+ with nothing worth buying), the team 
 - Auto-play uses Super Potions when Potions run out, and the best capture item available.
 
 ### World bosses and crests
-- World bosses have 16 times normal health and are at least 3 levels above your strongest monster, aiming for about 5 fights.
+- World bosses have 16 times normal health and are at least 3 levels above your strongest monster, aiming for about 5 fights. (Superseded: health now comes from your team's strength; see Endgame Update.)
 - When you hold a crest that fits a monster you own, the Team and base menu button, the welcome message and the crest's own message say so.
 
 ## Base Management
@@ -425,6 +425,52 @@ Playtest findings: coins piled up (78,000+ with nothing worth buying), the team 
 
 - **Egg levels:** eggs now hatch near your team's level: Mythic eggs at your team's average level, other eggs 10 levels below it, never below the element world's starting level.
 
+## Endgame Update
+Playtest findings, from a save at World 9 Level 17 with Shardbinder level 72 and four fully infused Legendary final forms, played forward in simulation with auto-play's choices: the 64 remaining campaign levels were cleared on the first try in every run, a World 9 world boss fell in one fight, and the Arena was the only real challenge. The save held 289,715 Shard Dust with every building maxed, 5,022 elemental shards, 53 eggs with empty incubators, and 28 crests none of its monsters could use. Its collection, 97 of 120, was missing 8 Rares, 11 Epics and 4 Legendaries. Enemies grew only with level, while the player grew through rarity, evolution and infusion.
+
+### Fixes
+- **Starter crest:** clearing World 3 always gives the Infernox Crest, as Starting the Game promises. Saves that cleared World 3 without holding one or owning an Infernox receive one, once.
+- **Experience-based training** needs 30 Shardbinder experience per Shardbinder level, never under 150, fixed when the session starts. Late level clears pay 600 or more, so sessions had been finishing at once and sitting idle.
+- **Hatchery:** Fill every free incubator (Mythic eggs first, then the largest piles) and Hatch all ready eggs.
+- **Bag:** a camp area with currencies, items, eggs, elemental shards, crests (saying what each one fits) and scrolls. The main menu now shows only Shard Dust and Coins, and the board's Bag shows only what can be used on the board.
+- A **one-time update notice** names the new camp areas when an older save loads.
+
+### Collection
+- A camp area under Monsters, with Missing (the default while anything is missing), Caught and All filters.
+- One heading per element with its caught count. Each monster lists its forms, rarity, whether it's caught and as Shardborn, how many you own, and for an Epic or Legendary line not yet final, its crest and how many you hold.
+- How to get each rarity is said once, at the top. Each element then gets one line: the scrolls that matter (owned, the Shop price, or the world clear that gives it) and the worlds its monsters live in.
+
+### Heartcrystal fusion
+Opens with Heartcrystal Restored, at the Shard Forge.
+
+| Fusion | Cost | Result |
+|---|---|---|
+| Mythic egg from shards | 250 shards of the chosen element and 15,000 Shard Dust | A Mythic egg of that element |
+| Egg fusion | 10 eggs of any element, taken a few at a time from the largest piles, and 15,000 Shard Dust | A Mythic egg of the chosen element |
+| Crest fusion | 3 other crests of the same element and 5,000 Shard Dust | The crest a monster you own is waiting on |
+
+Crest fusion is offered only for lines you own that still need their crest, and never uses a crest that fits one of your monsters. The element chooser at the Forge lists every opened element once fusion is open.
+
+### Trials
+- A camp area under Adventure, open after Heartcrystal Restored. Endless tiers: clearing a tier the first time opens the next. Tier 1 monsters are level 101 to 103, and each tier adds 5 levels.
+- You choose a cleared world to host each Trial. Its elements fill the board and its prizes; the board is that world's last-level board, with no hidden world boss.
+- Wild teams of three, by weight: Common 25, Uncommon 40, Rare 29, Epic 2.5, Legendary 0.5. Wild foes have half the tier in infusions, up to 5.
+- The boss is an Epic (75%) or Legendary (25%) final form, 3 levels above the tier's range, with infusions equal to the tier, up to 5.
+- Shardborn are three times as likely. Trial monsters can be caught; they arrive in their usual form with no infusions.
+- **Five items per run:** healing items, Fury and Ward Shards and Loaded Dice count; capture items don't. Without a limit, Forge potions at 2 shards each let a strong team grind through runs of over 200 actions.
+- Clear rewards: 1,000 + 250 × tier Shard Dust and 8 + tier shards of the host's element, Shardbinder experience of 600 + 20 × tier (all doubled on a first clear), and an 8% egg chance. First clears also pay 5 Coins, a Mythic egg every third tier and a Crest Choice every fifth.
+- Trial reward wheel, by weight: 500 + 200 × tier Shard Dust 20, 10 + tier shards 18, 2 Grand Binding Shards 16, a Team Tonic and a Revive Shard 14, a quarter level of experience 12, a Prism Shard 8, an egg 6, a Mythic egg 4, a Crest Choice 2.
+- A **Crest Choice** takes any crest a monster you own is waiting on, from the Bag.
+- Cleared tiers can be replayed or auto-played.
+- Achievements: Trial Initiate (tier 1: 3 Prism Shards), Trial Champion (tier 10: a Crest Choice and 10,000 Shard Dust), Trial Legend (tier 25: 2 Crest Choices and 25,000 Shard Dust).
+- On the playtest save, the team cleared tiers 1 to 7 nearly always, 8 to 12 some of the time, and stalled at 13; Trial experience then raised it about ten levels over twenty runs, and it found about seven new species.
+
+### World bosses grow with your team
+- A world boss takes your team's highest evolution stage (a final form once your team has one) and the team's average infusion.
+- Its health aims for about five fights from your current team: each team monster's best expected hit on the boss, times how many of the boss's hits it can take, summed over the team, times 5 fights, times a calibration of 1.1, and never under 4 times normal health. This replaces the flat 16 times normal health.
+- World boss fights allow five items per fight, counted like Trials.
+- Measured: the playtest team needs about 4 fights using items (6 without), and a team at the end of World 1 about 6 (it needed about 16 before).
+
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.
@@ -433,6 +479,7 @@ Playtest findings: coins piled up (78,000+ with nothing worth buying), the team 
 5. **Content** — done (prototype): all eight element worlds with full rosters, evolution, synthesis and status effects.
 6. **World bosses** — done (prototype).
 7. **Combination worlds** — done (prototype): four to start; more can be added.
-8. **Multiplayer:** co-op, then PvP and base raids.
+8. **Endgame** — done (prototype): Trials, Collection, Bag, Heartcrystal fusion and world bosses that grow with your team.
+9. **Multiplayer:** co-op, then PvP and base raids.
 
 Progress will save on the device between sessions.

@@ -3,7 +3,11 @@
 "use strict";
 
   // ---------- Input ----------
-  function backToCamp(text) { restoreAll(); S.level = null; S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "camp"; S.campTab = "levels"; return [text]; }
+  // Back to the camp area you came from: Trials, the Arena, or Levels.
+  function backToCamp(text) {
+    const tab = S.level && S.level.trial ? "trials" : S.battle && S.battle.arena ? "arena" : "levels";
+    restoreAll(); S.level = null; S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "camp"; S.campTab = tab; return [text];
+  }
   document.getElementById("screen").addEventListener("click", ev => {
     const b = ev.target.closest("button[data-a]");
     if (!b || autoOn()) return;
@@ -19,6 +23,24 @@
       case "level": { const [w, n] = arg.split("-").map(Number); if (S.team.length && worldOpen(w) && n <= prog(w).unlocked) msgs = startLevel(w, n); break; }
       case "world": { const w = Number(arg); if (worldOpen(w)) { S.worldView = w; msgs = [`World ${w}: the ${world(w).title}, home of ${world(w).name} Shardkin. ${prog(w).cleared.length} of ${world(w).levels} levels cleared.`]; } break; }
       case "claim": { const [k, i] = arg.split("-"); msgs = claimQuest(k, Number(i)); break; }
+      // Trials
+      case "trialworld": { const w = Number(arg); if (trialWorlds().includes(w)) { S.trials.world = w; msgs = [`World ${w}, the ${world(w).title}, will host your Trials. Its ${world(w).name} monsters fill the board.`]; } break; }
+      case "trial": { const t = Number(arg); if (S.team.length && trialsOpen() && t >= 1 && t <= S.trials.best + 1) msgs = startTrial(trialWorld(), t); break; }
+      case "autotrial": {
+        const t = Number(arg), w = trialWorld();
+        if (S.team.length && trialsOpen() && t >= 1 && t <= S.trials.best) { msgs = ["Auto-play started."].concat(startTrial(w, t)); S.auto = { on: true, w, n: world(w).levels, trial: t, runs: 1, coins0: S.coins, caps0: S.counts.caps || 0 }; beginAuto = true; }
+        break;
+      }
+      // Collection and Bag
+      case "colfilter": if (["missing", "caught", "all"].includes(arg)) { S.colFilter = arg; msgs = [`Showing ${{ missing: "missing monsters", caught: "caught monsters", all: "all 120 monsters" }[arg]}.`]; } break;
+      case "choosecrest": msgs = chooseCrest(arg); break;
+      // Heartcrystal fusion
+      case "forgemythic": msgs = forgeMythic(arg); break;
+      case "fuseeggs": msgs = fuseEggs(arg); break;
+      case "fusecrest": msgs = fuseCrests(arg); break;
+      // Hatchery
+      case "fillincub": if (S.hatch) msgs = fillIncubators(); break;
+      case "hatchall": if (S.hatch) msgs = hatchAllReady(); break;
       case "arenastart": { const f = Number(arg); if (S.player.level >= ARENA.unlock && (f === 1 || f <= S.arena.best + 1)) msgs = arenaFloor(f, true); break; }
       case "arenanext": if (S.battle && S.battle.over === "arenawin") msgs = arenaFloor(S.battle.floor + 1, false); break;
       case "builddock": if (!S.exped && S.player.level >= DOCK.unlock && S.coins >= DOCK.cost) { S.coins -= DOCK.cost; S.exped = { list: [] }; sfx("coin"); msgs = ["You built the Expedition Dock. Open the Expeditions tab to send monsters out."]; } break;
@@ -53,7 +75,7 @@
         break;
       }
       case "autolevel": { const [w, n] = arg.split("-").map(Number); if (S.team.length && prog(w).cleared.includes(n)) { msgs = ["Auto-play started."].concat(startLevel(w, n)); S.auto = { on: true, w, n, runs: 1, coins0: S.coins, caps0: S.counts.caps || 0 }; beginAuto = true; } break; }
-      case "autorepeat": if (S.auto) { S.auto.runs++; backToCamp(""); msgs = [`Run ${S.auto.runs} begins.`].concat(startLevel(S.auto.w, S.auto.n)); } break;
+      case "autorepeat": if (S.auto) { S.auto.runs++; backToCamp(""); msgs = [`Run ${S.auto.runs} begins.`].concat(S.auto.trial ? startTrial(S.auto.w, S.auto.trial) : startLevel(S.auto.w, S.auto.n)); } break;
       case "autopref": msgs = [togglePref(arg)]; break;
       case "buildforge": if (!S.forge && S.player.level >= FORGE.unlock && S.coins >= FORGE.cost) { S.coins -= FORGE.cost; S.forge = true; sfx("forge"); msgs = ["You built the Shard Forge. Open it from the main menu to spend your elemental shards."]; } break;
       case "forgeel": S.forgeEl = arg; msgs = [`${arg} Shards: you have ${S.items.shards[arg] || 0}.`]; break;
@@ -83,7 +105,7 @@
       case "hurry": {
         if (!(S.gems >= PREMIUM.hurry)) { msgs = [`Finishing a timer costs ${PREMIUM.hurry} Coins.`]; break; }
         const [kind, i] = String(arg).split(":");
-        if (kind === "train" && S.training.session && !trainingStatus().done) { S.training.session.start = now() - trainHours() * HOUR; S.training.session.pxpAt = S.pxpLife - TRAIN.pxp; }
+        if (kind === "train" && S.training.session && !trainingStatus().done) { S.training.session.start = now() - trainHours() * HOUR; S.training.session.pxpAt = S.pxpLife - trainNeed(S.training.session); }
         else if (kind === "hatch" && S.hatch && S.hatch.incub[Number(i)] && hatchLeft(S.hatch.incub[Number(i)]) > 0) S.hatch.incub[Number(i)].start = now() - hatchHours() * HOUR;
         else if (kind === "exp" && S.exped && S.exped.list[Number(i)] && expLeft(S.exped.list[Number(i)]) > 0) { const x = S.exped.list[Number(i)]; x.start = now() - x.hours * HOUR; }
         else break;
@@ -119,8 +141,8 @@
       case "collect": { const p = minePending(); S.coins += p; msgs = [p ? `You collected ${p} Shard Dust. You have ${S.coins} Shard Dust.` : "No Shard Dust ready yet. Check back later."]; collectMineShards(msgs); S.mine.last = now(); if (p) sfx("coin"); break; }
       case "refresh": msgs = (msgs || []).concat(["Updated."]); break;
       case "mode": if (!S.training.session) { S.training.mode = S.training.mode === "time" ? "xp" : "time"; msgs = [`Training mode is now ${S.training.mode === "time" ? "time-based" : "experience-based"}.`]; } break;
-      case "train": if (!S.training.session && S.mons[arg]) { S.training.session = { uid: arg, start: now(), pxpAt: S.pxpLife }; msgs = [`${S.mons[arg].name} started training. ${trainingStatus().text}`]; } break;
-      case "trainclaim": { const s = S.training.session, st = trainingStatus(); if (s && st.done) { const m = S.mons[s.uid], amt = trainAmount(m); msgs = [`${m.name} finished training and gained ${amt} experience.`]; S.training.session = null; S.stats.trained++; levelCheck(m, amt, msgs); givePxp(15, msgs); } break; }
+      case "train": if (!S.training.session && S.mons[arg]) { S.training.session = { uid: arg, start: now(), pxpAt: S.pxpLife, need: trainPxp() }; msgs = [`${S.mons[arg].name} started training. ${trainingStatus().text}`]; } break;
+      case "trainclaim": { const s = S.training.session, st = trainingStatus(); if (s && st.done) { const m = S.mons[s.uid], amt = trainAmount(m); msgs = [`${m.name} finished training and gained ${fmt(amt)} experience.`]; S.training.session = null; S.stats.trained++; levelCheck(m, amt, msgs); givePxp(15, msgs); } break; }
       case "wbfight": if (S.wboss && S.wfights.count > 0 && S.screen === "camp") msgs = wbBattle(false); break;
       case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
       case "resetyes": newGame(); msgs = [S.result]; break;
@@ -157,6 +179,7 @@
         S.auto = null; S.confirm = null;
         if (S.screen === "camp") S.campTab = "save";
         msgs = [`Save loaded: ${saveSummary(S)}. Your previous game is kept as a backup in Settings.`];
+        applyUpdates(msgs);
         updateAutobar();
         break;
       }
@@ -171,14 +194,15 @@
         S.auto = null; S.confirm = null;
         if (S.screen === "camp") S.campTab = "save";
         msgs = [`Back to your earlier game: ${saveSummary(S)}. The game you just left is now the backup, so you can switch again.`];
+        applyUpdates(msgs);
         updateAutobar();
         break;
       }
       // Board
       case "roll": msgs = roll(); break;
-      case "die": S.dieChoose = true; msgs = ["Choose a roll from 1 to 6. Each choice says where you'd land."]; break;
+      case "die": if (itemsLeft() > 0) { S.dieChoose = true; msgs = ["Choose a roll from 1 to 6. Each choice says where you'd land."]; } break;
       case "diecancel": S.dieChoose = false; msgs = ["You kept your Loaded Die."]; break;
-      case "dieroll": if (S.items.die > 0) { S.items.die--; S.dieChoose = false; msgs = roll(Number(arg)); } break;
+      case "dieroll": if (S.items.die > 0 && itemsLeft() > 0) { S.items.die--; S.dieChoose = false; const cap = []; spendCap(cap); msgs = roll(Number(arg)); msgs.splice(1, 0, ...cap); } break;
       case "merchleave": S.level.shopOpen = false; S.level.used[S.level.pos] = true; msgs = ["You wave goodbye to the merchant. Roll when ready."]; break;
       case "wbnow": if (S.level && S.level.encounter) { S.level.encounter = false; msgs = wbBattle(true); } break;
       case "wbignore": if (S.level && S.level.encounter) { S.level.encounter = false; msgs = [`You slip past ${S.wboss.name} for now. It will wait at camp for 24 hours. Roll when ready.`]; } break;

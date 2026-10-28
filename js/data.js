@@ -245,6 +245,9 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   ];
   WORLDS.forEach((W, i) => { W.title = WORLD_TITLES[i]; W.lore = WORLD_LORE[i]; });
   function worldPool(w, tier) { return world(w).els.flatMap(e => POOLS[e][tier]); }
+  // Every world whose wild monsters include this element: its own world and the rift it shares.
+  function elementWorlds(el) { return WORLDS.map((W, i) => (W.els.includes(el) ? i + 1 : 0)).filter(Boolean); }
+  function fmt(n) { return Number(n).toLocaleString("en-US"); }
   function worldEl(w) { return pickFrom(world(w).els); }
   function levelIndex(w, n) { let g = 0; for (let i = 1; i < w; i++) g += world(i).levels; return g + n - 1; }
   function elementWorld(el) { return WORLDS.findIndex(W => W.els.length === 1 && W.els[0] === el) + 1; }

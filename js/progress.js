@@ -29,7 +29,9 @@
   // then 10% less for each extra level, never below 10%. Each monster is judged on its own level.
   function outgrowMult(myLevel, foeLevel) { const d = myLevel - foeLevel; return d <= 3 ? 1 : Math.max(0.1, 1 - 0.1 * (d - 3)); }
   function teamTop() { return Math.max(1, ...teamMons().map(m => m.level)); }
-  function levelRef() { return S.level ? wildRange(S.level.w, S.level.n)[1] : 1; }
+  // The monster levels on the current board: a world level's wild range, or a Trial tier's.
+  function levelRange() { const L = S.level; return L.trial ? trialRange(L.trial) : wildRange(L.w, L.n); }
+  function levelRef() { return S.level ? levelRange()[1] : 1; }
   function teamXp(amount, msgs, everyone, foeLevel) {
     const team = teamMons().filter(m => everyone || m.hp > 0);
     if (!team.length || amount <= 0) return;
@@ -64,6 +66,22 @@
     if (S.lure === undefined) S.lure = false;
     for (const id of Object.keys(ITEM_INFO)) if (typeof S.items[id] !== "number") S.items[id] = 0;
     if (S.yard && !S.yardLvl) S.yardLvl = 1;
+    S.trials = S.trials || { best: 0, world: null };
+    if (typeof S.items.crestChoice !== "number") S.items.crestChoice = 0;
+    S.updates = S.updates || [];
+  }
+  // One-time changes for saves made before an update. Runs on load and after importing a save code.
+  function applyUpdates(msgs) {
+    if (S.updates.includes(UPDATE)) return;
+    S.updates.push(UPDATE);
+    // Clearing the Ember Shard now always gives the Infernox Crest; saves that missed it get one.
+    const ix = crestName("cindercub");
+    if (S.ach.includes("world3") && !(S.items.crests[ix] > 0) && !Object.values(S.mons).some(m => m.id === "cindercub" && m.stage === 2)) {
+      addCrest(ix);
+      msgs.push(`Update: clearing the Ember Shard now always gives the ${ix}, so you've received one.`);
+    }
+    const open = [...(trialsOpen() ? ["Trials under Adventure"] : []), "Collection under Monsters", "a Bag under Camp"];
+    msgs.push(`New at camp: ${joinAnd(open)}.${trialsOpen() ? " The Shard Forge can now fuse eggs and crests." : ""}`);
   }
   // ---------- Premium Coins ----------
   // Coins are scarce: earned only from first-time milestones, never from battles or replays.
@@ -137,6 +155,37 @@
   function hatchHours() { return S.hatch && S.hatch.fast ? HATCHERY.fastHours : HATCHERY.hours; }
   const HATCH_WEIGHT = [["Common", 50], ["Uncommon", 35], ["Rare", 12], ["Epic", 2.5], ["Legendary", 0.5]];
   function hatchLeft(x) { return x.start + hatchHours() * HOUR - now(); }
+  // Fills every free incubator: Mythic eggs first, then your most plentiful eggs.
+  function fillPlan() {
+    const myth = { ...S.items.mythic }, eggs = { ...S.items.eggs }, plan = [];
+    const most = pile => Object.keys(pile).filter(e => pile[e] > 0).sort((a, b) => pile[b] - pile[a] || ELEMENTS.indexOf(a) - ELEMENTS.indexOf(b))[0];
+    for (let i = S.hatch.incub.length; i < S.hatch.slots; i++) {
+      const m = most(myth), e = m ? null : most(eggs);
+      if (m) { myth[m]--; plan.push({ el: m, mythic: true }); }
+      else if (e) { eggs[e]--; plan.push({ el: e, mythic: false }); }
+      else break;
+    }
+    return plan;
+  }
+  function eggListText(list) {
+    const c = {};
+    for (const p of list) { const k = `${p.mythic ? "Mythic " : ""}${p.el}`; c[k] = (c[k] || 0) + 1; }
+    return joinAnd(Object.entries(c).map(([k, n]) => `${n === 1 ? an(k) : `${n} ${k}`} egg${n === 1 ? "" : "s"}`));
+  }
+  function fillIncubators() {
+    const plan = fillPlan();
+    if (!plan.length) return null;
+    for (const p of plan) {
+      if (p.mythic) S.items.mythic[p.el]--; else S.items.eggs[p.el]--;
+      S.hatch.incub.push({ el: p.el, start: now(), mythic: p.mythic || undefined });
+    }
+    return [`You placed ${eggListText(plan)} in the incubators. They hatch in ${hatchHours()} hours.`];
+  }
+  function hatchAllReady() {
+    const msgs = [];
+    for (let i = S.hatch.incub.length - 1; i >= 0; i--) if (hatchLeft(S.hatch.incub[i]) <= 0) msgs.unshift(...hatchEgg(i));
+    return msgs.length ? msgs : null;
+  }
   function hatchEgg(i) {
     const x = S.hatch.incub[i];
     S.hatch.incub.splice(i, 1);
@@ -305,4 +354,131 @@
     if (S.synth) S.synth.picks = S.synth.picks.filter(x => x !== uid);
     S.coins += v.dust; addShards(m.el, v.shards); bump("released");
     return [`You released ${m.name}. You got ${v.dust} Shard Dust and ${v.shards} ${m.el} Shard${v.shards === 1 ? "" : "s"}. ${baseMons().length} monster${baseMons().length === 1 ? "" : "s"} left in your base.`];
+  }
+
+  // ---------- Trials ----------
+  // An opt-in hard mode that opens with the Heartcrystal. Tiers climb by level, and every Trial has
+  // three-monster wild teams, more Rares, Epics and Legendaries, infused foes and an infused final-form boss.
+  // You choose which cleared world hosts it, so you choose its elements. Clearing a tier opens the next.
+  const TRIAL = { base: 96, perTier: 5, shardMult: 3, mythicEvery: 3, choiceEvery: 5, coins: 5,
+    weights: [["Common", 25], ["Uncommon", 40], ["Rare", 29], ["Epic", 2.5], ["Legendary", 0.5]] };
+  function trialsOpen() { return S.ach.includes("heart"); }
+  function trialRange(t) { const lo = TRIAL.base + TRIAL.perTier * t; return [lo, lo + 2]; }
+  function trialInfuse(t) { return Math.min(5, Math.floor(t / 2)); }
+  function trialWorlds() { return WORLDS.map((W, i) => i + 1).filter(worldCleared); }
+  function trialWorld() { const list = trialWorlds(); return list.includes(S.trials.world) ? S.trials.world : list[list.length - 1]; }
+  function trialPrep(m, infuse, final) {
+    if (final && SP[m.id].forms.length === 3) m.stage = 2;
+    m.infuse = infuse; m.name = formName(m); calc(m); m.hp = m.maxHp;
+    return m;
+  }
+  function pickTrialWild(w, t) {
+    const L = S.level, [lo, hi] = trialRange(t);
+    const mult = TRIAL.shardMult * (L && L.storm ? SHARDBORN.stormMult : 1) * (L && L.lure ? 10 : 1);
+    return trialPrep(makeMon(pickFrom(worldPool(w, pickWeighted(TRIAL.weights))), rand(lo, hi), shardRoll(mult)), trialInfuse(t), false);
+  }
+  function pickTrialBoss(w, t) {
+    const tier = Math.random() < 0.25 ? "Legendary" : "Epic";
+    return trialPrep(makeMon(pickFrom(worldPool(w, tier)), trialRange(t)[1] + 3), Math.min(5, t), true);
+  }
+  function addMythic(el) { S.items.mythic[el] = (S.items.mythic[el] || 0) + 1; }
+  // The element a Trial's prizes come in. Rifts pick one of their two elements once per run.
+  function trialEl() { const L = S.level; return L.prizeEl || (L.prizeEl = worldEl(L.w)); }
+  function trialClear(msgs) {
+    const L = S.level, t = L.trial, el = trialEl(), first = t > S.trials.best;
+    if (first) S.trials.best = t;
+    const dust = (first ? 2 : 1) * (1000 + 250 * t);
+    S.coins += dust;
+    addShards(el, (first ? 2 : 1) * (8 + t), msgs, "The boss shattered into");
+    msgs.push(`You cleared Trial tier ${t}${first ? ` for the first time! Tier ${t + 1} is now open` : ""}. You earned ${fmt(dust)} Shard Dust.`);
+    if (first) {
+      giveGems(TRIAL.coins, msgs, "You also earned");
+      if (t % TRIAL.mythicEvery === 0) { addMythic(el); sfx("chest"); msgs.push(`Tier ${t} reward: a Mythic ${el} egg.`); }
+      if (t % TRIAL.choiceEvery === 0) { S.items.crestChoice++; msgs.push(`Tier ${t} reward: a Crest Choice, to take the crest you want from the Bag.`); }
+    }
+    givePxp((600 + 20 * t) * (first ? 2 : 1), msgs);
+    bump("levels"); bump("trials");
+    if (Math.random() < 0.08) addEgg(el, msgs, "The boss dropped");
+    msgs.push("Spin the reward wheel.");
+  }
+  function trialPrizes() {
+    const t = S.level.trial, el = trialEl(), dust = 500 + 200 * t, n = 10 + t;
+    return [
+      { w: 20, label: `${fmt(dust)} Shard Dust`, give: () => { S.coins += dust; } },
+      { w: 18, label: `${n} ${el} Shards`, give: () => addShards(el, n) },
+      { w: 16, label: icount("grorb", 2), give: () => { S.items.grorb += 2; } },
+      { w: 14, label: "a Team Tonic and a Revive Shard", give: () => { S.items.tonic++; S.items.revive++; } },
+      { w: 12, label: "a quarter of a level's experience for each team monster", give: quarterXp },
+      { w: 8, label: "a Prism Shard", give: () => { S.items.perfect++; } },
+      { w: 6, label: `${an(el)} egg`, give: () => { S.items.eggs[el] = (S.items.eggs[el] || 0) + 1; } },
+      { w: 4, label: `a Mythic ${el} egg`, give: () => addMythic(el) },
+      { w: 2, label: "a Crest Choice", give: () => { S.items.crestChoice++; } }
+    ];
+  }
+
+  // ---------- Heartcrystal fusion ----------
+  // Opens with the Heartcrystal, at the Shard Forge. Turns stockpiles into what the collection needs.
+  const FUSE = { mythicShards: 250, mythicDust: 15000, eggs: 10, eggDust: 15000, crests: 3, crestDust: 5000 };
+  function fusionOpen() { return trialsOpen(); }
+  // Ten eggs, a few at a time from whichever element you have most of, so the piles even out.
+  function eggFusePlan() {
+    const left = { ...S.items.eggs }, plan = {};
+    for (let i = 0; i < FUSE.eggs; i++) {
+      const el = Object.keys(left).filter(e => left[e] > 0).sort((a, b) => left[b] - left[a] || ELEMENTS.indexOf(a) - ELEMENTS.indexOf(b))[0];
+      if (!el) return null;
+      left[el]--; plan[el] = (plan[el] || 0) + 1;
+    }
+    return plan;
+  }
+  function eggPlanText(plan) { return joinAnd(Object.entries(plan).map(([el, n]) => `${n === 1 ? an(el) : `${n} ${el}`} egg${n === 1 ? "" : "s"}`)); }
+  function fuseEggs(el) {
+    const plan = eggFusePlan();
+    if (!fusionOpen() || !plan || S.coins < FUSE.eggDust || !openElements().includes(el)) return null;
+    for (const [k, n] of Object.entries(plan)) S.items.eggs[k] -= n;
+    S.coins -= FUSE.eggDust; addMythic(el); bump("fusions"); sfx("forge");
+    return [`You fused ${eggPlanText(plan)} into a Mythic ${el} egg for ${fmt(FUSE.eggDust)} Shard Dust. You have ${S.items.mythic[el]} Mythic ${el} egg${S.items.mythic[el] === 1 ? "" : "s"}.`];
+  }
+  function forgeMythic(el) {
+    if (!fusionOpen() || (S.items.shards[el] || 0) < FUSE.mythicShards || S.coins < FUSE.mythicDust || !openElements().includes(el)) return null;
+    S.items.shards[el] -= FUSE.mythicShards; S.coins -= FUSE.mythicDust; addMythic(el);
+    bump("fusions"); bump("forged"); sfx("forge");
+    return [`You forged a Mythic ${el} egg from ${FUSE.mythicShards} ${el} Shards and ${fmt(FUSE.mythicDust)} Shard Dust. ${S.items.shards[el]} ${el} Shards left.`];
+  }
+  // Lines you own that could still use their crest: some monster not yet in its final form.
+  function crestWanted() { return [...new Set(Object.values(S.mons).filter(m => SP[m.id].forms.length === 3 && m.stage < 2).map(m => m.id))]; }
+  // How many more of a line's crest you'd need for every monster of that line you own.
+  function crestShort(id) { return Math.max(0, Object.values(S.mons).filter(m => m.id === id && m.stage < 2).length - (S.items.crests[crestName(id)] || 0)); }
+  function crestFuseTargets() { return crestWanted().filter(id => crestShort(id) > 0); }
+  // Three other crests of the target's element. Crests that fit a monster you own are never used.
+  function crestFusePlan(id) {
+    const target = crestName(id), keep = new Set(crestWanted().map(crestName));
+    const left = {}, plan = {};
+    for (const c of crestSpecies(SP[id].el).map(crestName)) if (c !== target && !keep.has(c) && S.items.crests[c] > 0) left[c] = S.items.crests[c];
+    for (let i = 0; i < FUSE.crests; i++) {
+      const c = Object.keys(left).filter(x => left[x] > 0).sort((a, b) => left[b] - left[a])[0];
+      if (!c) return null;
+      left[c]--; plan[c] = (plan[c] || 0) + 1;
+    }
+    return plan;
+  }
+  function crestPlanText(plan) { return joinAnd(Object.entries(plan).map(([c, n]) => (n === 1 ? `the ${c}` : `${n} ${c}s`))); }
+  function fuseCrests(id) {
+    const plan = SP[id] && SP[id].forms.length === 3 ? crestFusePlan(id) : null;
+    if (!fusionOpen() || !plan || S.coins < FUSE.crestDust) return null;
+    for (const [c, n] of Object.entries(plan)) S.items.crests[c] -= n;
+    S.coins -= FUSE.crestDust; bump("fusions"); sfx("forge");
+    const msgs = [];
+    msgs.push(`You fused ${crestPlanText(plan)} for ${fmt(FUSE.crestDust)} Shard Dust.`);
+    giveCrestOf(id, msgs);
+    return msgs;
+  }
+  // Crest Choices come from Trials. They're offered for lines that still need a crest; otherwise they keep.
+  function choiceTargets() { return crestFuseTargets(); }
+  function chooseCrest(id) {
+    if (!(S.items.crestChoice > 0) || !choiceTargets().includes(id)) return null;
+    S.items.crestChoice--; sfx("forge");
+    const msgs = [];
+    giveCrestOf(id, msgs);
+    msgs.push(`You have ${S.items.crestChoice} Crest Choice${S.items.crestChoice === 1 ? "" : "s"} left.`);
+    return msgs;
   }

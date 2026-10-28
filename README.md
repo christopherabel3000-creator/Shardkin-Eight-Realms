@@ -7,10 +7,14 @@ A turn-based monster-collecting RPG, built to be fully playable with a screen re
 ## Current state
 A playable single-player campaign:
 
-- **Twelve worlds:** the eight element worlds (Plant, Water, Fire, Earth, Electric, Psychic, Ghost, Physical) plus four combination worlds, 165 levels in all.
+- **Twelve worlds:** the eight element worlds (Plant, Water, Fire, Earth, Electric, Psychic, Ghost, Physical) plus four combination worlds, 170 levels in all.
 - **120 monsters**, 15 per element, with evolutions and crest-unlocked final forms.
 - **Dice-board levels** with wild battles, healing springs, thorn traps, portals, treasure chests, a wandering merchant and quiet paths, plus a look-ahead and Loaded Dice.
-- **Level bosses**, a **reward wheel**, and **roaming world bosses** that carry damage over between fights.
+- **Level bosses**, a **reward wheel**, and **roaming world bosses** that carry damage over between fights and grow with your team, aiming for about five fights at any stage.
+- **Trials**, the endgame: once the Heartcrystal is restored, climb endless tiers on any cleared world, against three-monster wild teams with more Rares, Epics and Legendaries and an infused final-form boss, with five items allowed per run. First clears pay Coins, Mythic eggs and Crest Choices.
+- **Collection:** all 120 monsters by element, with what you've caught, Shardborn, and how to get the ones you're missing.
+- **Bag:** every item, egg, elemental shard, crest and scroll in one place, with what each crest fits.
+- **Heartcrystal fusion** at the Shard Forge: forge Mythic eggs from shards, fuse ten eggs into a Mythic egg, and fuse three spare crests into the one a monster needs.
 - **Battles** with element strengths, sleep, stun and poison, free switching, capturing and team-wide experience.
 - **Camp:** player levels, a shop, synthesis, daily training, the Shard Mine for passive Shard Dust, expeditions, a hatchery, and achievements.
 - **Daily and weekly quests**, and an endless **Arena tower** of rival trainers.
@@ -31,7 +35,7 @@ Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; e
   - `data.js` — elements, monsters, rosters, worlds and stat math
   - `state.js` — items, shop, buildings, saving, save codes, new games and achievements
   - `sound.js` — sound effects and synthesized attack sounds
-  - `progress.js` — experience, evolution, currencies, shards, expeditions, hatchery, quests, the Arena and base management
+  - `progress.js` — experience, evolution, currencies, shards, expeditions, hatchery, quests, the Arena, base management, Trials and Heartcrystal fusion
   - `board.js` — dice-board levels and world bosses
   - `battle.js` — battles, the reward wheel, synthesis and training timers
   - `screens.js` — drawing every screen and camp area
@@ -40,3 +44,4 @@ Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; e
 
 When you change a file, bump the `?v=` number on its line in `index.html` so phones don't keep an old copy.
 - `DESIGN.md` — the full game design and build plan
+- `tools/sim.js` — a balance simulator, not loaded by the game. It plays a saved game forward with the real game code and auto-play's choices: `node tools/sim.js <file with a save code> <campaign|trials|wboss|arena> [runs]`. Use it to check a balance change against a real save before it ships.

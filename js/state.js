@@ -53,12 +53,19 @@
   function yardLvl() { return S.yard ? (S.yardLvl || 1) : 0; }
   function trainHours() { return yardLvl() >= 3 ? 2 : TRAIN.hours; }
   function trainAmount(m) { let a = 0; for (let i = 0; i < Math.max(1, yardLvl()); i++) a += xpNeed(m.level + i); return a; }
-  const TRAIN = { hours: 3, pxp: 150 };
+  const TRAIN = { hours: 3, pxp: 150, pxpPerLevel: 30 };
+  // Experience-based training grows with the Shardbinder level, since later levels pay far more experience.
+  // Each session keeps the requirement it started with.
+  function trainPxp() { return Math.max(TRAIN.pxp, TRAIN.pxpPerLevel * S.player.level); }
+  function trainNeed(s) { return s.need || TRAIN.pxp; }
   const HOUR = 3600000;
-  const WB = { chance: 0.12, hpMult: 16, levelBonus: 5, levelOverTeam: 3, maxFights: 5, fightEvery: 2 * HOUR, lifetime: 24 * HOUR };
+  // World boss health aims for about `fights` fights from your current team (see wbHealth in board.js), never under minHpMult times normal health.
+  const WB = { chance: 0.12, minHpMult: 4, levelBonus: 5, levelOverTeam: 3, maxFights: 5, fightEvery: 2 * HOUR, lifetime: 24 * HOUR, fights: 5, fightCal: 1.1 };
 
   // ---------- Save ----------
   const SAVE_KEY = "shardkin-save-v1";
+  // Saves remember which one-time updates they've had (see applyUpdates in progress.js); new games start with all of them.
+  const UPDATE = "endgame1";
   let S;
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* saving is optional */ } }
   function load() {
@@ -130,7 +137,7 @@
       screen: "camp", level: null, battle: null, wheel: null, confirm: null, sound: true, result: "",
       player: { level: 1, xp: 0 }, pxpLife: 0, dex: [], stats: { caught: 0, evolved: 0, synth: 0, trained: 0, wbKills: 0 }, ach: [],
       yard: false, mine: null, training: { mode: "time", session: null }, campTab: null, dieChoose: false, synth: null,
-      wboss: null, wfights: null, notices: [] };
+      wboss: null, wfights: null, notices: [], updates: [UPDATE] };
     ensureExtras();
     addMon(makeMon("cindercub", 5), true);
     S.result = PROLOGUE + " Your first companion is Cindercub, a level 5 Epic Fire Shardkin, strong against the Verdant Shard's Plant monsters. Open Levels and choose Level 1 to begin.";
@@ -164,7 +171,9 @@
 
   // ---------- Achievements ----------
   function addCrest(c) { S.items.crests[c] = (S.items.crests[c] || 0) + 1; }
-  function giveCrest(el, msgs) { const c = crestName(pickFrom(crestSpecies(el))); addCrest(c); msgs.push(`You received the ${c}.`); const f = crestFits(c); if (f) msgs.push(f); }
+  function giveCrestOf(id, msgs) { const c = crestName(id); addCrest(c); msgs.push(`You received the ${c}.`); const f = crestFits(c); if (f) msgs.push(f); }
+  function giveCrest(el, msgs) { giveCrestOf(pickFrom(crestSpecies(el)), msgs); }
+  function joinAnd(list) { return list.length < 2 ? list.join("") : `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`; }
   // Says which of your monsters a crest fits, if any.
   function crestFits(c) {
     const ready = Object.values(S.mons).filter(m => m.stage === 1 && SP[m.id].forms.length === 3 && crestName(m.id) === c);
@@ -194,8 +203,11 @@
     const W = WORLDS[w - 1];
     if (W.els.length === 1) {
       const el = W.els[0];
+      // The Ember Shard always awakens the starter: World 3 gives the Infernox Crest rather than a random Fire crest.
+      const starter = el === "Fire";
       ACH.push({ id: "world" + w, name: `${el} World Cleared`, desc: `Complete World ${w} by clearing its Level ${W.levels}.`, test: () => worldCleared(w),
-        reward: `Scroll of Synthesis: Rare ${el}, plus a random ${el} final-form crest`, give: msgs => { if (!S.items.scrolls.includes(el + "Rare")) S.items.scrolls.push(el + "Rare"); giveCrest(el, msgs); } });
+        reward: `Scroll of Synthesis: Rare ${el}, plus ${starter ? `the ${crestName("cindercub")} for your starter's line` : `a random ${el} final-form crest`}`,
+        give: msgs => { if (!S.items.scrolls.includes(el + "Rare")) S.items.scrolls.push(el + "Rare"); if (starter) giveCrestOf("cindercub", msgs); else giveCrest(el, msgs); } });
     } else {
       ACH.push({ id: "world" + w, name: `${W.title} Conquered`, desc: `Complete World ${w} by clearing its Level ${W.levels}.`, test: () => worldCleared(w),
         reward: "2000 Shard Dust, a Prism Shard and a random final-form crest from either element", give: msgs => { S.coins += 2000; S.items.perfect++; giveCrest(worldEl(w), msgs); } });
@@ -213,6 +225,10 @@
   ACH.push({ id: "forge10", name: "Shardsmith", desc: "Forge or infuse 10 times at the Shard Forge.", test: () => (S.counts.forged || 0) >= 10, reward: "300 Shard Dust and 2 Loaded Dice", give: () => { S.coins += 300; S.items.die += 2; } });
   ACH.push({ id: "heart", name: "Heartcrystal Restored", desc: "Clear all eight element worlds.", test: () => [1, 2, 3, 4, 5, 6, 7, 8].every(worldCleared), reward: "5000 Shard Dust and 3 Prism Shards", give: msgs => { S.coins += 5000; S.items.perfect += 3; msgs.push(EPILOGUE); } });
   ACH.push({ id: "all120", name: "Shardkin Master", desc: "Collect all 120 monsters.", test: () => ELEMENTS.every(el => poolIds(el).every(id => S.dex.includes(id))), reward: "5 Prism Shards and 10000 Shard Dust", give: () => { S.items.perfect += 5; S.coins += 10000; } });
+  const trialBest = () => (S.trials && S.trials.best) || 0;
+  ACH.push({ id: "trial1", name: "Trial Initiate", desc: "Clear Trial tier 1.", test: () => trialBest() >= 1, reward: "3 Prism Shards", give: () => { S.items.perfect += 3; } });
+  ACH.push({ id: "trial10", name: "Trial Champion", desc: "Clear Trial tier 10.", test: () => trialBest() >= 10, reward: "a Crest Choice and 10000 Shard Dust", give: () => { S.items.crestChoice++; S.coins += 10000; } });
+  ACH.push({ id: "trial25", name: "Trial Legend", desc: "Clear Trial tier 25.", test: () => trialBest() >= 25, reward: "2 Crest Choices and 25000 Shard Dust", give: () => { S.items.crestChoice += 2; S.coins += 25000; } });
   function checkAch(msgs) {
     for (let pass = 0; pass < 3; pass++) {
       let got = false;

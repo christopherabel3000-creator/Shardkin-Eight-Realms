@@ -25,11 +25,6 @@
     });
     return bi;
   }
-  // Expected damage, matching the battle formula without the random spread.
-  function estDmg(att, def, sk) {
-    const base = ((2 * att.level / 5 + 2) * sk.power * att.atk / def.def) / 50 + 2;
-    return base * (sk.el === att.el ? 1.2 : 1) * mult(sk.el, def.el) * 0.93;
-  }
   // When trying to catch a monster: the hardest-hitting skill that should leave it standing, or the softest one.
   function gentleSkill(p, e) {
     const sk = unlocked(p).map((s, i) => [i, estDmg(p, e, s)]);
@@ -45,7 +40,7 @@
       if (L.shopOpen) return ["merchleave", ""];
       const lead = leadMon();
       const potB = S.items.potion > 0 ? "potion" : itemOpen("superpotion") && S.items.superpotion > 0 ? "superpotion" : null;
-      if (A.potions && potB && lead.hp > 0 && lead.hp < lead.maxHp * 0.3) return ["useboard", `${potB}:${lead.uid}`];
+      if (A.potions && potB && itemsLeft() > 0 && lead.hp > 0 && lead.hp < lead.maxHp * 0.3) return ["useboard", `${potB}:${lead.uid}`];
       return ["roll", ""];
     }
     if (S.screen === "battle") {
@@ -64,7 +59,7 @@
         if (better) { B.autoSw = idx; return ["switch", better.uid]; }
       }
       const pot = S.items.potion > 0 ? "potion" : itemOpen("superpotion") && S.items.superpotion > 0 ? "superpotion" : null;
-      if (A.potions && pot && p.hp < p.maxHp * 0.3) return ["use", `${pot}:${p.uid}`];
+      if (A.potions && pot && itemsLeft() > 0 && p.hp < p.maxHp * 0.3) return ["use", `${pot}:${p.uid}`];
       const bindItem = ["orb", "gorb", "grorb"].find(id => itemOpen(id) && S.items[id] > 0);
       if (A.capture && !B.boss && bindItem && (!S.dex.includes(e.id) || e.shard)) {
         if (captureChance(e, bindItem) >= 0.5 || e.hp <= e.maxHp * 0.35) return ["capture", bindItem];
@@ -86,7 +81,7 @@
     bar.hidden = !on;
     if (!on) return;
     const A = prefs(), Au = S.auto;
-    let st = `Run ${Au.runs} of World ${Au.w}, Level ${Au.n}${A.repeat ? ", repeating" : ""}. `;
+    let st = `Run ${Au.runs} of ${levelName(Au)}${A.repeat ? ", repeating" : ""}. `;
     if (S.screen === "battle" && S.battle) { const e = foe(), p = you(); st += e ? `Battle: your ${p.name}, ${p.hp} of ${p.maxHp} health, against ${e.name}, ${e.hp} of ${e.maxHp}.` : "Battle won."; }
     else if (S.screen === "level" && S.level) st += `Space ${S.level.pos + 1} of ${BOARD_SIZE}.`;
     else if (S.screen === "wheel") st += "Reward wheel.";
@@ -104,7 +99,7 @@
   }
   function autoBegin() {
     updateAutobar();
-    document.getElementById("autolive").textContent = `Auto-play started on World ${S.auto.w}, Level ${S.auto.n}. ${S.level ? leadMon().name + " leads." : ""}`;
+    document.getElementById("autolive").textContent = `Auto-play started on ${levelName(S.auto)}. ${S.level ? leadMon().name + " leads." : ""}`;
     document.getElementById("autostop").focus();
     clearTimeout(autoTimer);
     autoTimer = setTimeout(autoNext, AUTO_SPEED[prefs().speed]);
@@ -153,6 +148,7 @@
     S.confirm = null;
     S.result = { camp: "Welcome back. You're at camp.", level: "Welcome back. Your level is waiting where you left it.", battle: "Welcome back. Your battle is waiting where you left it.", wheel: "Welcome back. Your reward wheel is waiting." }[S.screen] || "Welcome back.";
     const extra = [];
+    applyUpdates(extra);
     if (S._pendingPxp) { givePxp(S._pendingPxp, extra); delete S._pendingPxp; }
     wbTick(extra);
     checkAch(extra);
