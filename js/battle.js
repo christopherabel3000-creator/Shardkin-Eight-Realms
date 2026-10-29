@@ -8,26 +8,37 @@
     const [lo, hi] = wildRange(w, n);
     return makeMon(pickFrom(worldPool(w, tier)), tier === "Common" || tier === "Uncommon" ? rand(lo, hi) : hi + 1, shardRoll((S.level && S.level.storm ? SHARDBORN.stormMult : 1) * (S.level && S.level.lure ? 10 : 1)));
   }
+  // World 1, Level 1 is gentler for new players: single wild monsters, and an Uncommon boss one level lower.
+  function gentleLevel() { return !!(S.level && !S.level.trial && S.level.w === 1 && S.level.n === 1); }
   function pickBoss(w, n) {
-    const tier = Math.random() < 0.2 ? "Rare" : "Uncommon";
-    return makeMon(pickFrom(worldPool(w, tier)), wildRange(w, n)[1] + 2);
+    const tier = gentleLevel() ? "Uncommon" : Math.random() < 0.2 ? "Rare" : "Uncommon";
+    return makeMon(pickFrom(worldPool(w, tier)), wildRange(w, n)[1] + (gentleLevel() ? 1 : 2));
   }
+  // Brief messages: shorter battle lines without the tips you've long since learned (Settings).
+  function brief() { return !!S.brief; }
+  const TEAM_WORD = { 2: "two", 3: "three", 4: "four" };
+  function introLine(e) { return brief() ? `${e.name}, ${e.rarity} ${e.el}, level ${e.level}` : `${an(e.rarity)} ${e.el} monster at level ${e.level}`; }
   function startBattle(boss, msgs) {
     const { w, n, trial } = S.level;
     const enemies = trial ? (boss ? [pickTrialBoss(w, trial)] : [pickTrialWild(w, trial), pickTrialWild(w, trial), pickTrialWild(w, trial)])
-      : boss ? [pickBoss(w, n)] : [pickWild(w, n), pickWild(w, n)];
+      : boss ? [pickBoss(w, n)] : gentleLevel() ? [pickWild(w, n)] : [pickWild(w, n), pickWild(w, n)];
     S.battle = { boss, enemies, active: S.level.lead, forced: false, over: null, log: [] };
     S.screen = "battle";
     const e = foe();
-    if (boss) { sfx("boss"); msgs.push(`The ${trial ? "Trial" : "level"} boss appears: ${e.name}, ${an(e.rarity)} ${e.el} monster at level ${e.level}${e.infuse ? `, infused ${e.infuse} of 5` : ""}. Bosses must be defeated, not captured.`); }
-    else {
-      sfx("ambush"); msgs.push(`A wild team of ${enemies.length === 3 ? "three" : "two"} ambushes you. Wild ${e.name} steps forward, ${an(e.rarity)} ${e.el} monster at level ${e.level}.`);
+    if (boss) {
+      sfx("boss");
+      msgs.push(brief() ? `Boss: ${introLine(e)}${e.infuse ? `, infused ${e.infuse}` : ""}.`
+        : `The ${trial ? "Trial" : "level"} boss appears: ${e.name}, ${introLine(e)}${e.infuse ? `, infused ${e.infuse} of 5` : ""}. Bosses must be defeated, not captured.`);
+    } else {
+      sfx("ambush");
+      if (enemies.length === 1) msgs.push(brief() ? `Wild ${introLine(e)}.` : `Wild ${e.name} appears, ${introLine(e)}.`);
+      else msgs.push(brief() ? `Wild team of ${TEAM_WORD[enemies.length]}. First: ${introLine(e)}.` : `A wild team of ${TEAM_WORD[enemies.length]} ambushes you. Wild ${e.name} steps forward, ${introLine(e)}.`);
       const rare = S.battle.enemies.find(x => ["Rare", "Epic", "Legendary"].includes(x.rarity));
-      if (rare) msgs.push(`Something rare is on this team: ${rare.name}, ${an(rare.rarity)} monster!`);
+      if (rare) msgs.push(brief() ? `${rare.rarity} on this team: ${rare.name}.` : `Something rare is on this team: ${rare.name}, ${an(rare.rarity)} monster!`);
       const sb = S.battle.enemies.find(x => x.shard);
-      if (sb) { sfx("shardborn"); msgs.push(`${sb.name} glitters on this team! Shardborn are rare crystal variants with 10% stronger stats.`); }
+      if (sb) { sfx("shardborn"); msgs.push(brief() ? `Shardborn on this team: ${sb.name}!` : `${sb.name} glitters on this team! Shardborn are rare crystal variants with 10% stronger stats.`); }
     }
-    msgs.push(`Your ${you().name} is ready.`);
+    if (!brief()) msgs.push(`Your ${you().name} is ready.`);
   }
   function you() { return S.mons[S.battle.active]; }
   function foe() { return S.battle.enemies.find(e => e.hp > 0 && !e.caught); }
@@ -50,7 +61,7 @@
   }
   function attack(att, def, sk, isYou, msgs) {
     const who = cap(label(att, isYou)), target = label(def, !isYou);
-    if (Math.random() * 100 >= sk.acc) { msgs.push(`${who} used ${sk.name}, but it missed.`); atkSfx(sk, isYou, "miss"); return; }
+    if (Math.random() * 100 >= sk.acc) { msgs.push(brief() ? `${who}, ${sk.name}: missed.` : `${who} used ${sk.name}, but it missed.`); atkSfx(sk, isYou, "miss"); return; }
     const m = mult(sk.el, def.el);
     const stab = sk.el === att.el ? 1.2 : 1;
     const base = ((2 * att.level / 5 + 2) * sk.power * att.atk / def.def) / 50 + 2;
@@ -58,11 +69,15 @@
     if (isYou && S.battle.fury) dmg = Math.round(dmg * 1.5);
     if (!isYou && S.battle.ward) dmg = Math.max(1, Math.round(dmg * 0.67));
     def.hp = Math.max(0, def.hp - dmg);
-    let t = `${who} used ${sk.name} on ${target} for ${dmg} damage.`;
-    if (m > 1) t += " It's strong against it.";
-    else if (m < 1) t += " It's weak against it.";
+    let t;
+    if (brief()) t = `${who}, ${sk.name}: ${dmg}${m > 1 ? ", strong" : m < 1 ? ", weak" : ""}.` + (def.hp > 0 ? ` ${cap(target)} ${def.hp} left.` : "");
+    else {
+      t = `${who} used ${sk.name} on ${target} for ${dmg} damage.`;
+      if (m > 1) t += " It's strong against it.";
+      else if (m < 1) t += " It's weak against it.";
+      if (def.hp > 0) t += ` ${cap(target)} has ${def.hp} of ${def.maxHp} health left.`;
+    }
     atkSfx(sk, isYou, m > 1 ? "strong" : m < 1 ? "weak" : "hit");
-    if (def.hp > 0) t += ` ${cap(target)} has ${def.hp} of ${def.maxHp} health left.`;
     msgs.push(t);
     if (def.hp > 0 && sk.st && !def.status && Math.random() * 100 < sk.stc) {
       const bossy = !isYou ? false : S.battle.boss;
@@ -76,7 +91,7 @@
       if (!m || m.hp <= 0 || !m.status || m.status.type !== "poison") continue;
       const dmg = Math.max(1, Math.floor(m.maxHp / (S.battle.wboss && !isYou ? 60 : 10)));
       m.hp = Math.max(0, m.hp - dmg);
-      msgs.push(`Poison hurts ${label(m, isYou)} for ${dmg} damage.` + (m.hp > 0 ? ` It has ${m.hp} of ${m.maxHp} left.` : ""));
+      msgs.push(brief() ? `Poison: ${label(m, isYou)} takes ${dmg}${m.hp > 0 ? `, ${m.hp} left` : ""}.` : `Poison hurts ${label(m, isYou)} for ${dmg} damage.` + (m.hp > 0 ? ` It has ${m.hp} of ${m.maxHp} left.` : ""));
     }
   }
   function aiSkill(e, target) {
@@ -105,14 +120,20 @@
     }
     const next = foe();
     if (!next) { endBattle("win", msgs); return; }
-    if (cur) msgs.push(B.arena ? `${B.rival} sends out ${next.name}, ${an(next.rarity)} ${next.el} monster at level ${next.level}.` : `Wild ${next.name} steps forward, ${an(next.rarity)} ${next.el} monster at level ${next.level}.`);
+    if (cur) msgs.push(nextLine(next));
     if (you().hp <= 0) {
       msgs.push(`Your ${you().name} fainted.`); sfx("faint");
-      if (teamMons().some(m => m.hp > 0)) { B.forced = true; msgs.push("Choose a monster to send out."); }
+      if (teamMons().some(m => m.hp > 0)) { B.forced = true; msgs.push(brief() ? "Choose who goes next." : "Choose a monster to send out."); }
       else if (B.wboss) { msgs.push("Your whole team has fainted."); wbFinish(msgs, false); }
       else if (B.arena) { B.over = "arenalose"; for (const m of teamMons()) m.status = null; sfx("lose"); msgs.push(`Your whole team has fainted on Arena floor ${B.floor}. Your best is floor ${S.arena.best}. Return to camp to heal up and climb again.`); }
       else endBattle("lose", msgs);
     }
+  }
+  // The next opponent stepping in, after one faints or is caught.
+  function nextLine(next) {
+    const B = S.battle, who = B.arena ? B.rival : null;
+    if (brief()) return `${who ? `${who}'s next` : "Next"}: ${introLine(next)}.`;
+    return who ? `${who} sends out ${next.name}, ${introLine(next)}.` : `Wild ${next.name} steps forward, ${introLine(next)}.`;
   }
   function endBattle(kind, msgs) {
     const B = S.battle;
@@ -130,20 +151,20 @@
         const coins = Math.max(1, Math.round((30 + 20 * n + 40 * (w - 1)) * outgrowMult(teamTop(), levelRef() + 2)));
         S.coins += coins;
         addShards(worldEl(w), 3 + w, msgs, "The boss shattered into");
-        let t = `You defeated the level boss! World ${w}, Level ${n} complete.`;
-        if (first && n < world(w).levels) t += ` Level ${n + 1} is unlocked.`;
+        let t = brief() ? `Level ${n} complete.` : `You defeated the level boss! World ${w}, Level ${n} complete.`;
+        if (first && n < world(w).levels) t += brief() ? ` Level ${n + 1} unlocked.` : ` Level ${n + 1} is unlocked.`;
         if (first && n === world(w).levels) giveGems(worldCoins(w), msgs, `For clearing World ${w} you earned`);
         if (first && n === world(w).levels && WORLDS[w]) { t += ` World ${w + 1}, the ${WORLDS[w].title}, is now open! ${WORLDS[w].lore}`; S.worldView = w + 1; }
-        msgs.push(t + ` You earned ${coins} Shard Dust.`);
+        msgs.push(t + (brief() ? ` ${coins} Shard Dust.` : ` You earned ${coins} Shard Dust.`));
         givePxp((40 + 10 * n + 50 * (w - 1)) * (first ? 2 : 1), msgs);
         bump("levels");
         if (Math.random() < 0.08) addEgg(worldEl(w), msgs, "The boss dropped");
-        msgs.push("Spin the reward wheel.");
+        if (!brief()) msgs.push("Spin the reward wheel.");
       } else {
         const k = outgrowMult(teamTop(), Math.max(...B.enemies.map(e => e.level)));
         const coins = Math.max(1, Math.round(B.enemies.reduce((s, e) => s + e.level * 2, 0) * k));
         S.coins += coins; sfx("coin");
-        msgs.push(`You won the battle and earned ${coins} Shard Dust${k < 1 ? " (reduced: your team has outgrown this level)" : ""}! Continue on the board when ready.`);
+        msgs.push(brief() ? `Won: ${coins} Shard Dust${k < 1 ? ", reduced" : ""}.` : `You won the battle and earned ${coins} Shard Dust${k < 1 ? " (reduced: your team has outgrown this level)" : ""}! Continue on the board when ready.`);
       }
     } else failLevel(msgs);
   }
@@ -161,7 +182,7 @@
       const m = S.mons[arg];
       if (!m || arg === B.active || m.hp <= 0) return null;
       B.active = arg; B.forced = false;
-      msgs.push(`You sent out ${m.name}. Switching is free, so you can still act this turn.`); sfx("swap");
+      msgs.push(brief() ? `${m.name} is out.` : `You sent out ${m.name}. Switching is free, so you can still act this turn.`); sfx("swap");
       return msgs;
     }
     if (type === "retreat") { if (!B.wboss) return null; wbFinish(msgs, true); return msgs; }
@@ -183,16 +204,18 @@
         const isNew = !S.dex.includes(e.id);
         addMon(makeMon(e.id, e.level, e.shard), false);
         S.stats.caught++; bump("caps"); S.counts.capEl[e.el] = (S.counts.capEl[e.el] || 0) + 1;
-        msgs.push(`You threw a ${orbName}. Success! You captured wild ${e.name}${isNew ? ", a new monster for your collection" : ""}. It was sent to your base.`); sfx("catch");
-        if (e.shard) { bump("shardcaps"); msgs.push("You caught a Shardborn! Its crystal body makes it stronger than others of its kind."); sfx("shardborn"); giveGems(GEM.shardborn, msgs, "You earned"); }
+        msgs.push(brief() ? `Caught ${e.name}${isNew ? ", new to your collection" : ""}!` : `You threw a ${orbName}. Success! You captured wild ${e.name}${isNew ? ", a new monster for your collection" : ""}. It was sent to your base.`); sfx("catch");
+        // The first catch of a new game says where catches go, once.
+        if (S.stats.caught === 1 && S.team.length < 4) msgs.push("Catches wait in your base. Add them to your team from Team and base before your next level.");
+        if (e.shard) { bump("shardcaps"); msgs.push(brief() ? "A Shardborn!" : "You caught a Shardborn! Its crystal body makes it stronger than others of its kind."); sfx("shardborn"); giveGems(GEM.shardborn, msgs, "You earned"); }
         teamXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs, false, e.level);
         givePxp(10, msgs);
         const next = foe();
         if (!next) endBattle("win", msgs);
-        else msgs.push(`Wild ${next.name} steps forward, ${an(next.rarity)} ${next.el} monster at level ${next.level}.`);
+        else msgs.push(nextLine(next));
         return msgs;
       }
-      msgs.push(`You threw a ${orbName}, but wild ${e.name} broke free.`); sfx("fail");
+      msgs.push(brief() ? `${e.name} broke free.` : `You threw a ${orbName}, but wild ${e.name} broke free.`); sfx("fail");
       foeTurn(msgs);
     } else if (type === "potion") {
       if (!usePotion(you(), msgs)) return null;
@@ -312,14 +335,15 @@
   }
   function synthEligible(R) {
     const rar = new Set(R.slots.flat());
-    return Object.values(S.mons).filter(m => m.el === R.el && rar.has(m.rarity) && !inTraining(m.uid) && !onExped(m.uid));
+    return Object.values(S.mons).filter(m => m.el === R.el && rar.has(m.rarity) && !m.fav && !inTraining(m.uid) && !onExped(m.uid));
   }
   function doSynth() {
     const R = RECIPES[S.synth.recipe], picks = S.synth.picks.map(id => S.mons[id]);
     if (!slotsMatch(R, picks)) return ["Those monsters don't match the recipe yet."];
     if (S.team.every(id => S.synth.picks.includes(id))) return ["Keep at least one monster on your team. Add another monster to your team first, or choose different ingredients."];
+    if (picks.some(m => m.fav)) return ["Favorites can't be used in synthesis. Unfavorite it first in Team and base."];
     const level = Math.max(...picks.map(m => m.level));
-    for (const m of picks) { delete S.mons[m.uid]; S.team = S.team.filter(id => id !== m.uid); }
+    for (const m of picks) dropMon(m.uid);
     const id = pickFrom(POOLS[R.el][R.result]);
     const fresh = !S.dex.includes(id);
     const m = addMon(makeMon(id, level, Math.random() < SHARDBORN.synth), false);

@@ -8,7 +8,7 @@
     m.stage++; m.name = formName(m); calc(m);
     if (m.hp > 0) m.hp += m.maxHp - oldMax;
     S.stats.evolved++;
-    msgs.push(`${old} evolved into ${m.name}!`); sfx("evolve");
+    msgs.push(`${old} evolved into ${speciesName(m)}!`); sfx("evolve");
   }
   function levelCheck(p, amount, msgs) {
     p.xp += amount;
@@ -38,8 +38,9 @@
     const parts = team.map(m => { const k = foeLevel ? outgrowMult(m.level, foeLevel) : 1; return [m, Math.max(1, Math.round(amount * k)), k < 1]; });
     const who = everyone ? "Each monster on your team" : "Each standing monster on your team";
     if (parts.every(x => x[1] === parts[0][1] && x[2] === parts[0][2])) {
-      const note = parts[0][2] ? " (reduced: outgrown this level)" : "";
-      msgs.push(team.length > 1 ? `${who} gained ${parts[0][1]} experience${note}.` : `${team[0].name} gained ${parts[0][1]} experience${note}.`);
+      const note = parts[0][2] ? (S.brief ? ", outgrown" : " (reduced: outgrown this level)") : "";
+      if (S.brief) msgs.push(`${team.length > 1 ? "Team" : team[0].name}: ${parts[0][1]} experience${note}.`);
+      else msgs.push(team.length > 1 ? `${who} gained ${parts[0][1]} experience${note}.` : `${team[0].name} gained ${parts[0][1]} experience${note}.`);
     } else msgs.push("Experience: " + parts.map(([m, a, cut]) => `${m.name} ${a}${cut ? " (outgrown)" : ""}`).join(", ") + ".");
     for (const [m, a] of parts) levelCheck(m, a, msgs);
   }
@@ -69,19 +70,33 @@
     S.trials = S.trials || { best: 0, world: null };
     if (typeof S.items.crestChoice !== "number") S.items.crestChoice = 0;
     S.updates = S.updates || [];
+    S.teams = S.teams || [null, null, null, null];
+    if (S.brief === undefined) S.brief = false;
   }
   // One-time changes for saves made before an update. Runs on load and after importing a save code.
-  function applyUpdates(msgs) {
-    if (S.updates.includes(UPDATE)) return;
-    S.updates.push(UPDATE);
-    // Clearing the Ember Shard now always gives the Infernox Crest; saves that missed it get one.
-    const ix = crestName("cindercub");
-    if (S.ach.includes("world3") && !(S.items.crests[ix] > 0) && !Object.values(S.mons).some(m => m.id === "cindercub" && m.stage === 2)) {
-      addCrest(ix);
-      msgs.push(`Update: clearing the Ember Shard now always gives the ${ix}, so you've received one.`);
+  const UPDATE_STEPS = {
+    endgame1(msgs) {
+      // Clearing the Ember Shard now always gives the Infernox Crest; saves that missed it get one.
+      const ix = crestName("cindercub");
+      if (S.ach.includes("world3") && !(S.items.crests[ix] > 0) && !Object.values(S.mons).some(m => m.id === "cindercub" && m.stage === 2)) {
+        addCrest(ix);
+        msgs.push(`Update: clearing the Ember Shard now always gives the ${ix}, so you've received one.`);
+      }
+      const open = [...(trialsOpen() ? ["Trials under Adventure"] : []), "Collection under Monsters", "a Bag under Camp"];
+      msgs.push(`New at camp: ${joinAnd(open)}.${trialsOpen() ? " The Shard Forge can now fuse eggs and crests." : ""}`);
+    },
+    comfort1(msgs) {
+      // Experienced players get the shorter messages straight away.
+      if (S.player.level >= 10) S.brief = true;
+      msgs.push(`New: ${S.brief ? "Brief messages are on, and you can turn them off" : "you can turn on Brief messages"} in Settings, where you can also install the game as an app. Team and base now has Manage buttons for nicknames and favorites, saved teams, Suggest a team and Release extras.`);
     }
-    const open = [...(trialsOpen() ? ["Trials under Adventure"] : []), "Collection under Monsters", "a Bag under Camp"];
-    msgs.push(`New at camp: ${joinAnd(open)}.${trialsOpen() ? " The Shard Forge can now fuse eggs and crests." : ""}`);
+  };
+  function applyUpdates(msgs) {
+    for (const id of UPDATES) {
+      if (S.updates.includes(id)) continue;
+      S.updates.push(id);
+      UPDATE_STEPS[id](msgs);
+    }
   }
   // ---------- Premium Coins ----------
   // Coins are scarce: earned only from first-time milestones, never from battles or replays.
@@ -96,7 +111,7 @@
   function addShards(el, n, msgs, why) {
     if (n <= 0) return;
     S.items.shards[el] = (S.items.shards[el] || 0) + n;
-    if (msgs) msgs.push(`${why || "You gained"} ${n} ${el} Shard${n === 1 ? "" : "s"}.`);
+    if (msgs) msgs.push(S.brief ? `Plus ${n} ${el} Shard${n === 1 ? "" : "s"}.` : `${why || "You gained"} ${n} ${el} Shard${n === 1 ? "" : "s"}.`);
   }
   function shardCount() { return Object.values(S.items.shards).reduce((a, b) => a + b, 0); }
   const SHARD_DROP = { Common: 1, Uncommon: 1, Rare: 3, Epic: 5, Legendary: 8 };
@@ -117,7 +132,7 @@
   function bump(key, n) { S.counts[key] = (S.counts[key] || 0) + (n || 1); }
   function addEgg(el, msgs, why) {
     S.items.eggs[el] = (S.items.eggs[el] || 0) + 1;
-    msgs.push(`${why || "You found"} a ${el} egg!` + (S.hatch ? " Hatch it at the Hatchery." : " Build the Hatchery to hatch it."));
+    msgs.push(S.brief ? `Plus ${an(el)} egg!` : `${why || "You found"} ${an(el)} egg!` + (S.hatch ? " Hatch it at the Hatchery." : " Build the Hatchery to hatch it."));
     sfx("chest");
   }
   function openElements() { return ELEMENTS.filter(el => worldOpen(elementWorld(el))); }
@@ -275,6 +290,7 @@
     S.screen = "battle";
     const B = S.battle, e = foe();
     sfx(floor % 10 === 0 ? "boss" : "ambush");
+    if (S.brief) return [`Arena floor ${floor}${floor % 10 === 0 ? ", champion" : ""}: ${B.rival}, ${B.enemies.length} monsters. First: ${e.name}, ${e.rarity} ${e.el}, level ${e.level}.`];
     return [`Arena floor ${floor}${floor % 10 === 0 ? ", a champion floor" : ""}. ${B.rival} sends out ${e.name}, ${an(e.rarity)} ${e.el} monster at level ${e.level}. They have ${B.enemies.length} monsters.`, `Your ${you().name} is ready.`];
   }
   function arenaWin(msgs) {
@@ -300,13 +316,14 @@
   const RARITY_RANK = { Common: 0, Uncommon: 1, Rare: 2, Epic: 3, Legendary: 4 };
   function baseSort() { return BASE_SORT[S.baseSort] ? S.baseSort : "newest"; }
   function baseFilter() { return S.baseFilter || "all"; }
-  function BASE_FILTER_NAME(f) { return f === "all" ? "All" : f === "dupes" ? "Duplicates" : f === "shardborn" ? "Shardborn" : f; }
+  function BASE_FILTER_NAME(f) { return f === "all" ? "All" : f === "dupes" ? "Duplicates" : f === "shardborn" ? "Shardborn" : f === "favs" ? "Favorites" : f; }
   function baseMons() { return Object.values(S.mons).filter(m => !S.team.includes(m.uid)); }
   function uidNum(m) { return Number(String(m.uid).slice(1)) || 0; }
   function baseMatching(f) {
     const base = baseMons();
     if (f === "all") return base;
     if (f === "shardborn") return base.filter(m => m.shard);
+    if (f === "favs") return base.filter(m => m.fav);
     if (f === "dupes") {
       const n = {};
       for (const m of Object.values(S.mons)) n[m.id] = (n[m.id] || 0) + 1;
@@ -314,9 +331,9 @@
     }
     return base.filter(m => m.el === f);
   }
-  // All, then each element you have in your base, then Duplicates and Shardborn when you have any.
+  // All, then each element you have in your base, then Favorites, Duplicates and Shardborn when you have any.
   function baseFilters() {
-    const f = ["all", ...ELEMENTS.filter(el => baseMatching(el).length), ...["dupes", "shardborn"].filter(x => baseMatching(x).length)];
+    const f = ["all", ...ELEMENTS.filter(el => baseMatching(el).length), ...["favs", "dupes", "shardborn"].filter(x => baseMatching(x).length)];
     if (!f.includes(baseFilter())) f.push(baseFilter());
     return f;
   }
@@ -345,15 +362,85 @@
     w.push("This can't be undone.");
     return w.join(" ");
   }
-  function canRelease(m) { return !!m && !S.team.includes(m.uid) && !inTraining(m.uid) && !onExped(m.uid); }
+  // Favorites are protected: they can't be released, sent away or used up in synthesis until you unfavorite them.
+  function canRelease(m) { return !!m && !m.fav && !S.team.includes(m.uid) && !inTraining(m.uid) && !onExped(m.uid); }
+  // Removes a monster from the game and from everything that points at it.
+  function dropMon(uid) {
+    delete S.mons[uid];
+    S.team = S.team.filter(x => x !== uid);
+    if (S.synth) S.synth.picks = S.synth.picks.filter(x => x !== uid);
+    S.teams = S.teams.map(t => (t ? t.filter(x => x !== uid) : t)).map(t => (t && t.length ? t : null));
+    if (S.manageId === uid) S.manageId = null;
+  }
   function doRelease(uid) {
     const m = S.mons[uid];
     if (!canRelease(m)) return [`That monster can't be released right now.`];
     const v = releaseValue(m);
-    delete S.mons[uid];
-    if (S.synth) S.synth.picks = S.synth.picks.filter(x => x !== uid);
+    dropMon(uid);
     S.coins += v.dust; addShards(m.el, v.shards); bump("released");
     return [`You released ${m.name}. You got ${v.dust} Shard Dust and ${v.shards} ${m.el} Shard${v.shards === 1 ? "" : "s"}. ${baseMons().length} monster${baseMons().length === 1 ? "" : "s"} left in your base.`];
+  }
+  // Release extras: spare Commons and Uncommons. Keeps your best of each species, and anything you've
+  // favorited, named, infused or charmed, Shardborn, and monsters on your team, training or away.
+  // Rares and rarer are never included, since they're synthesis ingredients for the monsters you're missing.
+  function extrasPlan() {
+    const spare = m => canRelease(m) && !m.nick && !m.shard && !m.infuse && !m.charm && (m.rarity === "Common" || m.rarity === "Uncommon");
+    const by = {};
+    for (const m of Object.values(S.mons)) (by[m.id] = by[m.id] || []).push(m);
+    const out = [];
+    for (const list of Object.values(by)) {
+      list.sort((a, b) => b.level - a.level || b.xp - a.xp);
+      for (const m of list.slice(1)) if (spare(m)) out.push(m);
+    }
+    return out.sort((a, b) => ELEMENTS.indexOf(a.el) - ELEMENTS.indexOf(b.el) || a.name.localeCompare(b.name) || b.level - a.level);
+  }
+  function extrasValue(list) {
+    const dust = list.reduce((a, m) => a + releaseValue(m).dust, 0), shards = list.reduce((a, m) => a + releaseValue(m).shards, 0);
+    return { dust, shards };
+  }
+  function releaseExtras() {
+    const list = extrasPlan();
+    if (!list.length) return ["You have no extras to release."];
+    const v = extrasValue(list), byEl = {};
+    for (const m of list) { const r = releaseValue(m); dropMon(m.uid); S.coins += r.dust; addShards(m.el, r.shards); byEl[m.el] = (byEl[m.el] || 0) + r.shards; bump("released"); }
+    return [`You released ${list.length} extra monster${list.length === 1 ? "" : "s"} and got ${fmt(v.dust)} Shard Dust and ${joinAnd(Object.entries(byEl).map(([el, n]) => `${n} ${el} Shard${n === 1 ? "" : "s"}`))}. ${baseMons().length} monsters left in your base.`];
+  }
+
+  // ---------- Saved teams ----------
+  // Four slots. Monsters that are away on an expedition, or no longer yours, are skipped when a team is used.
+  function savedTeam(i) { return (S.teams[i] || []).filter(uid => S.mons[uid]); }
+  // Names, with levels added when two share a name so they can be told apart.
+  function teamNames(uids) {
+    const names = uids.map(uid => S.mons[uid].name);
+    return joinAnd(uids.map((uid, i) => (names.indexOf(names[i]) !== names.lastIndexOf(names[i]) ? `${names[i]} (level ${S.mons[uid].level})` : names[i])));
+  }
+  function useTeam(uids, msgs) {
+    const ok = uids.filter(uid => S.mons[uid] && !onExped(uid)).slice(0, 4), away = uids.filter(uid => S.mons[uid] && onExped(uid));
+    if (!ok.length) return false;
+    S.team = ok;
+    msgs.push(`Your team is now ${teamNames(ok)}, with ${S.mons[ok[0]].name} leading.${away.length ? ` ${teamNames(away)} ${away.length === 1 ? "is" : "are"} away on an expedition.` : ""}`);
+    return true;
+  }
+
+  // ---------- Suggest a team ----------
+  // Pits every monster you could use against the world's Uncommon and Rare monsters at the level you'd meet them:
+  // how many of their hits it can take, divided by how many of its hits they can take. The best four make the team.
+  function avgOf(list) { return list.reduce((a, b) => a + b, 0) / Math.max(1, list.length); }
+  function bestHit(a, d) { return Math.max(1, ...unlocked(a).map(s => estDmg(a, d, s) * s.acc / 100)); }
+  function suggestScore(m, foes) {
+    return avgOf(foes.map(f => (m.maxHp / bestHit(f, m)) / (f.maxHp / bestHit(m, f))));
+  }
+  function suggestTeam(els, level) {
+    const foes = els.flatMap(el => [...POOLS[el].Uncommon, ...POOLS[el].Rare]).map(id => makeMon(id, level));
+    return Object.values(S.mons).filter(m => !onExped(m.uid)).map(m => [m, suggestScore(m, foes)]).sort((a, b) => b[1] - a[1]).slice(0, 4).map(x => x[0].uid);
+  }
+  // Which skill elements hit a world's monsters hard, as a short sentence.
+  function matchupHint(els) {
+    const parts = els.map(el => {
+      const beats = ELEMENTS.filter(x => STRONG[x].includes(el));
+      return beats.length ? `${joinAnd(beats)} skills against ${el} monsters` : "";
+    }).filter(Boolean);
+    return parts.length ? `Strong here: ${parts.join("; ")}.` : "No element has an edge here.";
   }
 
   // ---------- Trials ----------

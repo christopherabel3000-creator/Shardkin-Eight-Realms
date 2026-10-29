@@ -269,7 +269,14 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     m.def = Math.floor(b.def * k * L / 25) + 5;
     m.spd = Math.floor(b.spd * k * L / 25) + 5;
   }
-  function formName(m) { return (m.shard ? "Shardborn " : "") + SP[m.id].forms[m.stage]; }
+  // A monster's species and form, and the name it goes by: its nickname if you gave it one.
+  function speciesName(m) { return (m.shard ? "Shardborn " : "") + SP[m.id].forms[m.stage]; }
+  function formName(m) { return m.nick || speciesName(m); }
+  // Names typed by players (nicknames, Shardbinder names, names from friends' codes) keep only letters, numbers,
+  // spaces, apostrophes, periods and hyphens, so they're always safe to show on the page.
+  function cleanName(text, max) {
+    return String(text || "").replace(/[^\p{L}\p{N} '.-]/gu, "").replace(/\s+/g, " ").trim().slice(0, max || 16).trim();
+  }
   function makeMon(id, level, shard) {
     const s = SP[id];
     const m = { id, name: s.forms[0], el: s.el, rarity: s.rarity, level, xp: 0, stage: 0, status: null, shard: !!shard, infuse: 0 };

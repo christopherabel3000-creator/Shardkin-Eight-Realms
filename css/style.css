@@ -101,6 +101,9 @@ details { background: var(--surface); border: 1px solid var(--line); border-radi
 summary { cursor: pointer; font-weight: 700; }
 details ul { margin: 10px 0 0; padding-left: 1.25rem; display: grid; gap: 6px; }
 label.field { display: block; font-weight: 700; }
+h4.group { font-family: var(--font-display); font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+input[type="text"] { width: 100%; max-width: 100%; font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px; padding: 10px 12px; min-height: 48px; }
+input[type="text"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 textarea { width: 100%; max-width: 100%; min-height: 7rem; font: inherit; font-size: 0.85rem; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px; padding: 10px; word-break: break-all; }
 textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }

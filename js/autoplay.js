@@ -71,7 +71,15 @@
     return null;
   }
   // A short spoken summary of each step: rolls, landings, new opponents, faints, wins, captures and prizes.
-  const KEEP = /^You rolled|^You used a Loaded|^You land on|portal pulls|recovers|Thorns hit|open the chest|merchant|ambushes you|steps forward|level boss appears|world boss was hiding|slip past|Something rare|fainted|won the battle|defeated the level boss|reached level|evolved|learned|captured|broke free|Potion|stops on|Achievement unlocked|begins\.|Auto-play started|failed|Shardborn|glitters|Crystals rain|left behind|shattered into/;
+  // The patterns cover both full and Brief messages.
+  const KEEP = new RegExp([
+    "^You rolled", "^You used a Loaded", "^You land on", "portal pulls", "recovers", "Thorns hit", "open the chest", "merchant", "ambushes you", "steps forward",
+    "level boss appears", "world boss was hiding", "slip past", "Something rare", "fainted", "won the battle", "defeated the level boss", "reached level", "evolved",
+    "learned", "captured", "broke free", "Potion", "stops on", "Achievement unlocked", "begins\\.", "Auto-play started", "failed", "Shardborn", "glitters",
+    "Crystals rain", "left behind", "shattered into",
+    "^Rolled", "^Loaded Die", "^Space \\d", "^Wild team of", "^Wild [^,:]+, (Common|Uncommon|Rare|Epic|Legendary) ", "^Next:", "'s next:", "^Boss:", "^Won:",
+    "^Caught", "on this team", "^Level \\d+ complete", "^Inside:", "^Plus \\d+ \\w+ Shards?\\.", "^Plus an? \\w+ egg", "heals \\d", "takes \\d", "^Trial tier \\d+ in", ": wild level"
+  ].join("|"));
   function autoSummary(msgs) {
     const sents = (msgs.join(" ").match(/[^.!?]+[.!?]+/g) || []).map(x => x.trim()).filter(x => KEEP.test(x));
     return sents.join(" ");
@@ -163,5 +171,13 @@
     ensureQuests();
     if (extra.length) S.result += " " + extra.join(" ");
     queue = [];
+    dailyBackup();
   } else newGame();
   render();
+  // Offline support and storage: the service worker keeps the game playable without a connection,
+  // and an installed copy asks the browser to keep its storage permanently.
+  checkStorage();
+  if (isStandalone()) requestPersist(false);
+  try {
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+  } catch (e) { /* offline support is optional */ }

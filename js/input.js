@@ -13,13 +13,61 @@
     if (!b || autoOn()) return;
     doAction(b.dataset.a, b.dataset.arg, false);
   });
+  // Closes any open prompt or panel: confirmations, swaps, synthesis, Manage, renaming and team suggestions.
+  function clearPrompts() { S.confirm = null; S.synth = null; S.swapIn = null; S.releaseId = null; S.manageId = null; S.renaming = false; S.suggest = null; }
+  // Swaps the current game for another one (an imported code or a backup), keeping the current game as the backup.
+  function swapGame(next, msgs) {
+    try { localStorage.setItem(BACKUP_KEY, JSON.stringify(Object.assign({}, S, { confirm: null }))); } catch (e) { /* backup is best-effort */ }
+    clearTimeout(autoTimer); autoTimer = null;
+    S = next; exportCode = "";
+    ensureExtras();
+    S.auto = null; S.confirm = null;
+    if (S.screen === "camp") S.campTab = "save";
+    applyUpdates(msgs);
+    updateAutobar();
+  }
   function doAction(a, arg, quiet) {
     let msgs = null, beginAuto = false;
     if (S.wboss) { const t = []; wbTick(t); if (t.length && S.screen === "camp") msgs = t; }
     switch (a) {
       // Camp
-      case "tab": S.campTab = arg; S.confirm = null; S.synth = null; S.swapIn = null; msgs = (msgs || []).concat([`${tabLabel(arg)}.`]); break;
-      case "menu": S.campTab = null; S.confirm = null; S.synth = null; S.swapIn = null; msgs = (msgs || []).concat(["Main menu."]); break;
+      case "tab": clearPrompts(); S.campTab = arg; msgs = (msgs || []).concat([`${tabLabel(arg)}.`]); break;
+      case "menu": clearPrompts(); S.campTab = null; msgs = (msgs || []).concat(["Main menu."]); break;
+      // Team and base: Manage, nicknames, favorites, extras, saved teams and suggestions
+      case "manage": if (S.mons[arg]) { S.manageId = arg; S.renaming = false; S.swapIn = null; S.confirm = null; msgs = [`Managing ${S.mons[arg].name}.`]; } break;
+      case "managedone": S.manageId = null; S.renaming = false; msgs = ["Done."]; break;
+      case "rename": if (S.mons[arg]) { S.manageId = arg; S.renaming = true; msgs = [`Type a new name for ${S.mons[arg].name}, up to 16 letters, then choose Save name.`]; } break;
+      case "namesave": {
+        const m = S.mons[arg], box = document.getElementById("namebox"), name = cleanName(box ? box.value : "");
+        if (!m) break;
+        if (!name) { msgs = ["Type a name first, using letters, numbers and spaces."]; break; }
+        const was = m.name; m.nick = name; m.name = formName(m); S.renaming = false;
+        msgs = [`${was} is now called ${m.name}.`];
+        break;
+      }
+      case "nameclear": { const m = S.mons[arg]; if (m && m.nick) { delete m.nick; m.name = formName(m); S.renaming = false; msgs = [`It goes by ${m.name} again.`]; } break; }
+      case "fav": { const m = S.mons[arg]; if (m) { m.fav = !m.fav; msgs = [m.fav ? `${m.name} is a favorite. Favorites can't be released or used up in synthesis.` : `${m.name} is no longer a favorite.`]; } break; }
+      case "extras": { const n = extrasPlan().length; if (n) { clearPrompts(); S.confirm = "extras"; msgs = [`Release ${n} extra${n === 1 ? "" : "s"}? The details are just below.`]; } else msgs = ["You have no extras to release."]; break; }
+      case "extrasyes": if (S.confirm === "extras") { S.confirm = null; msgs = releaseExtras(); } break;
+      case "saveteam": { const i = Number(arg); if (i >= 0 && i < 4 && S.team.length) { S.teams[i] = S.team.slice(); msgs = [`Saved your team as team ${i + 1}: ${teamNames(S.team)}.`]; } break; }
+      case "useteam": { const i = Number(arg), t = []; if (i >= 0 && i < 4 && useTeam(savedTeam(i), t)) msgs = t; else msgs = [`Saved team ${i + 1} has no monsters you can use right now.`]; break; }
+      case "suggest": {
+        const w = Number(arg);
+        if (!worldOpen(w)) break;
+        // Trials are judged at the next tier's level; a world, at its last level's.
+        const level = S.campTab === "trials" ? trialRange(S.trials.best + 1)[1] : wildRange(w, world(w).levels)[1];
+        const uids = suggestTeam(world(w).els, level);
+        S.suggest = { w, uids };
+        msgs = [`Suggested for World ${w}, the ${world(w).title}: ${teamNames(uids)}. ${matchupHint(world(w).els)}`];
+        break;
+      }
+      case "suggestyes": { const t = []; if (S.suggest && useTeam(S.suggest.uids, t)) { S.suggest = null; msgs = t; } break; }
+      case "suggestno": S.suggest = null; msgs = ["You kept your team."]; break;
+      // Settings
+      case "brief": S.brief = !S.brief; msgs = [S.brief ? "Brief messages are on." : "Brief messages are off. Battle lines are full length again, with tips."]; break;
+      case "persist": requestPersist(true); msgs = ["Asking your browser to keep the game's storage permanently."]; break;
+      case "dailyrestore": { const d = dailySave(); if (d) { S.confirm = "daily"; msgs = [`Go back to your game from ${new Date(d.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} today? It holds ${saveSummary(d.save)}. Choose Yes or Keep my game.`]; } else msgs = ["There's no backup from today yet."]; break; }
+      case "dailyyes": { const d = S.confirm === "daily" && dailySave(); if (d) { msgs = [`Back to your game from the start of today: ${saveSummary(d.save)}. The game you left is kept as the backup below.`]; swapGame(d.save, msgs); } break; }
       case "level": { const [w, n] = arg.split("-").map(Number); if (S.team.length && worldOpen(w) && n <= prog(w).unlocked) msgs = startLevel(w, n); break; }
       case "world": { const w = Number(arg); if (worldOpen(w)) { S.worldView = w; msgs = [`World ${w}: the ${world(w).title}, home of ${world(w).name} Shardkin. ${prog(w).cleared.length} of ${world(w).levels} levels cleared.`]; } break; }
       case "claim": { const [k, i] = arg.split("-"); msgs = claimQuest(k, Number(i)); break; }
@@ -146,7 +194,7 @@
       case "wbfight": if (S.wboss && S.wfights.count > 0 && S.screen === "camp") msgs = wbBattle(false); break;
       case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
       case "resetyes": newGame(); msgs = [S.result]; break;
-      case "cancel": S.confirm = null; S.swapIn = null; S.releaseId = null; pendingImport = null; msgs = ["Okay, nothing changed."]; break;
+      case "cancel": S.confirm = null; S.swapIn = null; S.releaseId = null; S.renaming = false; pendingImport = null; msgs = ["Okay, nothing changed."]; break;
       case "copysave": {
         exportCode = encodeSave();
         msgs = [`Your save code is ready in the Your save code box below. It's ${exportCode.length.toLocaleString()} characters long.`];
@@ -172,30 +220,17 @@
       }
       case "importyes": {
         if (!pendingImport) break;
-        try { localStorage.setItem(BACKUP_KEY, JSON.stringify(Object.assign({}, S, { confirm: null }))); } catch (e) { /* backup is best-effort */ }
-        clearTimeout(autoTimer); autoTimer = null;
-        S = pendingImport; pendingImport = null; exportCode = "";
-        ensureExtras();
-        S.auto = null; S.confirm = null;
-        if (S.screen === "camp") S.campTab = "save";
-        msgs = [`Save loaded: ${saveSummary(S)}. Your previous game is kept as a backup in Settings.`];
-        applyUpdates(msgs);
-        updateAutobar();
+        const next = pendingImport; pendingImport = null;
+        msgs = [`Save loaded: ${saveSummary(next)}. Your previous game is kept as a backup in Settings.`];
+        swapGame(next, msgs);
         break;
       }
       case "undoimport": {
         let b = null;
         try { b = upgradeSave(JSON.parse(localStorage.getItem(BACKUP_KEY))); } catch (e) { b = null; }
         if (!b) { msgs = ["There's no backup to go back to."]; break; }
-        try { localStorage.setItem(BACKUP_KEY, JSON.stringify(Object.assign({}, S, { confirm: null }))); } catch (e) { /* best-effort */ }
-        clearTimeout(autoTimer); autoTimer = null;
-        S = b; exportCode = "";
-        ensureExtras();
-        S.auto = null; S.confirm = null;
-        if (S.screen === "camp") S.campTab = "save";
-        msgs = [`Back to your earlier game: ${saveSummary(S)}. The game you just left is now the backup, so you can switch again.`];
-        applyUpdates(msgs);
-        updateAutobar();
+        msgs = [`Back to your earlier game: ${saveSummary(b)}. The game you just left is now the backup, so you can switch again.`];
+        swapGame(b, msgs);
         break;
       }
       // Board
@@ -203,19 +238,19 @@
       case "die": if (itemsLeft() > 0) { S.dieChoose = true; msgs = ["Choose a roll from 1 to 6. Each choice says where you'd land."]; } break;
       case "diecancel": S.dieChoose = false; msgs = ["You kept your Loaded Die."]; break;
       case "dieroll": if (S.items.die > 0 && itemsLeft() > 0) { S.items.die--; S.dieChoose = false; const cap = []; spendCap(cap); msgs = roll(Number(arg)); msgs.splice(1, 0, ...cap); } break;
-      case "merchleave": S.level.shopOpen = false; S.level.used[S.level.pos] = true; msgs = ["You wave goodbye to the merchant. Roll when ready."]; break;
+      case "merchleave": S.level.shopOpen = false; S.level.used[S.level.pos] = true; msgs = [S.brief ? "You leave the merchant." : "You wave goodbye to the merchant. Roll when ready."]; break;
       case "wbnow": if (S.level && S.level.encounter) { S.level.encounter = false; msgs = wbBattle(true); } break;
-      case "wbignore": if (S.level && S.level.encounter) { S.level.encounter = false; msgs = [`You slip past ${S.wboss.name} for now. It will wait at camp for 24 hours. Roll when ready.`]; } break;
+      case "wbignore": if (S.level && S.level.encounter) { S.level.encounter = false; msgs = [S.brief ? `You slip past ${S.wboss.name}. Fight it from camp within 24 hours.` : `You slip past ${S.wboss.name} for now. It will wait at camp for 24 hours. Roll when ready.`]; } break;
       case "lead": S.level.lead = arg; msgs = [`${S.mons[arg].name} is now your lead monster.`]; break;
       case "potionboard": { const m = []; if (usePotion(S.mons[arg], m)) msgs = m; break; }
       case "useboard": { const [id, t] = String(arg).split(":"); const m = []; if (useItem(id, t, m, false)) msgs = m; break; }
       case "use": msgs = act("use", arg); break;
       case "leave": S.confirm = "leave"; msgs = ["Leave the level? Choose Yes, leave, or Keep playing."]; break;
       case "leaveyes": msgs = backToCamp("You left the level and returned to camp. Your team is restored."); break;
-      case "continue": S.battle = null; S.screen = "level"; fixLead(); msgs = [`Back on the board at space ${S.level.pos + 1} of ${BOARD_SIZE}. ${leadMon().name} leads. Roll when ready.`]; break;
-      case "towheel": S.battle = null; S.wheel = { spun: false }; S.screen = "wheel"; msgs = ["Spin the reward wheel to claim your prize."]; break;
+      case "continue": S.battle = null; S.screen = "level"; fixLead(); msgs = [S.brief ? `Space ${S.level.pos + 1}. ${leadMon().name} leads.` : `Back on the board at space ${S.level.pos + 1} of ${BOARD_SIZE}. ${leadMon().name} leads. Roll when ready.`]; break;
+      case "towheel": S.battle = null; S.wheel = { spun: false }; S.screen = "wheel"; msgs = [S.brief ? "Reward wheel." : "Spin the reward wheel to claim your prize."]; break;
       case "spin": if (!S.wheel.spun) msgs = spin(); break;
-      case "camp": msgs = backToCamp(S.battle && S.battle.wboss && S.battle.fromLevel ? "Back at camp. That level attempt has ended, and your team is fully restored." : "Back at camp. Your team is fully restored."); break;
+      case "camp": msgs = backToCamp(S.battle && S.battle.wboss && S.battle.fromLevel ? "Back at camp. That level attempt has ended, and your team is fully restored." : S.brief ? "Back at camp." : "Back at camp. Your team is fully restored."); break;
       // Battle
       case "skill": msgs = act("skill", Number(arg)); break;
       case "switch": msgs = act("switch", arg); break;

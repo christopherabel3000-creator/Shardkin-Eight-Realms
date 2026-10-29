@@ -29,12 +29,13 @@
   }
   function sec(id, title, inner) { return `<section aria-labelledby="${id}"><h2 id="${id}">${title}</h2>${inner}</section>`; }
   function sub3(text, top) { return `<h3 class="muted" style="margin:${top ? 16 : 0}px 0 8px;font-size:1rem">${text}</h3>`; }
+  function sub4(text) { return `<h4 class="group">${text}</h4>`; }
   function nextForm(m) {
     const f = SP[m.id].forms;
     if (m.stage + 1 >= f.length) return "";
     return m.stage === 0 ? ` · Evolves into ${f[1]} at level ${EVOLVE_LEVEL}` : ` · Final form ${f[2]} needs the ${crestName(m.id)}`;
   }
-  function monLine(m) { return `${m.el} · ${m.rarity}${m.shard ? " Shardborn" : ""} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${m.infuse ? ` · Infused ${m.infuse} of 5` : ""}${statusText(m)}`; }
+  function monLine(m) { return `${m.nick ? `${speciesName(m)} · ` : ""}${m.el} · ${m.rarity}${m.shard && !m.nick ? " Shardborn" : ""} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${m.infuse ? ` · Infused ${m.infuse} of 5` : ""}${m.fav ? " · Favorite" : ""}${statusText(m)}`; }
   // The items you can use on the board. Everything else (eggs, shards, crests, scrolls) is in the Bag area at camp.
   function itemsLine() {
     const items = ["potion", "superpotion", "revive", "tonic", "orb", "gorb", "grorb", "perfect", "fury", "ward", "die"]
@@ -95,7 +96,7 @@
     if (id === "quests") { ensureQuests(); const ready = [...S.quests.daily, ...S.quests.weekly].filter(q => !q.claimed && questProgress(q) >= q.n).length; return ready ? `${ready} reward${ready === 1 ? "" : "s"} ready to claim` : "No rewards ready yet"; }
     if (id === "build") { const p = minePending(); return p > 0 ? `${p} Shard Dust ready at the Shard Mine` : ""; }
     if (id === "ach") return `${S.ach.length} of ${ACH.length} earned`;
-    if (id === "save") return "Sound test, save codes and backups";
+    if (id === "save") return `Brief messages ${S.brief ? "on" : "off"} · Install, sound test and backups`;
     if (id === "forge") return `${fmt(shardCount())} elemental shards${fusionOpen() ? " · Heartcrystal fusion open" : ""}`;
     if (id === "story") return "The tale of the Heartcrystal";
     return "";
@@ -132,8 +133,16 @@
     t += F.count > 0 ? btn("wbfight", "", `Fight ${W.name}`, `Your team starts fully healed. Damage carries over. Up to ${ITEM_CAP} items per fight.`, true) : btn("refresh", "", "Check again", "Updates fights available");
     return t + `</div>`;
   }
+  // A suggested team waits at the top of Levels or Trials until you use it or keep your own.
+  function suggestPanel() {
+    const G = S.suggest;
+    if (!G || !G.uids.every(uid => S.mons[uid])) return "";
+    return `<div class="row"><p class="nm">Suggested team for World ${G.w}, the ${world(G.w).title}</p><p>${teamNames(G.uids)}, with ${S.mons[G.uids[0]].name} leading.</p><p class="muted">${matchupHint(world(G.w).els)}</p>
+      <div class="pair">${btn("suggestyes", "", "Use this team", "", true)}${btn("suggestno", "", "Keep my team")}</div></div>`;
+  }
+  function suggestBtn(w) { return btn("suggest", w, `Suggest a team for World ${w}`, `Picks your best four against ${world(w).name} monsters`); }
   function tabLevels() {
-    let lv = `<div class="actions">` + wbPanel();
+    let lv = `<div class="actions">` + suggestPanel() + wbPanel();
     if (!S.worldView || !worldOpen(S.worldView)) S.worldView = highestOpen();
     lv += sub3("Choose a world", !!S.wboss) + `<div class="pair">`;
     let shownLocked = false;
@@ -144,7 +153,7 @@
     });
     lv += `</div>`;
     const w = S.worldView, W = world(w), P = prog(w);
-    lv += sub3(`World ${w}: The ${W.title}`, true) + `<p class="muted">${W.lore} Wild ${W.name} monsters live here.</p>`;
+    lv += sub3(`World ${w}: The ${W.title}`, true) + `<p class="muted">${W.lore} Wild ${W.name} monsters live here.</p>` + suggestBtn(w);
     for (let n = 1; n <= W.levels; n++) {
       const [lo, hi] = wildRange(w, n), done = P.cleared.includes(n);
       if (n <= P.unlocked) {
@@ -164,7 +173,7 @@
     }
     return lv + `</div>`;
   }
-  // A pending swap or release shows first, right after What happened, so it's the next thing read.
+  // A pending swap, release or Manage panel shows first, right after What happened, so it's the next thing read.
   function teamPrompt() {
     if (S.swapIn && S.mons[S.swapIn] && !S.team.includes(S.swapIn)) {
       const n = S.mons[S.swapIn];
@@ -177,42 +186,82 @@
       return `<div class="row"><p class="nm">Release ${m.name}?</p><p class="muted">${monLine(m)}</p><p>${releaseWarn(m)}</p>
         <div class="pair">${btn("releaseyes", m.uid, `Yes, release ${m.name}`)}${btn("cancel", "", `Keep ${m.name}`, "", true)}</div></div>`;
     }
+    if (S.confirm === "extras") {
+      const list = extrasPlan(), v = extrasValue(list), c = list.filter(m => m.rarity === "Common").length;
+      if (!list.length) return "";
+      return `<div class="row"><p class="nm">Release ${list.length} extra${list.length === 1 ? "" : "s"}?</p>
+        <p>${c} Common${c === 1 ? "" : "s"} and ${list.length - c} Uncommon${list.length - c === 1 ? "" : "s"}. You'd get ${fmt(v.dust)} Shard Dust and ${v.shards} elemental shards. They stay counted in your collection.</p>
+        <p class="muted">Kept: your best of each species, every Rare and rarer, and anything favorited, named, infused, charmed or Shardborn, on your team, training or away.</p>
+        <details><summary>See the ${list.length} monsters</summary><ul class="clean">${list.map(m => `<li>${m.name}, ${m.el}, level ${m.level}</li>`).join("")}</ul></details>
+        <div class="pair">${btn("extrasyes", "", `Yes, release ${list.length}`)}${btn("cancel", "", "Keep them", "", true)}</div></div>`;
+    }
+    if (S.manageId && S.mons[S.manageId]) return managePanel(S.mons[S.manageId]);
     return "";
   }
+  // Everything you can do with one monster, gathered in one place so each row in the list stays short.
+  function managePanel(m) {
+    let p = `<div class="row"><p class="nm">Manage ${m.name}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>`;
+    if (S.renaming) {
+      p += `<label class="field" for="namebox">New name for ${m.name}</label><input id="namebox" type="text" maxlength="16" autocomplete="off" autocapitalize="words" spellcheck="false" value="${m.nick || ""}">`;
+      p += `<div class="pair">${btn("namesave", m.uid, "Save name", "", true)}${m.nick ? btn("nameclear", m.uid, "Remove nickname", `Goes back to ${speciesName(m)}`) : btn("cancel", "", "Cancel")}</div>`;
+      if (m.nick) p += btn("cancel", "", "Cancel");
+      return p + `</div>`;
+    }
+    const b = [btn("rename", m.uid, m.nick ? `Rename ${m.name}` : `Give ${m.name} a nickname`, m.nick ? `Its species is ${speciesName(m)}` : "Up to 16 letters"),
+      btn("fav", m.uid, `Favorite: ${m.fav ? "on" : "off"}`, "Favorites can't be released or used up in synthesis", false, !!m.fav), ...crestBtns(m)];
+    if (canRelease(m)) b.push(btn("release", m.uid, `Release ${m.name}`, releaseText(m)));
+    b.push(btn("managedone", "", "Done", "", true));
+    return p + `<div class="actions">${b.join("")}</div></div>`;
+  }
+  function savedTeamsSection() {
+    let s = sub3("Saved teams", true) + `<div class="actions">`;
+    for (let i = 0; i < 4; i++) {
+      const t = savedTeam(i);
+      if (t.length) s += `<div class="row"><p class="nm">Team ${i + 1}</p><p class="muted">${teamNames(t)}</p><div class="pair">${btn("useteam", i, `Use team ${i + 1}`)}${btn("saveteam", i, `Save current team as team ${i + 1}`, "Replaces it")}</div></div>`;
+      else s += btn("saveteam", i, `Save current team as team ${i + 1}`, "An empty slot");
+    }
+    return s + `</div>`;
+  }
   function tabTeam() {
-    let tm = teamPrompt() + sub3(`Your team (${S.team.length} of 4)`, !!teamPrompt()) + `<div class="actions">`;
+    const prompt = teamPrompt();
+    let tm = prompt + sub3(`Your team (${S.team.length} of 4)`, !!prompt) + `<div class="actions">`;
     teamMons().forEach((m, i) => {
       tm += `<div class="row"><p class="nm">${i === 0 ? "Lead: " : ""}${m.name}${inTraining(m.uid) ? " (training)" : ""}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>`;
       const b = [];
       if (i > 0) b.push(btn("makefirst", m.uid, `Make ${m.name} the lead`));
       if (S.team.length > 1) b.push(btn("remove", m.uid, `Send ${m.name} to base`));
-      b.push(...crestBtns(m));
-      if (b.length) tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div>`;
-      tm += `</div>`;
+      b.push(...crestBtns(m), btn("manage", m.uid, `Manage ${m.name}`, "Nickname, favorite and more"));
+      tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div></div>`;
     });
-    tm += `</div>`;
+    tm += `</div>` + savedTeamsSection();
     const base = baseMons();
     tm += sub3(`Your base (${base.length})`, true);
     if (!base.length) tm += `<p class="muted">Nothing here yet. Monsters you capture are sent to your base.</p>`;
     else {
-      const shown = baseShown();
-      tm += `<div class="pair">${btn("basesort", "", `Sort: ${BASE_SORT[baseSort()]}`, "Newest, highest level, rarest, element or name")}</div>`;
+      const shown = baseShown(), extras = extrasPlan().length;
+      tm += `<div class="pair">${btn("basesort", "", `Sort: ${BASE_SORT[baseSort()]}`, "Newest, highest level, rarest, element or name")}${extras ? btn("extras", "", `Release extras (${extras})`, "Spare Commons and Uncommons, keeping your best of each") : ""}</div>`;
       tm += `<p class="muted" style="margin-top:10px">Show:</p><div class="pair" style="margin-top:6px">`;
       for (const f of baseFilters()) tm += btn("basefilter", f, BASE_FILTER_NAME(f), `${baseMatching(f).length} monster${baseMatching(f).length === 1 ? "" : "s"}`, false, baseFilter() === f);
       tm += `</div>`;
       if (S.team.length >= 4) tm += `<p class="muted" style="margin-top:10px">Your team is full. Choose Swap onto team to trade a base monster for a team monster.</p>`;
       tm += sub3(`Showing ${shown.length} of ${base.length}: ${BASE_FILTER_NAME(baseFilter())}, ${BASE_SORT[baseSort()].toLowerCase()}`, true);
       if (!shown.length) tm += `<p class="muted">No monsters match. Choose All to see your whole base.</p>`;
+      // Sorted by element or rarity, each group gets its own heading, so a screen reader can jump between them.
+      const groupOf = { element: m => m.el, rarity: m => m.rarity }[baseSort()];
+      let group = null;
       tm += `<div class="actions">`;
       for (const m of shown) {
+        if (groupOf && groupOf(m) !== group) {
+          group = groupOf(m);
+          const n = shown.filter(x => groupOf(x) === group).length;
+          tm += `</div>${sub4(`${group} (${n})`)}<div class="actions">`;
+        }
         const busy = inTraining(m.uid) ? " (training)" : onExped(m.uid) ? " (on expedition)" : "";
         tm += `<div class="row"><p class="nm">${m.name}${busy}</p><p class="muted">${monLine(m)}${nextForm(m)}</p>`;
         const b = [];
         if (!onExped(m.uid)) b.push(S.team.length < 4 ? btn("add", m.uid, `Add ${m.name} to team`) : btn("swapin", m.uid, `Swap ${m.name} onto team`, "Choose who goes to base"));
-        b.push(...crestBtns(m));
-        if (!busy) b.push(btn("release", m.uid, `Release ${m.name}`, releaseText(m)));
-        if (b.length) tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div>`;
-        tm += `</div>`;
+        b.push(...crestBtns(m), btn("manage", m.uid, `Manage ${m.name}`, m.fav ? "Favorite · Nickname, release and more" : "Nickname, favorite, release and more"));
+        tm += `<div class="${b.length === 2 ? "pair" : "actions"}">${b.join("")}</div></div>`;
       }
       tm += `</div>`;
     }
@@ -373,11 +422,11 @@
   }
   function tabTrials() {
     const best = S.trials.best, next = best + 1, w = trialWorld(), [lo, hi] = trialRange(next), inf = trialInfuse(next);
-    let s = `<div class="actions"><p>${best ? `Highest tier cleared: ${best}.` : "No tiers cleared yet."} Tier ${next} is open, with monsters at level ${lo} to ${hi}${inf ? `, infused ${inf} of 5` : ""}.</p>`;
+    let s = `<div class="actions">${suggestPanel()}<p>${best ? `Highest tier cleared: ${best}.` : "No tiers cleared yet."} Tier ${next} is open, with monsters at level ${lo} to ${hi}${inf ? `, infused ${inf} of 5` : ""}.</p>`;
     s += `<p class="muted">Trials have three-monster wild teams with more Rares, Epics and Legendaries, and an infused final-form boss. Each run allows ${ITEM_CAP} items, not counting capture items. Shardborn are three times as likely, and you can catch Trial monsters as usual. First clears pay Coins, plus a Mythic egg every ${TRIAL.mythicEvery} tiers and a Crest Choice every ${TRIAL.choiceEvery}. Prizes come in the host world's element.</p>`;
     s += sub3("Host world", true) + `<div class="pair">`;
     for (const x of trialWorlds()) s += btn("trialworld", x, `World ${x}: The ${world(x).title}${x === w ? " (chosen)" : ""}`, `${world(x).name} monsters`, x === w, x === w);
-    s += `</div>` + sub3("Play", true);
+    s += `</div>` + suggestBtn(w) + sub3("Play", true);
     s += btn("trial", next, `Play Trial tier ${next}`, `In World ${w}, the ${world(w).title} · Level ${lo} to ${hi}`, true);
     if (best) {
       const [blo, bhi] = trialRange(best);
@@ -569,8 +618,18 @@
     for (const a of ACH) s += `<li><strong>${a.name}</strong>: ${S.ach.includes(a.id) ? "earned" : "not yet"}. ${a.desc} Reward: ${a.reward}.</li>`;
     return s + `</ul>`;
   }
+  function appSection() {
+    let s = sub3("Install as an app", true) + `<div class="actions">`;
+    if (isStandalone()) s += `<p>You're playing the installed app. Safari doesn't clear an installed app's storage for going unused, and it works offline.</p>`;
+    else s += `<p class="muted">On iPhone, open this page in Safari, choose Share, then Add to Home Screen. On a computer, Chrome and Edge offer Install in the address bar. The installed app opens full screen, works offline, and isn't cleared by Safari when you take a break. It has its own storage, so copy your save code first, then load it in the app.</p>`;
+    if (storeKept === true) s += `<p>Storage: kept permanently.</p>`;
+    else if (storeKept === false) s += `<p>Storage: your browser may clear it if the game goes unused for a while.</p>` + btn("persist", "", "Ask to keep storage permanently", "Some browsers ask you to confirm");
+    return s + `</div>`;
+  }
   function tabSave() {
-    let sv = sub3("Sound test") + `<div class="actions"><p class="muted">Every element has its own attack sound, and stronger skills sound bigger. Words in a skill's name add layers: bites snap, beams and shots whistle in, slashes swish, slams thud, storms and waves swell, and roars or howls add a cry. A bright chime means a strong hit and a dull thud means a weak one. With headphones, your attacks come slightly from the right and your opponent's from the left.</p>`;
+    let sv = sub3("Messages") + `<div class="actions">` + btn("brief", "", `Brief messages: ${S.brief ? "on" : "off"}`, "Shorter battle lines, without the tips you already know", false, !!S.brief) + `</div>`;
+    sv += appSection();
+    sv += sub3("Sound test", true) + `<div class="actions"><p class="muted">Every element has its own attack sound, and stronger skills sound bigger. Words in a skill's name add layers: bites snap, beams and shots whistle in, slashes swish, slams thud, storms and waves swell, and roars or howls add a cry. A bright chime means a strong hit and a dull thud means a weak one. With headphones, your attacks come slightly from the right and your opponent's from the left.</p>`;
     if (!S.sound) sv += `<p>Sound effects are off. Turn them on with the button at the top of the page.</p>`;
     sv += `<div class="pair">`;
     for (const el of ELEMENTS) { const a = demoSkill(el, false), b = demoSkill(el, true); sv += btn("sndtest", el, `${el} attacks`, `${a.name}, then ${b.name}`); }
@@ -589,6 +648,11 @@
       sv += btn("importcheck", "", "Load this save code", "You'll be asked to confirm before anything changes");
     }
     if (hasBackup()) sv += btn("undoimport", "", "Go back to my game from before the last import", "Swaps the backup with your current game");
+    sv += `</div>` + sub3("Today's backup", true) + `<div class="actions">`;
+    const d = dailySave();
+    if (S.confirm === "daily" && d) sv += `<p>Go back to your game from the start of today? It holds ${saveSummary(d.save)}. Your current game is kept as a backup you can go back to.</p><div class="pair">${btn("dailyyes", "", "Yes, go back")}${btn("cancel", "", "Keep my game", "", true)}</div>`;
+    else if (d) sv += btn("dailyrestore", "", "Go back to the start of today", `Your game as it was when you first opened it today: ${saveSummary(d.save)}`);
+    else sv += `<p class="muted">The game keeps a copy from when you first open it each day.</p>`;
     sv += `</div>` + sub3("Start over", true);
     if (S.confirm === "reset") sv += `<div class="actions" style="margin-top:10px"><p>Start over? This erases your monsters, items and progress.</p><div class="pair">${btn("resetyes", "", "Yes, erase and start over")}${btn("cancel", "", "Keep my game", "", true)}</div></div>`;
     else sv += `<div class="actions" style="margin-top:10px">${btn("reset", "", "Start over", "Erase this saved game")}</div>`;

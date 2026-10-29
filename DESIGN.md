@@ -471,6 +471,18 @@ Crest fusion is offered only for lines you own that still need their crest, and 
 - World boss fights allow five items per fight, counted like Trials.
 - Measured: the playtest team needs about 4 fights using items (6 without), and a team at the end of World 1 about 6 (it needed about 16 before).
 
+## Comfort Update
+- **Brief messages** (Settings, on by default for saves at Shardbinder level 10 or higher): attack lines like "Your Skyfulgor, Heavens' Fury: 340, strong. Wild Gaiacore 97 left.", and no repeated tips ("Your Skyfulgor is ready", "Switching is free", "Bosses must be defeated, not captured", "Roll when ready"). Auto-play's spoken summary understands both kinds of message.
+- **Install as an app:** a web app manifest, icons (the Heartcrystal as an eight-facet gem, one facet per element color) and a service worker, so the game can be added to the Home Screen and played offline. Safari clears a website's storage after about seven days of browser use without a visit; an installed copy isn't counted that way, and an installed copy asks the browser to keep its storage permanently. Settings explains how to install and shows the storage status.
+- **Today's backup:** the game as it was at the first load of each day, restorable from Settings; the replaced game becomes the usual backup.
+- **Manage:** each monster row has a Manage button that opens a panel at the top of Team and base: nickname (up to 16 letters, numbers, spaces, apostrophes, periods and hyphens), favorite, crest, release. Nicknamed monsters show their species on their line, and evolution messages name the new form.
+- **Favorites** can't be released, sent away or used up in synthesis.
+- **Release extras:** releases spare Commons and Uncommons in one go, keeping the best of each species and anything favorited, named, infused, charmed or Shardborn, on the team, training or away. Rares and rarer are never included, since they're synthesis ingredients. A preview lists the count, value and monsters first.
+- **Saved teams:** four slots; using one skips monsters that are away or gone.
+- **Suggest a team:** in Levels and Trials. Each monster is scored against the world's Uncommon and Rare monsters at that world's last level (or the next Trial tier's level): how many of their best hits it can take, divided by how many of its best hits they can take. The top four make the team, best first. Tested in Trials, the suggestion did at least as well as the playtest team's own order.
+- **Base headings:** sorted by element or rarity, the base list has a heading for each group.
+- **A gentler first level:** in 400 simulated new games, 29% failed World 1 Level 1 at least once, mostly to a level 6 Rare boss against a lone level 5 Cindercub. World 1 Level 1 now has single wild monsters and an Uncommon boss at level 5; failures dropped to about 5%. The first catch of a new game says that catches wait in the base.
+
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.

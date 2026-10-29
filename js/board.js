@@ -43,6 +43,7 @@
     if (!S.wboss && Math.random() < WB.chance) S.level.wb = rand(3, BOARD_SIZE - 3);
     S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "level";
     const [lo, hi] = wildRange(w, n);
+    if (S.brief) return [`World ${w}, Level ${n}: wild level ${lo} to ${hi}. ${leadMon().name} leads.${lureMsg}`];
     return [`World ${w}, the ${world(w).title}, Level ${n} begins. You're on space 1 of ${BOARD_SIZE}, and the level boss waits on space ${BOARD_SIZE}. Wild ${world(w).name} monsters here are level ${lo} to ${hi}. ${leadMon().name} leads your team.${lureMsg}`];
   }
   // A Trial plays on the board of a cleared world, at the density of that world's last level, with no hidden world boss.
@@ -56,6 +57,7 @@
     S.trials.world = w;
     S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "level";
     const [lo, hi] = trialRange(t), inf = trialInfuse(t);
+    if (S.brief) return [`Trial tier ${t} in World ${w}: level ${lo} to ${hi}${inf ? `, infused ${inf}` : ""}. ${leadMon().name} leads.${lureMsg}`];
     return [`Trial tier ${t} begins in World ${w}, the ${world(w).title}. Trial monsters here are level ${lo} to ${hi}, three to a team${inf ? `, with ${inf} infusion${inf === 1 ? "" : "s"}` : ""}, and the boss on space ${BOARD_SIZE} is an infused final form. ${leadMon().name} leads your team.${lureMsg}`];
   }
   function levelName(L) { return L.trial ? `Trial tier ${L.trial}` : `World ${L.w}, Level ${L.n}`; }
@@ -65,8 +67,9 @@
     sfx("roll");
     const target = L.pos + r;
     const pos = Math.min(BOARD_SIZE - 1, target);
-    msgs.push(chosen ? `You used a Loaded Die and chose ${r}.` : `You rolled a ${r}.`);
-    if (target > BOARD_SIZE - 1) msgs.push("You rolled past the end, so you land on the boss space.");
+    if (S.brief) msgs.push(chosen ? `Loaded Die: ${r}.` : `Rolled ${r}.`);
+    else msgs.push(chosen ? `You used a Loaded Die and chose ${r}.` : `You rolled a ${r}.`);
+    if (target > BOARD_SIZE - 1) msgs.push(S.brief ? "Past the end." : "You rolled past the end, so you land on the boss space.");
     L.pos = pos;
     if (L.wb !== null && pos === L.wb) { wbEncounter(msgs); return msgs; }
     landOn(pos, msgs, true);
@@ -76,20 +79,23 @@
     return msgs;
   }
   function landOn(p, msgs, allowPortal) {
-    const L = S.level, type = L.board[p], lead = leadMon();
-    msgs.push(`You land on space ${p + 1}: ${L.used[p] ? "a cleared space" : SPACE[type].toLowerCase()}.`);
-    if (L.used[p] && type !== "boss") { msgs.push("Nothing happens."); return; }
-    if (type === "path") { msgs.push("Nothing happens."); }
+    const L = S.level, type = L.board[p], lead = leadMon(), b = S.brief;
+    const place = L.used[p] ? "a cleared space" : SPACE[type].toLowerCase();
+    msgs.push(b ? `Space ${p + 1}: ${place}.` : `You land on space ${p + 1}: ${place}.`);
+    if (L.used[p] && type !== "boss") { if (!b) msgs.push("Nothing happens."); return; }
+    if (type === "path") { if (!b) msgs.push("Nothing happens."); }
     else if (type === "heal") {
       L.used[p] = true;
       const heal = Math.min(lead.maxHp - lead.hp, Math.ceil(lead.maxHp * 0.4));
       lead.hp += heal; sfx("heal");
-      msgs.push(heal > 0 ? `${lead.name} recovers ${heal} health and now has ${lead.hp} of ${lead.maxHp}.` : `${lead.name} is already at full health.`);
+      if (b) msgs.push(heal > 0 ? `${lead.name} heals ${heal}, ${lead.hp} of ${lead.maxHp}.` : `${lead.name} is at full health.`);
+      else msgs.push(heal > 0 ? `${lead.name} recovers ${heal} health and now has ${lead.hp} of ${lead.maxHp}.` : `${lead.name} is already at full health.`);
     } else if (type === "trap") {
       L.used[p] = true;
       const dmg = Math.max(1, Math.ceil(lead.maxHp * 0.2));
       lead.hp = Math.max(0, lead.hp - dmg); sfx("trap");
-      msgs.push(`Thorns hit ${lead.name} for ${dmg} damage.` + (lead.hp > 0 ? ` It has ${lead.hp} of ${lead.maxHp} health left.` : ""));
+      if (b) msgs.push(`${lead.name} takes ${dmg}` + (lead.hp > 0 ? `, ${lead.hp} of ${lead.maxHp} left.` : "."));
+      else msgs.push(`Thorns hit ${lead.name} for ${dmg} damage.` + (lead.hp > 0 ? ` It has ${lead.hp} of ${lead.maxHp} health left.` : ""));
       if (lead.hp <= 0) {
         msgs.push(`${lead.name} fainted.`); sfx("faint");
         if (fixLead()) msgs.push(`${leadMon().name} is now your lead monster.`);
@@ -108,31 +114,32 @@
       if (prize === "orb") found = tier([["grorb", w >= 5 ? 0.4 : 0], ["gorb", w >= 3 ? 0.6 : 0], ["orb", 1]]);
       if (prize === "boost") found = pickFrom(["fury", "ward"]);
       if (prize === "revive") found = "revive";
-      if (found && found !== "orb" && found !== "potion") { S.items[found]++; msgs.push(`You open the chest and find ${icount(found, 1)}!`); prize = "done"; }
+      const find = what => msgs.push(b ? `Inside: ${what}.` : `You open the chest and find ${what}.`);
+      if (found && found !== "orb" && found !== "potion") { S.items[found]++; find(icount(found, 1)); prize = "done"; }
       else if (found === "potion") prize = "potion";
       else if (found === "orb") prize = "orb";
       if (prize === "shards") addShards(worldEl(L.w), rand(2, 4), msgs, "You open the chest and find");
       if (prize === "egg") addEgg(worldEl(L.w), msgs, "You open the chest and find");
-      if (prize === "coins") { const c = Math.max(1, Math.round(rand(20, 40) * L.w * outgrowMult(teamTop(), levelRef()))); S.coins += c; msgs.push(`You open the chest and find ${c} Shard Dust.`); }
-      else if (prize === "potion") { S.items.potion++; msgs.push("You open the chest and find a Potion."); }
-      else if (prize === "orb") { const c = rand(1, 2); S.items.orb += c; msgs.push(`You open the chest and find ${c} Binding Shard${c > 1 ? "s" : ""}.`); }
-      else if (prize === "die") { S.items.die++; msgs.push("You open the chest and find a Loaded Die!"); }
+      if (prize === "coins") { const c = Math.max(1, Math.round(rand(20, 40) * L.w * outgrowMult(teamTop(), levelRef()))); S.coins += c; find(`${c} Shard Dust`); }
+      else if (prize === "potion") { S.items.potion++; find("a Potion"); }
+      else if (prize === "orb") { const c = rand(1, 2); S.items.orb += c; find(`${c} Binding Shard${c > 1 ? "s" : ""}`); }
+      else if (prize === "die") { S.items.die++; find("a Loaded Die"); }
     } else if (type === "storm") {
       L.used[p] = true;
       sfx("storm");
       const el = worldEl(L.w), n = rand(3, 6);
       addShards(el, n, null);
       L.storm = true;
-      msgs.push(`Crystals rain from the sky! You gather ${n} ${el} Shards. While the shard storm lasts, the rest of this level, Shardborn are ten times more likely to appear.`);
+      msgs.push(b ? `Plus ${n} ${el} Shards. Shardborn are ten times more likely for the rest of this level.` : `Crystals rain from the sky! You gather ${n} ${el} Shards. While the shard storm lasts, the rest of this level, Shardborn are ten times more likely to appear.`);
     } else if (type === "merchant") {
       L.shopOpen = true;
-      msgs.push(`A wandering merchant waves you over. You have ${S.coins} Shard Dust. Buy what you need, then leave the merchant to keep rolling.`);
+      msgs.push(b ? `You have ${fmt(S.coins)} Shard Dust.` : `A wandering merchant waves you over. You have ${S.coins} Shard Dust. Buy what you need, then leave the merchant to keep rolling.`);
     } else if (type === "portal") {
-      if (!allowPortal) { msgs.push("The portal flickers but stays quiet."); return; }
+      if (!allowPortal) { msgs.push(b ? "It stays quiet." : "The portal flickers but stays quiet."); return; }
       let dest = p;
       while (dest === p) dest = rand(1, BOARD_SIZE - 2);
       sfx("portal");
-      msgs.push(`The portal pulls you ${dest > p ? "forward" : "back"} to space ${dest + 1}.`);
+      msgs.push(b ? `It pulls you ${dest > p ? "forward" : "back"}.` : `The portal pulls you ${dest > p ? "forward" : "back"} to space ${dest + 1}.`);
       L.pos = dest;
       landOn(dest, msgs, false);
     } else if (type === "battle") {
@@ -198,6 +205,7 @@
     if (!fromLevel) { restoreAll(); S.level = null; }
     S.screen = "battle";
     sfx("giant");
+    if (S.brief) return [`World boss ${W.name}: ${fmt(W.hp)} of ${fmt(W.maxHp)} health.`];
     return [`You challenge the world boss ${W.name}. It has ${W.hp} of ${W.maxHp} health. Every point of damage you deal carries over to your next fight.`, `Your ${you().name} is ready.`];
   }
   function wbFinish(msgs, retreated) {

@@ -65,7 +65,9 @@
   // ---------- Save ----------
   const SAVE_KEY = "shardkin-save-v1";
   // Saves remember which one-time updates they've had (see applyUpdates in progress.js); new games start with all of them.
-  const UPDATE = "endgame1";
+  const UPDATES = ["endgame1", "comfort1"];
+  // A copy of the game as it was when you first opened it today, so a bad day can be undone from Settings.
+  const DAILY_KEY = "shardkin-daily-backup";
   let S;
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* saving is optional */ } }
   function load() {
@@ -110,6 +112,39 @@
     return `Shardbinder level ${lvl}, ${mons} monster${mons === 1 ? "" : "s"}, ${d.coins} Shard Dust, furthest world ${far}`;
   }
   function hasBackup() { try { return !!localStorage.getItem(BACKUP_KEY); } catch (e) { return false; } }
+  // Keeps the game as it was at the first load of each day.
+  function dailyBackup() {
+    try {
+      const today = dayKey(new Date(now())), b = JSON.parse(localStorage.getItem(DAILY_KEY) || "null");
+      if (!b || b.day !== today) localStorage.setItem(DAILY_KEY, JSON.stringify({ day: today, at: now(), save: S }));
+    } catch (e) { /* backups are best-effort */ }
+  }
+  // ---------- Installed app and storage ----------
+  // An installed (Home Screen) copy of the game isn't cleared by Safari for going unused, and browsers are
+  // more willing to keep its storage permanently. storeKept is true, false, or null when the browser can't say.
+  let storeKept = null;
+  function isStandalone() {
+    try { return !!(navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)); } catch (e) { return false; }
+  }
+  function checkStorage() {
+    try { if (navigator.storage && navigator.storage.persisted) navigator.storage.persisted().then(v => { storeKept = !!v; }, () => {}); } catch (e) { /* not supported */ }
+  }
+  // Asks quietly when installed; from Settings, asks because you chose to (some browsers show a prompt then).
+  function requestPersist(userAsked) {
+    try {
+      if (!navigator.storage || !navigator.storage.persist) { if (userAsked) storeKept = false; return; }
+      navigator.storage.persist().then(v => {
+        storeKept = !!v;
+        if (userAsked && S.screen === "camp" && S.campTab === "save") {
+          S.result = v ? "Your browser will keep the game's storage permanently." : "Your browser said no for now. Installing the game as an app usually changes that.";
+          render(); document.getElementById("result").focus();
+        }
+      }, () => {});
+    } catch (e) { /* not supported */ }
+  }
+  function dailySave() {
+    try { const b = JSON.parse(localStorage.getItem(DAILY_KEY) || "null"); return b && b.save ? { at: b.at, save: upgradeSave(b.save) } : null; } catch (e) { return null; }
+  }
   function migrate1(d) {
     d.v = 2;
     for (const id in d.mons) { const m = d.mons[id]; m.stage = 0; if (SP[m.id].forms.length > 1 && m.level >= EVOLVE_LEVEL) { m.stage = 1; m.name = SP[m.id].forms[1]; } calc(m); m.hp = Math.min(m.hp, m.maxHp); }
@@ -137,7 +172,7 @@
       screen: "camp", level: null, battle: null, wheel: null, confirm: null, sound: true, result: "",
       player: { level: 1, xp: 0 }, pxpLife: 0, dex: [], stats: { caught: 0, evolved: 0, synth: 0, trained: 0, wbKills: 0 }, ach: [],
       yard: false, mine: null, training: { mode: "time", session: null }, campTab: null, dieChoose: false, synth: null,
-      wboss: null, wfights: null, notices: [], updates: [UPDATE] };
+      wboss: null, wfights: null, notices: [], updates: UPDATES.slice() };
     ensureExtras();
     addMon(makeMon("cindercub", 5), true);
     S.result = PROLOGUE + " Your first companion is Cindercub, a level 5 Epic Fire Shardkin, strong against the Verdant Shard's Plant monsters. Open Levels and choose Level 1 to begin.";
@@ -162,7 +197,7 @@
   function givePxp(n, msgs) {
     const P = S.player;
     P.xp += n; S.pxpLife += n;
-    msgs.push(`You earned ${n} Shardbinder experience.`);
+    msgs.push(S.brief ? `Plus ${n} Shardbinder experience.` : `You earned ${n} Shardbinder experience.`);
     while (P.xp >= pNeed(P.level)) {
       P.xp -= pNeed(P.level); P.level++;
       msgs.push(`You reached Shardbinder level ${P.level}!` + (UNLOCK_TEXT[P.level] ? " " + UNLOCK_TEXT[P.level] : "")); sfx("level");

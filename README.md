@@ -22,8 +22,11 @@ A playable single-player campaign:
 - **Shardborn variants**, rare crystal versions of every monster, plus elemental shards, the **Shard Forge**, shard storms and the story of the Heartcrystal.
 - **Element-themed attack sounds** that change with each skill's power and name, plus a sound test in Settings.
 - **Two currencies:** everyday Shard Dust, and rare Coins earned from milestones and spent in the Coin Shop on Mythic Eggs, Shardborn Lures, Chosen Crests and more.
-- **Base management:** sort and filter your base, swap a base monster straight onto a full team, and release monsters you don't need for Shard Dust and elemental shards.
-- **Automatic saving** in your browser, plus **save codes** in Settings to back up your game or move it to another device.
+- **Base management:** sort and filter your base (with a heading per element or rarity), swap a base monster straight onto a full team, and release monsters you don't need for Shard Dust and elemental shards, one at a time or all your spare Commons and Uncommons at once with **Release extras**.
+- **Team tools:** Manage any monster to give it a nickname or make it a favorite (favorites can't be released or used up in synthesis), save up to four teams, and **Suggest a team** for any world or Trial.
+- **Brief messages** (Settings): shorter battle lines without the tips you already know.
+- **Automatic saving** in your browser, plus **save codes** in Settings to back up your game or move it to another device, and a backup of your game from the start of each day.
+- **Install as an app:** add the game to your Home Screen to play full screen and offline. An installed copy isn't cleared by Safari for going unused.
 
 ## Accessibility
 Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; each area opens on its own with a Back to main menu button. Every screen section has a heading (for example What happened, Level board, Look ahead, Opponent, Skills, Switch monster), and all actions are buttons. After each action, focus moves to "What happened" so the results of the turn are read aloud right away.
@@ -42,6 +45,8 @@ Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; e
   - `input.js` — button handling; every action goes through `doAction`
   - `autoplay.js` — auto-play, then starting the game (loads last)
 
-When you change a file, bump the `?v=` number on its line in `index.html` so phones don't keep an old copy.
+When you change a file, bump the `?v=` number on its line in `index.html` so phones don't keep an old copy. The service worker saves each file under its `?v=` address, so a new number is also what makes the installed app pick up the change.
+- `manifest.webmanifest`, `icons/` — the app name and icons used when the game is installed
+- `sw.js` — the service worker: keeps the game playable offline. The page is always fetched fresh when online; everything it lists is saved as it's used.
 - `DESIGN.md` — the full game design and build plan
 - `tools/sim.js` — a balance simulator, not loaded by the game. It plays a saved game forward with the real game code and auto-play's choices: `node tools/sim.js <file with a save code> <campaign|trials|wboss|arena> [runs]`. Use it to check a balance change against a real save before it ships.
