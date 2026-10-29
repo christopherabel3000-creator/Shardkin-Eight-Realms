@@ -50,7 +50,7 @@
   const TABS = [
     ["levels", "Levels"], ["trials", "Trials"], ["team", "Team and base"], ["collection", "Collection"], ["quests", "Quests"], ["arena", "Arena"], ["bag", "Bag"],
     ["shop", "Shop"], ["premium", "Coin Shop"], ["synth", "Synthesis"], ["build", "Buildings"], ["train", "Training"], ["exped", "Expeditions"], ["hatch", "Hatchery"],
-    ["ach", "Achievements"], ["forge", "Shard Forge"], ["story", "Story"], ["save", "Settings"]
+    ["ach", "Achievements"], ["forge", "Shard Forge"], ["story", "Story"], ["save", "Settings"], ["friends", "Friends"]
   ];
   function tabLocked(t) {
     if (t === "shop") return S.player.level < 2 ? "unlocks at Shardbinder level 2" : "";
@@ -67,7 +67,7 @@
   }
   // The main menu groups every camp area; opening one shows only that area, with a way back.
   const MENU = [
-    ["Adventure", ["levels", "trials", "arena"]],
+    ["Adventure", ["levels", "trials", "arena", "friends"]],
     ["Monsters", ["team", "collection", "synth", "train", "exped", "hatch"]],
     ["Camp", ["bag", "shop", "premium", "forge", "quests", "build", "ach", "story", "save"]]
   ];
@@ -103,6 +103,7 @@
     if (id === "save") return `Brief messages ${S.brief ? "on" : "off"} · Install, sound test and backups`;
     if (id === "forge") return `${fmt(shardCount())} elemental shards${fusionOpen() ? " · Heartcrystal fusion open" : ""}`;
     if (id === "story") return "The tale of the Heartcrystal";
+    if (id === "friends") { const d = duelSession(); return d ? `Duel ${spell(d.code)} to rejoin` : "Rival codes, trade codes, live duels and cloud saves"; }
     return "";
   }
   function renderCamp() {
@@ -124,7 +125,7 @@
     const back = `<div class="actions">${btn("menu", "", "Back to main menu", "")}</div>`;
     const body = lock ? `<p class="muted">${lab} is locked: it ${lock}.</p>`
       : { levels: tabLevels, trials: tabTrials, team: tabTeam, collection: tabCollection, quests: tabQuests, arena: tabArena, bag: tabBag, shop: tabShop, premium: tabPremium,
-        synth: tabSynth, build: tabBuild, train: tabTrain, exped: tabExped, hatch: tabHatch, ach: tabAch, forge: tabForge, story: tabStory, save: tabSave }[S.campTab]();
+        synth: tabSynth, build: tabBuild, train: tabTrain, exped: tabExped, hatch: tabHatch, ach: tabAch, forge: tabForge, story: tabStory, save: tabSave, friends: tabFriends }[S.campTab]();
     return back + sec("h-tab", lab, body) + back;
   }
   function wbPanel() {
@@ -734,6 +735,97 @@
     return sv;
   }
 
+  // ---------- Friends ----------
+  // Your name, then rival codes, trade codes, live duels and the cloud save, each under its own heading.
+  function tabFriends() {
+    const F = S.friends, field = (id, label, multi, extra) => `<label class="field" for="${id}">${label}</label>` + (multi
+      ? `<textarea id="${id}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>`
+      : `<input id="${id}" type="text" autocomplete="off" spellcheck="false" ${extra || ""}>`);
+    let s = `<div class="actions">` + sub3("Your Shardbinder name");
+    s += `<p>${F.name ? `Friends see you as ${F.name}.` : "Choose a name, so friends know whose team they're battling."}</p>`;
+    s += `<label class="field" for="friendname">Name, up to 16 letters</label><input id="friendname" type="text" maxlength="16" autocomplete="off" autocapitalize="words" spellcheck="false" value="${F.name || ""}">`;
+    s += btn("friendname", "", "Save name");
+    s += btn("fair", "", `Fair fights: ${F.fair ? "on" : "off"}`, "Every monster at level 100 in friendly battles and the duels you host", false, !!F.fair);
+    // Rival codes
+    s += sub3("Rival codes", true) + `<p class="muted">A rival code holds your team, for a friend to battle in their game. Friendly battles use copies of both teams, so nothing changes for anyone's monsters, and items aren't used. Your record: ${F.battles.won} won, ${F.battles.lost} lost.</p>`;
+    s += btn("rivalmake", "", "Make a rival code from my team", S.team.length ? teamNames(S.team) : "");
+    if (rivalOut) s += `<label class="field" for="rivalout">Your rival code</label><textarea id="rivalout" readonly>${rivalOut}</textarea>`;
+    if (S.rivalPending) {
+      const P = S.rivalPending;
+      s += `<p>${P.name}'s team: ${teamText(P.team.map(x => monUnpack(x, true)))}.</p><div class="pair">${btn("rivalfight", "", `Battle ${P.name}`, F.fair ? "Fair fight: everyone at level 100" : "At everyone's own levels", true)}${btn("rivalclear", "", "Not now")}</div>`;
+    } else s += field("rivalbox", "Paste a friend's rival code", true) + btn("rivalcheck", "", "Check this rival code");
+    // Trade codes
+    s += sub3("Trade codes", true) + `<p class="muted">A trade code carries one monster to a friend. It leaves your base when you make the code, and each player can take it once, so you can take it back if your friend doesn't. To trade, you each make a code for the other.</p>`;
+    if (S.confirm === "trade" && S.mons[S.tradeId]) {
+      const m = S.mons[S.tradeId];
+      s += `<p>Give ${m.name} away in a trade code? ${monLine(m)}.${m.charm ? ` Its ${charmName(m.charm)} goes back to your Bag.` : ""}</p><div class="pair">${btn("tradeyes", "", `Yes, make the code for ${m.name}`)}${btn("cancel", "", "Keep it", "", true)}</div>`;
+    } else if (S.tradePick) {
+      const can = baseMons().filter(canRelease).sort((a, b) => b.level - a.level);
+      s += `<p>Choose a monster from your base to give. Your team, favorites, Kaleidra, and monsters training or away can't be traded.</p>`;
+      if (!can.length) s += `<p class="muted">None of your base monsters can be traded right now.</p>`;
+      for (const m of can) s += btn("tradeoffer", m.uid, `Give ${m.name}`, monLine(m));
+      s += btn("tradepick", "", "Cancel");
+    } else s += btn("tradepick", "", "Give a monster in a trade code", `${baseMons().filter(canRelease).length} in your base can be traded`);
+    if (tradeOut) s += `<label class="field" for="tradeout">Your trade code</label><textarea id="tradeout" readonly>${tradeOut}</textarea>`;
+    if (S.tradePending) s += `<p>${S.tradePending.from}'s trade code holds ${tradeText(S.tradePending)}.</p><div class="pair">${btn("tradetake", "", `Take ${monUnpack(S.tradePending.mon, false).name}`, "It joins your base", true)}${btn("tradeclear", "", "Not now")}</div>`;
+    else s += field("tradebox", "Paste a trade code", true) + btn("tradecheck", "", "Check this trade code");
+    // Live duels
+    s += sub3("Live duels", true) + `<p class="muted">Battle a friend live, each on your own device, choosing moves at the same time. Duels use copies of your teams, without items, and switching uses your turn. Your record: ${F.duels.won} won, ${F.duels.lost} lost.</p>`;
+    const d = duelSession();
+    if (d) s += `<div class="pair">${btn("duelrejoin", "", `Rejoin duel ${spell(d.code)}`, "", true)}${btn("duelforget", "", "Forget that duel")}</div>`;
+    s += btn("duelhost", "", "Host a duel", `Makes a code for your friend · ${F.fair ? "Fair fight: everyone at level 100" : "At everyone's own levels"}`, !d);
+    s += field("duelcode", "Duel code from your friend, four letters", false, `maxlength="4" autocapitalize="characters"`) + btn("dueljoin", "", "Join a duel");
+    // Cloud save
+    s += sub3("Cloud save", true) + `<p class="muted">Keep your game online under a private key, to load it on another device. Anyone with the key can load or replace that save, so keep it like a password.</p>`;
+    if (S.cloud && S.cloud.key) s += `<p>Your cloud key is ${keyText(S.cloud.key)}. Last saved or loaded on this device ${new Date(S.cloud.at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}.</p>`;
+    if (S.confirm === "cloudconflict") s += `<div class="pair">${btn("cloudmine", "", "Load the cloud save", "You'll be asked to confirm", true)}${btn("cloudforce", "", "Replace it with this game")}</div>`;
+    else if (S.confirm === "cloudload" && pendingCloud) s += `<p>Loading it replaces your current game at ${saveSummary(S)}. Your current game is kept as a backup in Settings.</p><div class="pair">${btn("cloudyes", "", "Yes, load it")}${btn("cancel", "", "Keep my game", "", true)}</div>`;
+    else {
+      s += btn("cloudsave", "", S.cloud && S.cloud.key ? "Save to the cloud again" : "Save to the cloud", S.cloud && S.cloud.key ? "Under your key" : "Makes your private key");
+      s += field("cloudbox", "Cloud key, 12 letters and numbers", false, `maxlength="16" autocapitalize="characters"`) + btn("cloudcheck", "", "Load from the cloud", "You'll be asked to confirm before anything changes");
+    }
+    return s + `</div>`;
+  }
+  // A live duel: both monsters, then your choices, or what you're waiting for.
+  function renderDuel() {
+    const st = NET.st, me = NET.side, them = 1 - me;
+    if (!st) return sec("h-duel", `Duel ${spell(NET.code || "")}`, `<div class="actions"><p>Connecting to the duel.</p>${btn("duelleave", "", "Back to Friends")}</div>`);
+    if (st.phase === "lobby") {
+      return sec("h-duel", `Duel code ${spell(NET.code)}`, `<div class="actions"><p>Waiting for your friend to join. They open Friends, choose Join a duel and enter ${NET.code}.${st.fair ? " Every monster will be at level 100." : ""}</p>${btn("duelforfeit", "", "Stop hosting", "Ends this duel")}${btn("duelleave", "", "Back to Friends", "The duel stays open to rejoin")}</div>`);
+    }
+    if (!st.mons || !st.p[them]) return sec("h-over", "Duel over", `<div class="actions"><p>This duel was called off before it started.</p>${btn("duelleave", "", "Back to Friends", "", true)}</div>`);
+    const P = st.p, foeName = P[them].name, mine = st.mons[me], theirs = st.mons[them], a = mine[st.active[me]], b = theirs[st.active[them]];
+    let h = sec("h-foe", `${foeName}'s monster`, monCard(b, "", `<p class="muted">${foeName}'s team: ${theirs.length} monster${theirs.length === 1 ? "" : "s"}, ${theirs.filter(m => m.hp > 0).length} still standing.</p>` + battleNotes(b)));
+    h += sec("h-you", "Your monster", monCard(a, "", battleNotes(a)));
+    let c = `<div class="actions">`;
+    if (st.phase === "over") {
+      c += `<p>${st.winner === null ? (st.why === "cancel" ? "This duel was called off." : "The duel was a draw.") : st.winner === me ? "You won the duel!" : `${foeName} won the duel.`}</p>` + btn("duelleave", "", "Back to Friends", "", true);
+      return h + sec("h-over", "Duel over", c + `</div>`) + duelLog();
+    }
+    if (st.need[me]) {
+      c += `<p>${a.name} has fainted. Choose who goes next.</p>`;
+      mine.forEach((m, i) => { if (m.hp > 0) c += btn("duelreplace", i, `Send out ${m.name}`, `${m.el} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${statusText(m)} · ${effWord(Math.max(...attacks(m).map(s => mult(s.el, b.el))))} matchup`, true); });
+      h += sec("h-skills", "Choose who goes next", c + `</div>`);
+    } else if (st.need[them]) {
+      h += sec("h-skills", "Waiting", c + `<p>Waiting for ${foeName} to send out a monster.</p></div>`);
+    } else if (st.act[me]) {
+      h += sec("h-skills", "Waiting", c + `<p>You chose ${duelChoiceText(st, me)}. Waiting for ${foeName}${st.act[them] ? "" : " to choose"}.</p></div>`);
+    } else {
+      h += sec("h-skills", "Skills", c + `${st.act[them] ? `<p>${foeName} has chosen.</p>` : ""}${skillBtns(a, b, "duelskill")}</div>`);
+      let sw = `<div class="actions">`, others = 0;
+      mine.forEach((m, i) => {
+        if (i === st.active[me]) return;
+        others++;
+        sw += m.hp <= 0 ? `<p class="muted">${m.name} has fainted.</p>` : btn("duelswitch", i, `Send out ${m.name}`, `${m.el} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${statusText(m)} · ${effWord(Math.max(...attacks(m).map(s => mult(s.el, b.el))))} matchup`);
+      });
+      if (!others) sw += `<p class="muted">No other monsters on your team.</p>`;
+      h += sec("h-switch", "Switch monster (uses your turn)", sw + `</div>`);
+    }
+    const ff = S.confirm === "forfeit" ? `<p>Forfeit the duel? ${foeName} wins.</p><div class="pair">${btn("duelforfeityes", "", "Yes, forfeit")}${btn("cancel", "", "Keep battling", "", true)}</div>` : btn("duelforfeit", "", "Forfeit the duel", `${foeName} wins`);
+    return h + sec("h-duelend", "Leave", `<div class="actions">${ff}${btn("duelleave", "", "Back to Friends", "Rejoin from Friends later")}</div>`) + duelLog();
+  }
+  function duelLog() { return sec("h-log", "Duel log", `<ol class="log">${NET.log.map(l => `<li>${l}</li>`).join("")}</ol>`); }
+
   function renderLevel() {
     const L = S.level, lead = leadMon();
     let h = "";
@@ -806,14 +898,25 @@
     const t = TRAITS[traitOf(m)], fx = effectsText(m);
     return `${t ? `<p class="muted">Trait: ${t.name}. ${t.desc}</p>` : ""}${m.charm ? `<p class="muted">Charm: ${charmName(m.charm)}, ${CHARMS[m.charm].desc}.</p>` : ""}${fx ? `<p>${fx}</p>` : ""}`;
   }
+  // A monster's skills as buttons, with what each does against the opponent: support skills say how many uses are left.
+  function skillBtns(p, e, action) {
+    let sk = "";
+    unlocked(p).forEach((s, i) => {
+      if (s.support) { sk += supportLeft(p) > 0 ? btn(action, i, s.name, `${s.el} support · ${s.desc} · ${supportLeft(p)} of ${SUPPORT_USES} uses left this battle`) : `<p class="muted">${s.name}: used twice this battle.</p>`; return; }
+      sk += btn(action, i, s.name, `${s.el} · Power ${s.power} · Accuracy ${hasTrait(p, "keeneye") ? "never misses" : `${Math.min(100, s.acc + (p.charm === "focus" ? 10 : 0))}%`}${s.st ? ` · ${s.stc * (hasTrait(p, "potent") ? 2 : 1)}% chance to ${s.st === "sleep" ? "put it to sleep" : s.st}` : ""} · ${effWord(mult(s.el, e.el))} against ${e.name}`);
+    });
+    const locked = skillsOf(p).filter(s => p.level < s.unlock);
+    if (locked.length) sk += `<ul class="clean muted">${locked.map(s => `<li>Locked: ${s.name}, unlocks at level ${s.unlock}</li>`).join("")}</ul>`;
+    return sk;
+  }
   function renderBattle() {
     const B = S.battle, e = foe(), p = you();
     const shownFoe = e || B.enemies[B.enemies.length - 1];
-    const heading = B.wboss ? "World boss" : B.arena ? `Arena floor ${B.floor}: ${B.rival}` : B.sable ? (B.finale ? "The final battle: Sable" : "Rival Sable")
+    const heading = B.wboss ? "World boss" : B.arena ? `Arena floor ${B.floor}: ${B.rival}` : B.friend ? `Friendly battle: ${B.rival}` : B.sable ? (B.finale ? "The final battle: Sable" : "Rival Sable")
       : B.mythic ? "Kaleidra" : B.boss ? (S.level && S.level.trial ? "Trial boss" : "Level boss") : "Opponent";
-    const teamLine = B.mythic || (B.boss && !B.arena && !B.sable) ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`;
+    const teamLine = B.mythic || (B.boss && !B.arena && !B.sable && !B.friend) ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`;
     let h = sec("h-foe", heading, monCard(shownFoe, foeWord() + " ", teamLine + battleNotes(shownFoe)));
-    h += sec("h-you", "Your monster", monCard(p, "", xpLine(p) + battleNotes(p)));
+    h += sec("h-you", "Your monster", monCard(p, "", (B.friend ? "" : xpLine(p)) + battleNotes(p)));
     if (autoOn()) return h + sec("h-log", "Battle log", `<ol class="log">${B.log.map(l => `<li>${l}</li>`).join("")}</ol>`);
     if (B.over) {
       let o = `<div class="actions">`;
@@ -823,18 +926,14 @@
       else if (B.over === "arenawin") { const alive = teamMons().filter(m => m.hp > 0).length; o += btn("arenanext", "", `Climb to floor ${B.floor + 1}`, `${alive} of ${S.team.length} monsters standing · Health carries over`, true) + btn("camp", "", "Leave the arena", "Your team is restored"); }
       else if (B.over === "arenalose") o += btn("camp", "", "Return to camp", "Your team is restored", true);
       else if (["sablewin", "sablelose", "mythicend", "mythiccaught"].includes(B.over)) o += btn("camp", "", "Return to camp", "Your team is restored", true);
+      else if (B.over === "friendwin" || B.over === "friendlose") o += btn("camp", "", "Back to Friends", "Your team is just as it was", true);
       else o += btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true);
       return h + sec("h-over", B.wboss ? "Fight over" : "Battle over", o + `</div>`);
     }
     let sk = `<div class="actions">`;
     if (B.forced) sk += `<p>${p.name} has fainted. Choose a monster under Switch monster.</p>`;
     else {
-      unlocked(p).forEach((s, i) => {
-        if (s.support) { sk += supportLeft(p) > 0 ? btn("skill", i, s.name, `${s.el} support · ${s.desc} · ${supportLeft(p)} of ${SUPPORT_USES} uses left this battle`) : `<p class="muted">${s.name}: used twice this battle.</p>`; return; }
-        sk += btn("skill", i, s.name, `${s.el} · Power ${s.power} · Accuracy ${hasTrait(p, "keeneye") ? "never misses" : `${Math.min(100, s.acc + (p.charm === "focus" ? 10 : 0))}%`}${s.st ? ` · ${s.stc * (hasTrait(p, "potent") ? 2 : 1)}% chance to ${s.st === "sleep" ? "put it to sleep" : s.st}` : ""} · ${effWord(mult(s.el, e.el))} against ${e.name}`);
-      });
-      const locked = skillsOf(p).filter(s => p.level < s.unlock);
-      if (locked.length) sk += `<ul class="clean muted">${locked.map(s => `<li>Locked: ${s.name}, unlocks at level ${s.unlock}</li>`).join("")}</ul>`;
+      sk += skillBtns(p, e, "skill");
     }
     h += sec("h-skills", "Skills", sk + `</div>`);
     let sw = `<div class="actions">`, others = 0;
@@ -846,7 +945,8 @@
     }
     if (!others) sw += `<p class="muted">No other monsters on your team.</p>`;
     h += sec("h-switch", "Switch monster (free)", sw + `</div>`);
-    if (!B.forced) {
+    if (B.friend && !B.forced) h += sec("h-items", "Items", `<div class="actions"><p class="muted">Items aren't used in friendly battles.</p></div>`);
+    else if (!B.forced) {
       let it = `<div class="actions">`;
       if (B.boss) it += `<p class="muted">${B.wboss ? "World bosses" : B.arena || B.sable ? "Rival monsters" : S.level && S.level.trial ? "Trial bosses" : "Level bosses"} can't be captured.</p>`;
       else {
@@ -894,9 +994,9 @@
     document.getElementById("result").textContent = S.result;
     const L = S.level, B = S.battle;
     const where = L ? (L.trial ? `Trial tier ${L.trial} · World ${L.w}, ${world(L.w).title}` : `World ${L.w}, ${world(L.w).title} · Level ${L.n}`) : "";
-    const sub = { camp: S.campTab ? `Camp · ${tabLabel(S.campTab)}` : "Camp · Main menu", level: where, battle: B && B.wboss ? "World boss fight" : B && B.arena ? `Arena · Floor ${B.floor}` : B && B.sable ? `Rival Sable · World ${B.sable}` : B && B.mythic ? "The Heartcrystal · Kaleidra" : `${where} · Battle`, wheel: `${where} complete` };
+    const sub = { camp: S.campTab ? `Camp · ${tabLabel(S.campTab)}` : "Camp · Main menu", level: where, battle: B && B.wboss ? "World boss fight" : B && B.arena ? `Arena · Floor ${B.floor}` : B && B.friend ? `Friendly battle · ${B.rival}` : B && B.sable ? `Rival Sable · World ${B.sable}` : B && B.mythic ? "The Heartcrystal · Kaleidra" : `${where} · Battle`, wheel: `${where} complete`, duel: `Live duel · ${NET.code ? spell(NET.code) : ""}` };
     document.getElementById("subtitle").textContent = sub[S.screen];
-    const r = { camp: renderCamp, level: renderLevel, battle: renderBattle, wheel: renderWheel };
+    const r = { camp: renderCamp, level: renderLevel, battle: renderBattle, wheel: renderWheel, duel: renderDuel };
     document.getElementById("screen").innerHTML = r[S.screen]();
     const sb = document.getElementById("soundBtn");
     sb.textContent = `Sound effects: ${S.sound ? "on" : "off"}`;

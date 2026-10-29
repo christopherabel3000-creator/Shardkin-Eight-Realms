@@ -5,7 +5,8 @@
   // ---------- Input ----------
   // Back to the camp area you came from: Trials, the Arena, or Levels.
   function backToCamp(text) {
-    const tab = S.level && S.level.trial ? "trials" : S.battle && S.battle.arena ? "arena" : "levels";
+    const tab = S.level && S.level.trial ? "trials" : S.battle && S.battle.arena ? "arena" : S.battle && S.battle.friend ? "friends" : "levels";
+    endFriendBattle();
     restoreAll(); S.level = null; S.battle = null; S.wheel = null; S.confirm = null; S.dieChoose = false; S.screen = "camp"; S.campTab = tab; return [text];
   }
   document.getElementById("screen").addEventListener("click", ev => {
@@ -25,7 +26,7 @@
     flushSound(false);
   }
   // Closes any open prompt or panel: confirmations, swaps, synthesis, Manage, renaming and team suggestions.
-  function clearPrompts() { S.confirm = null; S.synth = null; S.swapIn = null; S.releaseId = null; S.manageId = null; S.renaming = false; S.charmPick = false; S.suggest = null; }
+  function clearPrompts() { S.confirm = null; S.synth = null; S.swapIn = null; S.releaseId = null; S.manageId = null; S.renaming = false; S.charmPick = false; S.suggest = null; S.tradePick = false; S.tradeId = null; }
   // Swaps the current game for another one (an imported code or a backup), keeping the current game as the backup.
   function swapGame(next, msgs) {
     try { localStorage.setItem(BACKUP_KEY, JSON.stringify(Object.assign({}, S, { confirm: null }))); } catch (e) { /* backup is best-effort */ }
@@ -220,9 +221,74 @@
         break;
       }
       case "kaleidra": if (kaleidraOpen() && S.team.length && S.screen === "camp") msgs = kaleidraBattle(); break;
+      // Friends: name, rival codes, trade codes, live duels and cloud saves
+      case "friendname": {
+        const box = document.getElementById("friendname"), name = cleanName(box ? box.value : "", 16);
+        if (!name) { msgs = ["Type a name first, using letters, numbers and spaces."]; break; }
+        S.friends.name = name; msgs = [`Friends will see you as ${name}.`];
+        break;
+      }
+      case "fair": S.friends.fair = !S.friends.fair; msgs = [S.friends.fair ? "Fair fights are on: every monster is at level 100 in friendly battles and the duels you host." : "Fair fights are off: monsters battle at their own levels."]; break;
+      case "rivalmake": if (S.team.length) { rivalOut = makeRivalCode(); msgs = ["Your rival code is in the Your rival code box below. Send it to a friend so they can battle your team."]; copyText(rivalOut, "Your rival code was copied, and it's in the Your rival code box below. Send it to a friend so they can battle your team."); } break;
+      case "rivalcheck": {
+        const box = document.getElementById("rivalbox"), P = readRivalCode(box ? box.value : "");
+        if (!P) { msgs = ["That doesn't look like a complete rival code. Rival codes start with SHARDKINRIVAL1 and a period."]; break; }
+        S.rivalPending = P;
+        msgs = [`A rival code from ${P.name}, with ${teamText(P.team.map(x => monUnpack(x, true)))}. Choose Battle ${P.name} when you're ready.`];
+        break;
+      }
+      case "rivalfight": if (S.rivalPending && S.team.length && S.screen === "camp") msgs = friendBattle(S.rivalPending); break;
+      case "rivalclear": S.rivalPending = null; msgs = ["Okay."]; break;
+      case "tradepick": S.tradePick = !S.tradePick; S.confirm = null; msgs = [S.tradePick ? "Choose a monster to give." : "Okay, no trade."]; break;
+      case "tradeoffer": if (canRelease(S.mons[arg])) { S.confirm = "trade"; S.tradeId = arg; msgs = [`Give ${S.mons[arg].name} away in a trade code? It leaves your base now and travels in the code. Choose Yes or Keep it.`]; } break;
+      case "tradeyes": {
+        const r = S.confirm === "trade" ? makeTradeCode(S.tradeId) : null;
+        S.confirm = null; S.tradeId = null; S.tradePick = false;
+        if (r) { tradeOut = r.code; msgs = [`${r.name} is in your trade code, in the Your trade code box below. Send it to your friend.`]; copyText(tradeOut, `${r.name}'s trade code was copied, and it's in the Your trade code box below. Send it to your friend.`); }
+        break;
+      }
+      case "tradecheck": {
+        const box = document.getElementById("tradebox"), T = readTradeCode(box ? box.value : "");
+        if (!T) { msgs = ["That doesn't look like a complete trade code. Trade codes start with SHARDKINTRADE1 and a period."]; break; }
+        if (S.tradesIn.includes(T.tid)) { msgs = ["You've already taken the monster from this trade code."]; break; }
+        S.tradePending = T;
+        msgs = [`${T.from}'s trade code holds ${tradeText(T)}. Choose Take to add it to your base.`];
+        break;
+      }
+      case "tradetake": if (S.tradePending) { msgs = takeTrade(S.tradePending) || ["You've already taken the monster from this trade code."]; S.tradePending = null; } break;
+      case "tradeclear": S.tradePending = null; msgs = ["Okay, nothing changed."]; break;
+      case "duelhost": if (S.screen === "camp") { later(duelHost()); msgs = ["Making a duel code."]; } break;
+      case "dueljoin": if (S.screen === "camp") { const box = document.getElementById("duelcode"); later(duelJoin(box ? box.value : "")); msgs = ["Looking for that duel."]; } break;
+      case "duelrejoin": { const d = duelSession(); if (d && S.screen === "camp") { later(duelJoin(d.code)); msgs = [`Rejoining duel ${spell(d.code)}.`]; } break; }
+      case "duelforget": duelSession(null); msgs = ["Okay, that duel is forgotten."]; break;
+      case "duelskill": case "duelswitch": {
+        const st = NET.st, them = st && st.p[1 - NET.side];
+        if (!st || st.phase !== "battle" || NET.busy) break;
+        const choice = { k: a === "duelskill" ? "skill" : "switch", i: Number(arg) };
+        later(duelChoose(choice));
+        const what = choice.k === "skill" ? unlocked(st.mons[NET.side][st.active[NET.side]])[choice.i] : st.mons[NET.side][choice.i];
+        msgs = [st.act[1 - NET.side] ? "Sending your move." : `You chose ${choice.k === "skill" ? (what ? what.name : "a skill") : `to send out ${what ? what.name : "a monster"}`}. Waiting for ${them ? them.name : "your friend"}.`];
+        break;
+      }
+      case "duelreplace": if (NET.st && !NET.busy) { later(duelReplace(Number(arg))); msgs = ["Sending out your monster."]; } break;
+      case "duelforfeit": if (NET.st && NET.st.phase === "lobby") { later(duelForfeit()); msgs = ["Stopping the duel."]; } else if (NET.st) { S.confirm = "forfeit"; msgs = ["Forfeit the duel? Choose Yes, forfeit, or Keep battling."]; } break;
+      case "duelforfeityes": if (S.confirm === "forfeit") { S.confirm = null; later(duelForfeit()); msgs = ["Forfeiting."]; } break;
+      case "duelleave": duelLeave(); msgs = ["Back at Friends."]; break;
+      case "cloudsave": if (S.screen === "camp") { later(cloudSave(false)); msgs = ["Saving to the cloud."]; } break;
+      case "cloudforce": if (S.confirm === "cloudconflict") { S.confirm = null; later(cloudSave(true)); msgs = ["Replacing the cloud save."]; } break;
+      case "cloudmine": if (S.cloud && S.cloud.key) { S.confirm = null; later(cloudCheck(S.cloud.key)); msgs = ["Looking up your cloud save."]; } break;
+      case "cloudcheck": { const box = document.getElementById("cloudbox"); later(cloudCheck(box ? box.value : "")); msgs = ["Looking for that cloud save."]; break; }
+      case "cloudyes": {
+        if (S.confirm !== "cloudload" || !pendingCloud) break;
+        const next = pendingCloud; pendingCloud = null;
+        msgs = [`Cloud save loaded: ${saveSummary(next)}. Your previous game is kept as a backup in Settings.`];
+        swapGame(next, msgs);
+        if (S.screen === "camp") S.campTab = "friends";
+        break;
+      }
       case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
       case "resetyes": newGame(); msgs = [S.result]; break;
-      case "cancel": S.confirm = null; S.swapIn = null; S.releaseId = null; S.renaming = false; pendingImport = null; msgs = ["Okay, nothing changed."]; break;
+      case "cancel": S.confirm = null; S.swapIn = null; S.releaseId = null; S.renaming = false; S.tradeId = null; pendingImport = null; pendingCloud = null; msgs = ["Okay, nothing changed."]; break;
       case "copysave": {
         exportCode = encodeSave();
         msgs = [`Your save code is ready in the Your save code box below. It's ${exportCode.length.toLocaleString()} characters long.`];

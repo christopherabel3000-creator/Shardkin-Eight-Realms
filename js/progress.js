@@ -74,6 +74,15 @@
     S.items.charms = S.items.charms || {};
     if (S.brief === undefined) S.brief = false;
     S.sable = S.sable || [];
+    S.friends = S.friends || { name: "", fair: false, battles: { won: 0, lost: 0 }, duels: { won: 0, lost: 0 }, duelIds: [] };
+    S.tradesIn = S.tradesIn || [];
+    if (S.cloud === undefined) S.cloud = null;
+    // The copies of your team from a friendly battle never outlive it.
+    if (!(S.battle && S.battle.friend)) {
+      for (const uid of Object.keys(S.mons)) if (/^x\d+$/.test(uid)) delete S.mons[uid];
+      S.team = S.team.filter(uid => S.mons[uid]);
+      if (!S.team.length) S.team = Object.values(S.mons).sort((a, b) => b.level - a.level).slice(0, 4).map(m => m.uid);
+    }
   }
   // One-time changes for saves made before an update. Runs on load and after importing a save code.
   const UPDATE_STEPS = {
@@ -101,6 +110,9 @@
     story1(msgs) {
       const w = sableNext();
       msgs.push(`New: a rival Shardbinder named Sable waits at the end of every world, and the story now runs all the way to the Phantom Rift.${w ? ` Sable is waiting for you at the end of World ${w}. Battle Sable from Levels.` : ""}`);
+    },
+    friends1(msgs) {
+      msgs.push("New: Friends, under Adventure, with rival codes and trade codes to share, live duels, and cloud saves.");
     }
   };
   function applyUpdates(msgs) {

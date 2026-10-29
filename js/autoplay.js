@@ -165,10 +165,13 @@
   let autoWasOn = false;
   if (S) {
     ensureExtras();
-    if (S.screen === "camp") S.campTab = null;
+    // A live duel can't survive a reload: it's rejoined from Friends.
+    const wasDuel = S.screen === "duel";
+    if (wasDuel) { S.screen = "camp"; S.campTab = "friends"; }
+    else if (S.screen === "camp") S.campTab = null;
     if (S.auto) { autoWasOn = true; S.auto = null; }
     S.confirm = null;
-    S.result = { camp: "Welcome back. You're at camp.", level: "Welcome back. Your level is waiting where you left it.", battle: "Welcome back. Your battle is waiting where you left it.", wheel: "Welcome back. Your reward wheel is waiting." }[S.screen] || "Welcome back.";
+    S.result = wasDuel ? "Welcome back. You can rejoin your duel from Friends." : { camp: "Welcome back. You're at camp.", level: "Welcome back. Your level is waiting where you left it.", battle: "Welcome back. Your battle is waiting where you left it.", wheel: "Welcome back. Your reward wheel is waiting." }[S.screen] || "Welcome back.";
     const extra = [];
     applyUpdates(extra);
     if (S._pendingPxp) { givePxp(S._pendingPxp, extra); delete S._pendingPxp; }

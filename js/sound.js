@@ -41,7 +41,7 @@
   function hpSfx(m, isYou, before) {
     if (!S.hpTones || !m) return;
     const frac = m.hp / m.maxHp;
-    queue.push({ hp: true, frac, you: isYou });
+    queue.push({ hp: true, frac, you: isYou, before });
     if (isYou && frac > 0 && frac < 0.25 && before >= 0.25) queue.push({ warn: true, you: true });
   }
   const SND = (function () {

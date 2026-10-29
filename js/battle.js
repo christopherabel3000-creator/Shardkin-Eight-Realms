@@ -47,8 +47,13 @@
   function foesLeft() { return S.battle.enemies.filter(e => e.hp > 0 && !e.caught).length; }
   function an(word) { return (/^[AEIOU]/i.test(word) ? "an " : "a ") + word; }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-  function foeWord() { const B = S.battle; return B.wboss ? "World boss" : B.arena || B.sable ? "Rival" : B.mythic ? "Mythical" : B.boss ? "Boss" : "Wild"; }
-  function label(m, isYou) { return isYou ? `your ${m.name}` : `${foeWord().toLowerCase()} ${m.name}`; }
+  function foeWord() { const B = S.battle; return B.wboss ? "World boss" : B.arena || B.sable || B.friend ? "Rival" : B.mythic ? "Mythical" : B.boss ? "Boss" : "Wild"; }
+  // In a live duel both players read the same messages, so monsters go by their player's name; isYou is the host's side.
+  function label(m, isYou) {
+    const B = S.battle;
+    if (B && B.duel) return `${B.names[isYou ? 0 : 1]}'s ${m.name}`;
+    return isYou ? `your ${m.name}` : `${foeWord().toLowerCase()} ${m.name}`;
+  }
   const STATUS_WORD = { sleep: "asleep", stun: "stunned", poison: "poisoned" };
 
   // ---------- Battle core ----------
@@ -163,8 +168,8 @@
   }
   function useSkill(att, def, sk, isYou, msgs) { if (sk.support) support(att, def, sk, isYou, msgs); else attack(att, def, sk, isYou, msgs); }
   // The end of each round: poison, then Regrowth (much smaller for world bosses, like poison).
-  function endOfRound(msgs) {
-    for (const [m, isYou] of [[you(), true], [foe(), false]]) {
+  function endOfRound(msgs, pairs) {
+    for (const [m, isYou] of pairs || [[you(), true], [foe(), false]]) {
       if (!m || m.hp <= 0) continue;
       const giant = S.battle.wboss && !isYou;
       if (m.status && m.status.type === "poison") {
@@ -210,7 +215,7 @@
       cur.done = true;
       if (B.wboss) { wbVictory(msgs); return; }
       msgs.push(`${foeWord()} ${cur.name} fainted.`); sfx("faint");
-      teamXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss && !B.arena ? 2 : 1)), msgs, false, cur.level);
+      if (!B.friend) teamXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss && !B.arena ? 2 : 1)), msgs, false, cur.level);
       if (!B.boss && !B.mythic && Math.random() < 0.5) addShards(cur.el, SHARD_DROP[cur.rarity] * (cur.shard ? 3 : 1), msgs, "It left behind");
     }
     const next = foe();
@@ -222,13 +227,14 @@
       else if (B.wboss) { msgs.push("Your whole team has fainted."); wbFinish(msgs, false); }
       else if (B.arena) { B.over = "arenalose"; for (const m of teamMons()) m.status = null; sfx("lose"); msgs.push(`Your whole team has fainted on Arena floor ${B.floor}. Your best is floor ${S.arena.best}. Return to camp to heal up and climb again.`); }
       else if (B.sable) sableLose(msgs);
+      else if (B.friend) friendEnd(false, msgs);
       else if (B.mythic) kaleidraEnd(false, msgs);
       else endBattle("lose", msgs);
     }
   }
   // The next opponent stepping in, after one faints or is caught.
   function nextLine(next) {
-    const B = S.battle, who = B.arena || B.sable ? B.rival : null;
+    const B = S.battle, who = B.arena || B.sable || B.friend ? B.rival : null;
     crySfx(next, false);
     if (brief()) return `${who ? `${who}'s next` : "Next"}: ${introLine(next)}.`;
     return who ? `${who} sends out ${next.name}, ${introLine(next)}.` : `Wild ${next.name} steps forward, ${introLine(next)}.`;
@@ -237,8 +243,9 @@
     const B = S.battle;
     B.over = kind;
     for (const m of teamMons()) m.status = null;
-    if (kind === "win") bump("wins");
+    if (kind === "win" && !B.friend) bump("wins");
     if (kind === "win" && B.arena) { arenaWin(msgs); return; }
+    if (kind === "win" && B.friend) { friendEnd(true, msgs); return; }
     if (kind === "win" && B.sable) { sableWin(msgs); return; }
     if (kind === "win" && B.mythic) { kaleidraEnd(true, msgs); return; }
     if (kind === "win") {
@@ -340,9 +347,10 @@
   // Trials, world boss fights and the story's battles allow a few items: ITEM_CAP per Trial run, or per fight.
   // Healing items, Fury and Ward Shards and Loaded Dice count; capture items don't.
   const ITEM_CAP = 5;
-  function capFight() { const B = S.battle; return !!(B && (B.wboss || B.sable || B.mythic)); }
+  function capFight() { const B = S.battle; return !!(B && (B.wboss || B.sable || B.mythic || B.friend)); }
   function capHolder() { return capFight() ? S.battle : S.level && S.level.trial ? S.level : null; }
-  function itemCap() { return S.battle && S.battle.wboss ? ITEM_CAP : ruleVal("cap", ITEM_CAP); }
+  // Friendly battles use no items at all.
+  function itemCap() { return S.battle && S.battle.friend ? 0 : S.battle && S.battle.wboss ? ITEM_CAP : ruleVal("cap", ITEM_CAP); }
   function itemsLeft() { const h = capHolder(); return h ? Math.max(0, itemCap() - (h.itemsUsed || 0)) : Infinity; }
   function spendCap(msgs) {
     const h = capHolder();

@@ -33,6 +33,7 @@ A playable single-player campaign:
 - **Base management:** sort and filter your base (with a heading per element or rarity), swap a base monster straight onto a full team, and release monsters you don't need for Shard Dust and elemental shards, one at a time or all your spare Commons and Uncommons at once with **Release extras**.
 - **Team tools:** Manage any monster to give it a nickname or make it a favorite (favorites can't be released or used up in synthesis), save up to four teams, and **Suggest a team** for any world or Trial.
 - **Brief messages** (Settings): shorter battle lines without the tips you already know.
+- **Friends** (under Adventure): a Shardbinder name, **rival codes** to battle a friend's team from your own game, **trade codes** to send a monster to a friend, **live duels** with each player on their own device, and a **cloud save** under a private key. Friendly battles and duels use copies of both teams, so nothing changes for anyone's monsters, and a fair-fight option puts every monster at level 100.
 - **Automatic saving** in your browser, plus **save codes** in Settings to back up your game or move it to another device, and a backup of your game from the start of each day.
 - **Install as an app:** add the game to your Home Screen to play full screen and offline. An installed copy isn't cleared by Safari for going unused.
 
@@ -51,6 +52,7 @@ Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; e
   - `board.js` — dice-board levels and world bosses
   - `battle.js` — battles, the reward wheel, synthesis and training timers
   - `story.js` — Rival Sable, the final battle and Kaleidra
+  - `friends.js` — your Shardbinder name, rival codes, trade codes, live duels and cloud saves
   - `screens.js` — drawing every screen and camp area
   - `input.js` — button handling; every action goes through `doAction`
   - `autoplay.js` — auto-play, then starting the game (loads last)
@@ -58,5 +60,14 @@ Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; e
 When you change a file, bump the `?v=` number on its line in `index.html` so phones don't keep an old copy. The service worker saves each file under its `?v=` address, so a new number is also what makes the installed app pick up the change.
 - `manifest.webmanifest`, `icons/` — the app name and icons used when the game is installed
 - `sw.js` — the service worker: keeps the game playable offline. The page is always fetched fresh when online; everything it lists is saved as it's used.
+- `database.rules.json` — the Firebase Realtime Database rules for live duels and cloud saves (see Online play below)
 - `DESIGN.md` — the full game design and build plan
 - `tools/sim.js` — a balance simulator, not loaded by the game. It plays a saved game forward with the real game code and auto-play's choices: `node tools/sim.js <file with a save code> <campaign|trials|wboss|arena> [runs]`. Use it to check a balance change against a real save before it ships.
+
+## Online play
+Live duels and cloud saves use the Firebase Realtime Database project shared with Gridiron Duel and Hidden Ranks (call-sheet-football). Duels live under `shardkinDuels/<CODE>` and cloud saves under `shardkinSaves/<KEY>`. The Firebase library loads only when an online feature is first used, so the rest of the game stays fast and works offline. Rival codes and trade codes are plain text and don't need it.
+
+The rules are in `database.rules.json`, with a section for each game, and the Gridiron Duel and Hidden Ranks repos have identical copies. To switch online play on, paste the whole file into the Firebase console: Realtime Database, then Rules, then Publish. Keep the three copies the same, or the other games will stop working online. Until the rules are published, the game says online play isn't switched on yet.
+
+The rules only accept well-formed records, require every change to be exactly one version newer than the last (so a duel or save can't be rewound or wiped), allow deleting a duel nobody has touched in 7 days, and never allow deleting a cloud save. Nobody can list the saves; a save can only be read with its 12-character key.
+

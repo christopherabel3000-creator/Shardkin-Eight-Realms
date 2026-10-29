@@ -592,6 +592,41 @@ Sable is a Shardbinder from the Hollow Shard, afraid that restoring the Heartcry
 - Achievement: Heart of the Shards (catch it: 2 Crest Choices and 20,000 Shard Dust). The Collection lists it under its own Mythical heading once the Heartcrystal is whole; it doesn't count toward the 120.
 - Sound: Heart attacks are a rising major chord with a crystal shimmer, as loud as the other elements, and Kaleidra's cry sings in three voices.
 
+## Friends Update
+Everything is under Friends, in the Adventure group of the main menu.
+
+- **Shardbinder name:** up to 16 letters, numbers, spaces, apostrophes, periods and hyphens, shown to friends in codes and duels. Without one, you're Shardbinder.
+- **Fair fights:** one setting for friendly battles and the duels you host. Every monster is set to level 100; forms, infusions, charms and traits stay.
+
+### Rival codes
+- `SHARDKINRIVAL1.` and base64 of JSON: your name and up to four monsters (species, form, level, infusion, Shardborn, nickname, charm).
+- Pasted codes are rebuilt field by field: unknown species, impossible levels (outside 1 to 250), infusions over 5 and unknown charms are dropped, and a monster's form follows its level, except that a final form (which needs a crest) is kept. Words pasted around a code are ignored.
+- A friendly battle uses copies of your team and theirs: your copies stand in under temporary ids and are removed when you leave, so there's no experience, nothing is used up, and no item can be used. The record counts wins and losses. Friendly wins don't count toward quests.
+
+### Trade codes
+- `SHARDKINTRADE1.` and base64 of JSON: a random trade id, your name and one monster.
+- Anything you could release can be traded: not your team, favorites, Kaleidra, or monsters training or away. The monster leaves your base when the code is made, and a worn charm goes back to your Bag.
+- Each game remembers the trade ids it has taken, so a code works once per player. The giver can take it back if their friend doesn't. To trade, each player makes a code for the other.
+
+### Live duels
+- A duel lives at `shardkinDuels/CODE` (four letters, no I or O) as `{ ver, state, t, by, act }`, where `state` is JSON with both players' names, device ids and teams, the duel's monsters as they battle, the choices for this turn, and the last turn's messages and sounds. Every change goes through a transaction that adds one to `ver`.
+- The host makes a code; the guest enters it. Both teams are copied at that moment, so nothing changes for either player's monsters, and no items are used.
+- Each turn both players choose at the same time: a skill, or a switch, which uses the turn in a duel. Whoever chooses second works out the turn inside their transaction with the game's own battle rules (switches first, then the faster monster or one with Quick Start or Overcharge, then poison and Regrowth), so both players always get the same result.
+- Messages use the players' names ("Robin's Skyfulgor used Sky Bolt on Chris's Oceanheart"). The turn's sounds are stored with it and played from each player's side, with their own monster on the right; health tones, the low-health warning and cries follow each player's settings.
+- When a monster faints, its player chooses who goes next while the other waits. A player with no monsters standing loses; if both run out together, it's a draw. Forfeiting ends the duel for both, and a host can stop hosting before anyone joins.
+- Leaving a duel keeps it to rejoin from Friends, on the same device; a reload mid-duel returns to Friends with a Rejoin button. Results are counted once per duel.
+- The other player choosing is announced without moving focus; each turn's messages are read from What happened.
+
+### Cloud saves
+- `shardkinSaves/KEY`, where the key is 12 characters from 32 letters and digits (no I, O, 0 or 1), from the browser's secure random numbers. It's shown as three groups of four.
+- The save carries its own key and version number. Saving again from another device than the one that last saved or loaded it is stopped with a choice: load the cloud save, or replace it on purpose.
+- Loading asks first, and the replaced game is kept as the backup in Settings, like a save code.
+
+### Tested
+- End to end with two and three games sharing a stand-in database that applies the rules' version check, including a stale first try for every transaction, like the real client: a full duel (every turn read the same by both players), a forfeit, a rejoin, a reload, rival and trade codes, and a cloud save moved between devices with a conflict.
+- In two Chromium windows with a stand-in database: names, a friendly battle, a trade with words around the code, a cloud save, and a live duel played to the end. Without the Firebase library, hosting says the server can't be reached.
+- 6,000 random presses by two players across Friends and duels, with no errors.
+
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.
@@ -603,6 +638,7 @@ Sable is a Shardbinder from the Hollow Shard, afraid that restoring the Heartcry
 8. **Endgame** — done (prototype): Trials, Collection, Bag, Heartcrystal fusion and world bosses that grow with your team.
 9. **Comfort, sound and deeper battles** — done: install as an app, Manage and favorites, saved and suggested teams, brief messages, cries and health tones, traits, support skills, charms and weekly Trial rules.
 10. **Story** — done: Rival Sable in every world, the final battle in the Phantom Rift, and Kaleidra.
-11. **Multiplayer:** co-op, then PvP and base raids.
+11. **Friends** — done: rival codes, trade codes, live duels and cloud saves.
+12. **More multiplayer:** co-op and base raids.
 
 Progress will save on the device between sessions.
