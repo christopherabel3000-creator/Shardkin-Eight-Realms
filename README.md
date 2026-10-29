@@ -21,6 +21,8 @@ A playable single-player campaign:
 - **Auto-play** for cleared levels, with speed, repeat, potion and catching settings.
 - **Shardborn variants**, rare crystal versions of every monster, plus elemental shards, the **Shard Forge**, shard storms and the story of the Heartcrystal.
 - **Element-themed attack sounds** that change with each skill's power and name, plus a sound test in Settings.
+- **Monster cries:** every species has its own synthesized cry, built from its element, rarity, name and form, played when it enters battle and from the Collection, where caught monsters also have descriptions.
+- **Health tones** (Settings): after each hit, a tone whose pitch follows the target's health, yours on the right and your opponent's on the left, with a warning when yours drops below a quarter.
 - **Two currencies:** everyday Shard Dust, and rare Coins earned from milestones and spent in the Coin Shop on Mythic Eggs, Shardborn Lures, Chosen Crests and more.
 - **Base management:** sort and filter your base (with a heading per element or rarity), swap a base monster straight onto a full team, and release monsters you don't need for Shard Dust and elemental shards, one at a time or all your spare Commons and Uncommons at once with **Release extras**.
 - **Team tools:** Manage any monster to give it a nickname or make it a favorite (favorites can't be released or used up in synthesis), save up to four teams, and **Suggest a team** for any world or Trial.
@@ -36,8 +38,9 @@ Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; e
 - `css/style.css` — the look of every screen, in light and dark mode
 - `js/` — the game code, split by area and loaded in this order (they share one global scope, so order matters):
   - `data.js` — elements, monsters, rosters, worlds and stat math
+  - `lore.js` — a description of every species
   - `state.js` — items, shop, buildings, saving, save codes, new games and achievements
-  - `sound.js` — sound effects and synthesized attack sounds
+  - `sound.js` — sound effects, synthesized attack sounds, monster cries and health tones
   - `progress.js` — experience, evolution, currencies, shards, expeditions, hatchery, quests, the Arena, base management, Trials and Heartcrystal fusion
   - `board.js` — dice-board levels and world bosses
   - `battle.js` — battles, the reward wheel, synthesis and training timers

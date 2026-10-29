@@ -200,14 +200,15 @@
   }
   // Everything you can do with one monster, gathered in one place so each row in the list stays short.
   function managePanel(m) {
-    let p = `<div class="row"><p class="nm">Manage ${m.name}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>`;
+    let p = `<div class="row"><p class="nm">Manage ${m.name}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>${DESC[m.id] ? `<p>${DESC[m.id]}</p>` : ""}`;
     if (S.renaming) {
       p += `<label class="field" for="namebox">New name for ${m.name}</label><input id="namebox" type="text" maxlength="16" autocomplete="off" autocapitalize="words" spellcheck="false" value="${m.nick || ""}">`;
       p += `<div class="pair">${btn("namesave", m.uid, "Save name", "", true)}${m.nick ? btn("nameclear", m.uid, "Remove nickname", `Goes back to ${speciesName(m)}`) : btn("cancel", "", "Cancel")}</div>`;
       if (m.nick) p += btn("cancel", "", "Cancel");
       return p + `</div>`;
     }
-    const b = [btn("rename", m.uid, m.nick ? `Rename ${m.name}` : `Give ${m.name} a nickname`, m.nick ? `Its species is ${speciesName(m)}` : "Up to 16 letters"),
+    const b = [btn("cry", `${m.id}:${m.stage || 0}:${m.shard ? 1 : 0}`, `Hear ${m.name}'s cry`, ""),
+      btn("rename", m.uid, m.nick ? `Rename ${m.name}` : `Give ${m.name} a nickname`, m.nick ? `Its species is ${speciesName(m)}` : "Up to 16 letters"),
       btn("fav", m.uid, `Favorite: ${m.fav ? "on" : "off"}`, "Favorites can't be released or used up in synthesis", false, !!m.fav), ...crestBtns(m)];
     if (canRelease(m)) b.push(btn("release", m.uid, `Release ${m.name}`, releaseText(m)));
     b.push(btn("managedone", "", "Done", "", true));
@@ -463,6 +464,12 @@
     if (s.forms.length === 3 && own.length && own.every(m => m.stage < 2)) t += `. Its final form needs the ${crestName(id)}, and you have ${S.items.crests[crestName(id)] || 0}`;
     return t;
   }
+  // The cry to play for a species: the most evolved form you own, Shardborn if you own one.
+  function cryArg(id) {
+    const own = Object.values(S.mons).filter(m => m.id === id);
+    const stage = Math.max(0, ...own.map(m => m.stage || 0));
+    return `${id}:${stage}:${own.some(m => m.shard) ? 1 : 0}`;
+  }
   function tabCollection() {
     const f = colFilter(), caught = S.dex.length;
     let s = `<div class="actions"><p>${caught} of 120 monsters caught. Shardborn caught: ${S.shardDex.length} of 120.</p>`;
@@ -476,7 +483,10 @@
       const ids = RARITIES.flatMap(r => POOLS[el][r]), have = ids.filter(id => S.dex.includes(id)).length;
       const shown = ids.filter(id => f === "all" || (f === "missing") !== S.dex.includes(id));
       if (!shown.length) continue;
-      s += sub3(`${el}: ${have} of 15${have === 15 ? ", complete" : ""}`, true) + `<ul class="clean">${shown.map(id => `<li>${colLine(id)}.</li>`).join("")}</ul>`;
+      s += sub3(`${el}: ${have} of 15${have === 15 ? ", complete" : ""}`, true);
+      // Caught species are buttons that play their cry; their description is the button's second line.
+      if (f === "missing") s += `<ul class="clean">${shown.map(id => `<li>${colLine(id)}.</li>`).join("")}</ul>`;
+      else s += `<div class="actions">${shown.map(id => S.dex.includes(id) ? btn("cry", cryArg(id), `${colLine(id)}.`, `${DESC[id] || ""} Plays its cry.`) : `<p class="muted">${colLine(id)}.</p>`).join("")}</div>`;
       const missing = RARITIES.filter(r => POOLS[el][r].some(id => !S.dex.includes(id)));
       if (f !== "caught" && missing.length) s += `<p class="muted" style="margin-top:6px">${colWhere(el, missing)}</p>`;
     }
@@ -629,12 +639,15 @@
   function tabSave() {
     let sv = sub3("Messages") + `<div class="actions">` + btn("brief", "", `Brief messages: ${S.brief ? "on" : "off"}`, "Shorter battle lines, without the tips you already know", false, !!S.brief) + `</div>`;
     sv += appSection();
+    sv += sub3("Sound", true) + `<div class="actions">` + btn("cries", "", `Monster cries: ${S.cries !== false ? "on" : "off"}`, "Each species has its own cry when it enters battle", false, S.cries !== false)
+      + btn("hptones", "", `Health tones: ${S.hpTones ? "on" : "off"}`, "After each hit, a tone for the target's health: high is healthy, low is nearly out. Yours on the right, your opponent's on the left, and a warning when yours drops below a quarter", false, !!S.hpTones) + `</div>`;
     sv += sub3("Sound test", true) + `<div class="actions"><p class="muted">Every element has its own attack sound, and stronger skills sound bigger. Words in a skill's name add layers: bites snap, beams and shots whistle in, slashes swish, slams thud, storms and waves swell, and roars or howls add a cry. A bright chime means a strong hit and a dull thud means a weak one. With headphones, your attacks come slightly from the right and your opponent's from the left.</p>`;
     if (!S.sound) sv += `<p>Sound effects are off. Turn them on with the button at the top of the page.</p>`;
     sv += `<div class="pair">`;
     for (const el of ELEMENTS) { const a = demoSkill(el, false), b = demoSkill(el, true); sv += btn("sndtest", el, `${el} attacks`, `${a.name}, then ${b.name}`); }
     sv += btn("sndtest", "strong", "Strong hit", "The chime for a strong matchup") + btn("sndtest", "weak", "Weak hit", "The thud for a weak matchup");
     sv += btn("sndtest", "miss", "Missed attack", "A whoosh that hits nothing") + btn("sndtest", "sides", "Left and right", "Your attack, then your opponent's");
+    sv += btn("sndtest", "hp", "Health tones", "Full, half, low, then the warning") + (S.team.length ? (L => btn("cry", `${L.id}:${L.stage || 0}:${L.shard ? 1 : 0}`, `${L.name}'s cry`, "Your lead's cry. Hear any caught species in the Collection"))(S.mons[S.team[0]]) : "");
     sv += `</div></div>` + sub3("Saved game", true);
     sv += `<div class="actions"><p class="muted">Progress saves automatically, but only in this browser on this device. To keep a backup or move your game to another device, copy your save code and keep it somewhere safe, like Notes or an email to yourself. On the other device, paste it into Load a save code.</p>`;
     sv += btn("copysave", "", "Copy save code", `Your current game: ${saveSummary(S)}`, true);

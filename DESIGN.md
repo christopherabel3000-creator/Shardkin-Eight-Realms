@@ -483,6 +483,13 @@ Crest fusion is offered only for lines you own that still need their crest, and 
 - **Base headings:** sorted by element or rarity, the base list has a heading for each group.
 - **A gentler first level:** in 400 simulated new games, 29% failed World 1 Level 1 at least once, mostly to a level 6 Rare boss against a lone level 5 Cindercub. World 1 Level 1 now has single wild monsters and an Uncommon boss at level 5; failures dropped to about 5%. The first catch of a new game says that catches wait in the base.
 
+## Sound and Character Update
+- **Monster cries:** synthesized, with no audio files, and the same every time for a species. The element sets the voice (Fire a crackling sawtooth, Water a gliding sine with a bubble, Earth a low square with a thump, Electric a buzzing square, Plant a chirping triangle with a rustle, Psychic two voices with vibrato, Ghost a falling wail with an echo, Physical a grunt with a thud). Syllables in the species name set the number of notes (Epics and Legendaries get one more), rarity and evolution set the pitch (rarer and more evolved is lower and slower), the name picks the melody, Legendaries add a low voice, and Shardborn add a crystal shimmer. Cries play when a monster enters battle, yours from the right and your opponent's from the left, and are skipped at fast auto-play speed. Settings can turn them off.
+- Measured in Chromium's audio engine: all 192 forms render between 0.3 and 0.9 seconds, none silent or clipped, with average loudness within about 15% across the eight elements.
+- **Collection:** in the Caught and All views, each caught species is a button that plays its cry, with its description as the second line; the button doesn't move focus, so you can browse cry after cry. Manage also has the description and the cry.
+- **Health tones** (Settings, off by default): after every hit, poison tick, spring, trap or healing item, a tone for that monster's health, two octaves from 220 Hz (nearly out) to 880 Hz (full), yours on the right and your opponent's on the left. A two-note warning plays when your monster drops below a quarter. The sound test has a demo.
+- **Descriptions:** one line for each of the 120 species, in `js/lore.js`.
+
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.

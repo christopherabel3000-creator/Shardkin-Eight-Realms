@@ -11,8 +11,19 @@
   document.getElementById("screen").addEventListener("click", ev => {
     const b = ev.target.closest("button[data-a]");
     if (!b || autoOn()) return;
+    // Cry buttons just play the cry: nothing redraws and focus stays put, so you can browse cry after cry.
+    if (b.dataset.a === "cry") { hearCry(b.dataset.arg); return; }
     doAction(b.dataset.a, b.dataset.arg, false);
   });
+  // A short spoken note that doesn't move focus.
+  function announce(text) { const el = document.getElementById("sr-live"); if (el) { el.textContent = ""; setTimeout(() => { el.textContent = text; }, 50); } }
+  function hearCry(arg) {
+    const [id, stage, shard] = String(arg).split(":");
+    if (!SP[id]) return;
+    if (!S.sound) { announce("Sound effects are off. Turn them on with the button at the top of the page."); return; }
+    queue.push({ cry: true, id, stage: Number(stage) || 0, shard: shard === "1", center: true });
+    flushSound(false);
+  }
   // Closes any open prompt or panel: confirmations, swaps, synthesis, Manage, renaming and team suggestions.
   function clearPrompts() { S.confirm = null; S.synth = null; S.swapIn = null; S.releaseId = null; S.manageId = null; S.renaming = false; S.suggest = null; }
   // Swaps the current game for another one (an imported code or a backup), keeping the current game as the backup.
@@ -65,6 +76,8 @@
       case "suggestno": S.suggest = null; msgs = ["You kept your team."]; break;
       // Settings
       case "brief": S.brief = !S.brief; msgs = [S.brief ? "Brief messages are on." : "Brief messages are off. Battle lines are full length again, with tips."]; break;
+      case "cries": S.cries = S.cries === false; msgs = [S.cries ? "Monster cries are on." : "Monster cries are off. You can still hear them in the Collection."]; break;
+      case "hptones": S.hpTones = !S.hpTones; msgs = [S.hpTones ? "Health tones are on. High means healthy, low means nearly out." : "Health tones are off."]; break;
       case "persist": requestPersist(true); msgs = ["Asking your browser to keep the game's storage permanently."]; break;
       case "dailyrestore": { const d = dailySave(); if (d) { S.confirm = "daily"; msgs = [`Go back to your game from ${new Date(d.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} today? It holds ${saveSummary(d.save)}. Choose Yes or Keep my game.`]; } else msgs = ["There's no backup from today yet."]; break; }
       case "dailyyes": { const d = S.confirm === "daily" && dailySave(); if (d) { msgs = [`Back to your game from the start of today: ${saveSummary(d.save)}. The game you left is kept as the backup below.`]; swapGame(d.save, msgs); } break; }
@@ -119,6 +132,7 @@
         if (!S.sound) { msgs = ["Sound effects are off. Turn them on with the button at the top of the page."]; break; }
         if (ELEMENTS.includes(arg)) { const a = demoSkill(arg, false), b = demoSkill(arg, true); atkSfx(a, true, "hit"); atkSfx(b, true, "hit"); msgs = [`${arg}: ${a.name}, a light skill, then ${b.name}, a heavy one.`]; }
         else if (arg === "sides") { const a = { name: "Tackle", el: "Physical", power: 40 }; atkSfx(a, true, "hit"); atkSfx(a, false, "hit"); msgs = ["Your attack, from the right, then your opponent's, from the left."]; }
+        else if (arg === "hp") { for (const frac of [1, 0.5, 0.15]) queue.push({ hp: true, frac, you: true }); queue.push({ warn: true, you: true }); queue.push({ hp: true, frac: 0.5, you: false }); msgs = ["Health tones: full, half and low on your side, the warning, then your opponent at half, on the left."]; }
         else { atkSfx({ name: "Tackle", el: "Physical", power: 40 }, true, arg); msgs = [{ strong: "A strong hit.", weak: "A weak hit.", miss: "A missed attack." }[arg]]; }
         break;
       }

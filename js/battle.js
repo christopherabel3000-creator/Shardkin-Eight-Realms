@@ -38,6 +38,7 @@
       const sb = S.battle.enemies.find(x => x.shard);
       if (sb) { sfx("shardborn"); msgs.push(brief() ? `Shardborn on this team: ${sb.name}!` : `${sb.name} glitters on this team! Shardborn are rare crystal variants with 10% stronger stats.`); }
     }
+    crySfx(e, false);
     if (!brief()) msgs.push(`Your ${you().name} is ready.`);
   }
   function you() { return S.mons[S.battle.active]; }
@@ -68,6 +69,7 @@
     let dmg = Math.max(1, Math.round(base * stab * m * (0.85 + Math.random() * 0.15)));
     if (isYou && S.battle.fury) dmg = Math.round(dmg * 1.5);
     if (!isYou && S.battle.ward) dmg = Math.max(1, Math.round(dmg * 0.67));
+    const before = def.hp / def.maxHp;
     def.hp = Math.max(0, def.hp - dmg);
     let t;
     if (brief()) t = `${who}, ${sk.name}: ${dmg}${m > 1 ? ", strong" : m < 1 ? ", weak" : ""}.` + (def.hp > 0 ? ` ${cap(target)} ${def.hp} left.` : "");
@@ -78,6 +80,7 @@
       if (def.hp > 0) t += ` ${cap(target)} has ${def.hp} of ${def.maxHp} health left.`;
     }
     atkSfx(sk, isYou, m > 1 ? "strong" : m < 1 ? "weak" : "hit");
+    hpSfx(def, !isYou, before);
     msgs.push(t);
     if (def.hp > 0 && sk.st && !def.status && Math.random() * 100 < sk.stc) {
       const bossy = !isYou ? false : S.battle.boss;
@@ -89,8 +92,9 @@
   function poisonTick(msgs) {
     for (const [m, isYou] of [[you(), true], [foe(), false]]) {
       if (!m || m.hp <= 0 || !m.status || m.status.type !== "poison") continue;
-      const dmg = Math.max(1, Math.floor(m.maxHp / (S.battle.wboss && !isYou ? 60 : 10)));
+      const dmg = Math.max(1, Math.floor(m.maxHp / (S.battle.wboss && !isYou ? 60 : 10))), before = m.hp / m.maxHp;
       m.hp = Math.max(0, m.hp - dmg);
+      hpSfx(m, isYou, before);
       msgs.push(brief() ? `Poison: ${label(m, isYou)} takes ${dmg}${m.hp > 0 ? `, ${m.hp} left` : ""}.` : `Poison hurts ${label(m, isYou)} for ${dmg} damage.` + (m.hp > 0 ? ` It has ${m.hp} of ${m.maxHp} left.` : ""));
     }
   }
@@ -132,6 +136,7 @@
   // The next opponent stepping in, after one faints or is caught.
   function nextLine(next) {
     const B = S.battle, who = B.arena ? B.rival : null;
+    crySfx(next, false);
     if (brief()) return `${who ? `${who}'s next` : "Next"}: ${introLine(next)}.`;
     return who ? `${who} sends out ${next.name}, ${introLine(next)}.` : `Wild ${next.name} steps forward, ${introLine(next)}.`;
   }
@@ -182,7 +187,7 @@
       const m = S.mons[arg];
       if (!m || arg === B.active || m.hp <= 0) return null;
       B.active = arg; B.forced = false;
-      msgs.push(brief() ? `${m.name} is out.` : `You sent out ${m.name}. Switching is free, so you can still act this turn.`); sfx("swap");
+      msgs.push(brief() ? `${m.name} is out.` : `You sent out ${m.name}. Switching is free, so you can still act this turn.`); sfx("swap"); crySfx(m, true);
       return msgs;
     }
     if (type === "retreat") { if (!B.wboss) return null; wbFinish(msgs, true); return msgs; }
@@ -253,9 +258,9 @@
     if (id === "potion" || id === "superpotion") {
       const m = S.mons[target];
       if (!m || m.hp <= 0 || (m.hp >= m.maxHp && !(id === "superpotion" && m.status))) return false;
-      const heal = id === "superpotion" ? m.maxHp - m.hp : Math.min(m.maxHp - m.hp, Math.ceil(m.maxHp / 2));
+      const heal = id === "superpotion" ? m.maxHp - m.hp : Math.min(m.maxHp - m.hp, Math.ceil(m.maxHp / 2)), before = m.hp / m.maxHp;
       m.hp += heal; if (id === "superpotion") m.status = null;
-      S.items[id]--; sfx("heal");
+      S.items[id]--; sfx("heal"); hpSfx(m, true, before);
       msgs.push(`You used ${an(iname(id, 1))}. ${m.name} recovered ${heal} health and now has ${m.hp} of ${m.maxHp}.`);
       return true;
     }
@@ -263,14 +268,14 @@
       const m = S.mons[target];
       if (!m || !S.team.includes(target) || m.hp > 0) return false;
       m.hp = Math.ceil(m.maxHp / 2); m.status = null;
-      S.items.revive--; sfx("heal");
+      S.items.revive--; sfx("heal"); hpSfx(m, true, 0);
       msgs.push(`You used a Revive Shard. ${m.name} is back on its feet with ${m.hp} of ${m.maxHp} health.`);
       return true;
     }
     if (id === "tonic") {
       const hurt = teamMons().filter(m => m.hp > 0 && m.hp < m.maxHp);
       if (!hurt.length) return false;
-      for (const m of hurt) m.hp = Math.min(m.maxHp, m.hp + Math.ceil(m.maxHp / 2));
+      for (const m of hurt) { const before = m.hp / m.maxHp; m.hp = Math.min(m.maxHp, m.hp + Math.ceil(m.maxHp / 2)); hpSfx(m, true, before); }
       S.items.tonic--; sfx("heal");
       msgs.push(`You used a Team Tonic. ${hurt.map(m => `${m.name} now has ${m.hp} of ${m.maxHp}`).join(", ")}.`);
       return true;

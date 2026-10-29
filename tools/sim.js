@@ -14,8 +14,9 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const FILES = ["data", "state", "sound", "progress", "board", "battle", "screens", "input", "autoplay"];
-const JS = path.join(__dirname, "..", "js");
+// The game's scripts, in the order index.html loads them.
+const ROOT = path.join(__dirname, "..");
+const FILES = [...fs.readFileSync(path.join(ROOT, "index.html"), "utf8").matchAll(/<script src="(js\/[^"?]+)/g)].map(m => m[1]);
 
 // Loads the game into a sandbox with a stand-in page and clock, with the save already in browser storage.
 function boot(saveJson) {
@@ -33,7 +34,7 @@ function boot(saveJson) {
     console, TextEncoder, TextDecoder, atob, btoa, navigator: {}, setTimeout: () => 0, clearTimeout() {}, Date: FakeDate
   };
   vm.createContext(ctx);
-  const code = FILES.map(f => fs.readFileSync(path.join(JS, f + ".js"), "utf8")).join("\n;\n") + "\n;globalThis.SIM = { get S() { return S; }, prefs, autoChoose, WORLDS };";
+  const code = FILES.map(f => fs.readFileSync(path.join(ROOT, f), "utf8")).join("\n;\n") + "\n;globalThis.SIM = { get S() { return S; }, prefs, autoChoose, WORLDS };";
   vm.runInContext(code, ctx, { filename: "shardkin.js" });
   const P = ctx.SIM.prefs();
   P.potions = !process.env.NOPOTIONS; P.capture = !!process.env.CATCH; P.repeat = false;

@@ -86,14 +86,14 @@
     if (type === "path") { if (!b) msgs.push("Nothing happens."); }
     else if (type === "heal") {
       L.used[p] = true;
-      const heal = Math.min(lead.maxHp - lead.hp, Math.ceil(lead.maxHp * 0.4));
-      lead.hp += heal; sfx("heal");
+      const heal = Math.min(lead.maxHp - lead.hp, Math.ceil(lead.maxHp * 0.4)), before = lead.hp / lead.maxHp;
+      lead.hp += heal; sfx("heal"); if (heal > 0) hpSfx(lead, true, before);
       if (b) msgs.push(heal > 0 ? `${lead.name} heals ${heal}, ${lead.hp} of ${lead.maxHp}.` : `${lead.name} is at full health.`);
       else msgs.push(heal > 0 ? `${lead.name} recovers ${heal} health and now has ${lead.hp} of ${lead.maxHp}.` : `${lead.name} is already at full health.`);
     } else if (type === "trap") {
       L.used[p] = true;
-      const dmg = Math.max(1, Math.ceil(lead.maxHp * 0.2));
-      lead.hp = Math.max(0, lead.hp - dmg); sfx("trap");
+      const dmg = Math.max(1, Math.ceil(lead.maxHp * 0.2)), before = lead.hp / lead.maxHp;
+      lead.hp = Math.max(0, lead.hp - dmg); sfx("trap"); hpSfx(lead, true, before);
       if (b) msgs.push(`${lead.name} takes ${dmg}` + (lead.hp > 0 ? `, ${lead.hp} of ${lead.maxHp} left.` : "."));
       else msgs.push(`Thorns hit ${lead.name} for ${dmg} damage.` + (lead.hp > 0 ? ` It has ${lead.hp} of ${lead.maxHp} health left.` : ""));
       if (lead.hp <= 0) {
@@ -204,7 +204,7 @@
     S.battle = { boss: true, wboss: true, enemies: [e], active: fromLevel ? S.level.lead : S.team[0], forced: false, over: null, log: [], startHp: W.hp, fromLevel };
     if (!fromLevel) { restoreAll(); S.level = null; }
     S.screen = "battle";
-    sfx("giant");
+    sfx("giant"); crySfx(e, false);
     if (S.brief) return [`World boss ${W.name}: ${fmt(W.hp)} of ${fmt(W.maxHp)} health.`];
     return [`You challenge the world boss ${W.name}. It has ${W.hp} of ${W.maxHp} health. Every point of damage you deal carries over to your next fight.`, `Your ${you().name} is ready.`];
   }

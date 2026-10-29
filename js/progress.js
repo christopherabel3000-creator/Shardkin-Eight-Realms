@@ -89,6 +89,9 @@
       // Experienced players get the shorter messages straight away.
       if (S.player.level >= 10) S.brief = true;
       msgs.push(`New: ${S.brief ? "Brief messages are on, and you can turn them off" : "you can turn on Brief messages"} in Settings, where you can also install the game as an app. Team and base now has Manage buttons for nicknames and favorites, saved teams, Suggest a team and Release extras.`);
+    },
+    sound1(msgs) {
+      msgs.push("New: every species has its own cry when it enters battle. In the Collection, caught monsters have descriptions and play their cry. Health tones are in Settings.");
     }
   };
   function applyUpdates(msgs) {
@@ -289,7 +292,7 @@
     S.battle = { boss: true, arena: true, floor, rival: pickFrom(RIVALS), enemies: arenaTeam(floor), active: alive.uid, forced: false, over: null, log: [] };
     S.screen = "battle";
     const B = S.battle, e = foe();
-    sfx(floor % 10 === 0 ? "boss" : "ambush");
+    sfx(floor % 10 === 0 ? "boss" : "ambush"); crySfx(e, false);
     if (S.brief) return [`Arena floor ${floor}${floor % 10 === 0 ? ", champion" : ""}: ${B.rival}, ${B.enemies.length} monsters. First: ${e.name}, ${e.rarity} ${e.el}, level ${e.level}.`];
     return [`Arena floor ${floor}${floor % 10 === 0 ? ", a champion floor" : ""}. ${B.rival} sends out ${e.name}, ${an(e.rarity)} ${e.el} monster at level ${e.level}. They have ${B.enemies.length} monsters.`, `Your ${you().name} is ready.`];
   }

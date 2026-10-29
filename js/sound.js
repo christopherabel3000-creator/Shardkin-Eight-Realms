@@ -34,6 +34,16 @@
   // Every attack is synthesized from its element, its power and words in the skill's name.
   // Your attacks lean slightly right and your opponent's slightly left, for headphone listeners.
   function atkSfx(sk, isYou, result) { queue.push({ atk: true, el: sk.el, name: sk.name, power: sk.power, you: isYou, result }); }
+  // A monster's cry when it enters battle (Settings can turn cries off).
+  function crySfx(m, isYou) { if (S.cries !== false && m && SP[m.id]) queue.push({ cry: true, id: m.id, stage: m.stage || 0, shard: !!m.shard, you: isYou }); }
+  // Health tones, if turned on in Settings: after a hit or heal, a tone for the monster's health,
+  // yours on the right and your opponent's on the left, and a warning when yours drops below a quarter.
+  function hpSfx(m, isYou, before) {
+    if (!S.hpTones || !m) return;
+    const frac = m.hp / m.maxHp;
+    queue.push({ hp: true, frac, you: isYou });
+    if (isYou && frac > 0 && frac < 0.25 && before >= 0.25) queue.push({ warn: true, you: true });
+  }
   const SND = (function () {
     function noiseBuf(c) {
       if (!c._nb) {
@@ -198,7 +208,65 @@
       }
       return s - t;
     }
-    return { attack };
+
+    // ---------- Monster cries ----------
+    // Every species has its own cry, built the same way every time from its name: the element sets the voice,
+    // syllables set the number of notes, rarity and evolution set the pitch (bigger and rarer is lower and slower),
+    // and the name picks the melody. Shardborn add a crystal shimmer at the end.
+    function seedOf(text) { let h = 2166136261; for (const ch of text) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+    function seeded(seed) { let s = seed || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; }; }
+    function syllables(name) { return Math.max(1, (name.toLowerCase().match(/[aeiouy]+/g) || []).length); }
+    const RARITY_PITCH = { Common: 1.25, Uncommon: 1.1, Rare: 1, Epic: 0.85, Legendary: 0.72 };
+    const VOICE = {
+      Fire: { type: "sawtooth", base: 330, glide: -0.25, peak: 0.3 }, Water: { type: "sine", base: 470, glide: 0.35, peak: 0.24 },
+      Earth: { type: "square", base: 190, glide: -0.1, peak: 0.09 }, Electric: { type: "square", base: 540, glide: 0.18, peak: 0.2 },
+      Plant: { type: "triangle", base: 620, glide: 0.22, peak: 0.3 }, Psychic: { type: "sine", base: 500, glide: 0.4, peak: 0.2, vib: 9 },
+      Ghost: { type: "triangle", base: 430, glide: -0.45, peak: 0.28, vib: 5 }, Physical: { type: "sawtooth", base: 240, glide: -0.15, peak: 0.1 },
+      Heart: { type: "sine", base: 392, glide: 0.05, peak: 0.16, vib: 4 }
+    };
+    function cry(c, out, t, it) {
+      const sp = SP[it.id], v = VOICE[sp.el] || VOICE.Physical, r = seeded(seedOf(it.id));
+      const notes = Math.min(5, syllables(sp.forms[0]) + (sp.rarity === "Epic" || sp.rarity === "Legendary" ? 1 : 0));
+      const size = 1 + 0.18 * (it.stage || 0);
+      const base = v.base * (RARITY_PITCH[sp.rarity] || 0.7) * (0.85 + r() * 0.3) / size;
+      const noteLen = (0.08 + r() * 0.06) * size, shape = Math.floor(r() * 3);
+      let s = t;
+      // An opening texture that says the element before the voice does.
+      if (sp.el === "Earth" || sp.el === "Physical") thump(c, out, s, 0.6 * size, 0.5, sp.el === "Earth" ? 110 : 160);
+      else if (sp.el === "Plant") hiss(c, out, s, { f0: 2400, q: 1.5, dur: 0.06, peak: 0.25 });
+      else if (sp.el === "Fire") for (let i = 0; i < 4; i++) hiss(c, out, s + r() * 0.15, { ft: "highpass", f0: 3000 + r() * 2000, dur: 0.012, peak: 0.3 });
+      else if (sp.el === "Water") tone(c, out, s, { f0: 500, f1: 1100, dur: 0.05, peak: 0.2 });
+      else if (sp.el === "Electric") jitter(c, out, s, 0.08, 0.06, 300, 1800);
+      for (let i = 0; i < notes; i++) {
+        const pos = notes === 1 ? 0.5 : i / (notes - 1);
+        const contour = shape === 0 ? pos : shape === 1 ? 1 - pos : Math.sin(pos * Math.PI);
+        const f0 = base * (1 + (contour - 0.5) * 0.5 + (r() - 0.5) * 0.12), f1 = f0 * (1 + v.glide * (0.5 + r() * 0.5));
+        const len = noteLen * (i === notes - 1 ? 1.7 : 1);
+        tone(c, out, s, { type: v.type, f0, f1, dur: len, peak: v.peak, a: 0.012, vib: v.vib, depth: v.vib ? f0 * 0.04 : 0 });
+        // Psychic and Heart cries sing in two voices; Legendary ones add a low voice underneath.
+        if (sp.el === "Psychic" || sp.el === "Heart") tone(c, out, s, { f0: f0 * 1.5, f1: f1 * 1.5, dur: len, peak: v.peak * 0.4, a: 0.02, vib: v.vib, depth: f0 * 0.05 });
+        if (sp.el === "Heart") tone(c, out, s, { f0: f0 * 1.26, f1: f1 * 1.26, dur: len, peak: v.peak * 0.4, a: 0.02 });
+        if (sp.rarity === "Legendary") tone(c, out, s, { type: "triangle", f0: f0 / 2, f1: f1 / 2, dur: len, peak: 0.14, a: 0.02 });
+        s += len * 0.85;
+      }
+      // Ghost cries echo.
+      if (sp.el === "Ghost") tone(c, out, s + 0.04, { type: "triangle", f0: base * 0.9, f1: base * 0.6, dur: noteLen * 1.6, peak: v.peak * 0.35, a: 0.03, vib: 5, depth: base * 0.04 });
+      if (it.shard) [2093, 2637, 3136].forEach((f, i) => tone(c, out, s + i * 0.05, { f0: f, dur: 0.06, peak: 0.09 }));
+      return s - t + (sp.el === "Ghost" ? 0.2 : 0) + (it.shard ? 0.18 : 0);
+    }
+
+    // ---------- Health tones ----------
+    // A short tone whose pitch follows health: two octaves from 220 Hz (nearly out) up to 880 Hz (full).
+    function hpTone(c, out, t, it) {
+      tone(c, out, t, { type: "triangle", f0: 220 * Math.pow(2, 2 * Math.max(0, Math.min(1, it.frac))), dur: 0.09, peak: 0.2, a: 0.008 });
+      return 0.1;
+    }
+    function warn(c, out, t) {
+      tone(c, out, t, { type: "square", f0: 330, dur: 0.08, peak: 0.07 });
+      tone(c, out, t + 0.12, { type: "square", f0: 247, dur: 0.12, peak: 0.07 });
+      return 0.26;
+    }
+    return { attack, cry, hpTone, warn };
   })();
   function playTones(c, out, t, n) {
     for (const [f, d, type] of TONES[n]) {
@@ -216,12 +284,16 @@
   // Plays a list of sounds back to back on any audio context; returns the total length.
   function playQueue(c, dest, q, t0) {
     let t = t0;
-    for (const n of q.slice(0, 24)) {
-      if (n && n.atk) {
-        let out = dest;
-        if (c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = n.you ? 0.35 : -0.35; p.connect(dest); out = p; }
-        t += SND.attack(c, out, t, n) + 0.12;
-      } else if (TONES[n]) {
+    const side = (n, amount) => {
+      if (!c.createStereoPanner) return dest;
+      const p = c.createStereoPanner(); p.pan.value = n.you ? amount : -amount; p.connect(dest); return p;
+    };
+    for (const n of q.slice(0, 32)) {
+      if (n && n.atk) t += SND.attack(c, side(n, 0.35), t, n) + 0.12;
+      else if (n && n.cry) t += SND.cry(c, n.center ? dest : side(n, 0.35), t, n) + 0.1;
+      else if (n && n.hp) t += SND.hpTone(c, side(n, 0.6), t, n) + 0.04;
+      else if (n && n.warn) t += SND.warn(c, side(n, 0.6), t) + 0.05;
+      else if (TONES[n]) {
         t += playTones(c, dest, t, n) + (n === "tick" ? 0.05 : 0.12);
       }
     }
@@ -229,7 +301,8 @@
   }
   function flushSound(skipAttacks) {
     let q = queue; queue = [];
-    if (skipAttacks) q = q.filter(n => !(n && n.atk));
+    // At fast auto-play speed, attack sounds and cries are skipped so steps don't overlap.
+    if (skipAttacks) q = q.filter(n => !(n && (n.atk || n.cry)));
     if (!S.sound || !q.length) return 0;
     try {
       if (!ctx) {
