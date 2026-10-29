@@ -131,5 +131,7 @@
     swiftail: "So fast its tail leaves afterimages. Blitztail strikes before you see it move.",
     oxling: "A young ox with unstoppable horns. Colossox can push a mountain.",
     fistling: "A tiny martial artist with fists like stones. Grandfist's strikes can split the sky.",
-    atlaslet: "It carries a boulder everywhere for practice. Worldbearer could carry a realm."
+    atlaslet: "It carries a boulder everywhere for practice. Worldbearer could carry a realm.",
+    // Mythical
+    kaleidra: "The Heartcrystal's own Shardkin, woken when the eight shards were whole and at peace. Every realm's light turns in its facets, and the old songs say it chooses its Shardbinder."
   };

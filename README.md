@@ -8,6 +8,8 @@ A turn-based monster-collecting RPG, built to be fully playable with a screen re
 A playable single-player campaign:
 
 - **Twelve worlds:** the eight element worlds (Plant, Water, Fire, Earth, Electric, Psychic, Ghost, Physical) plus four combination worlds, 170 levels in all.
+- **A story to the end:** Sable, a rival Shardbinder, waits at the end of every world with a team that grows from two monsters to four. Each win adds Sable's part to the Story, and the last, in the Phantom Rift, is the final battle.
+- **Kaleidra**, the mythical 121st Shardkin, wakes in the Heartcrystal after the final battle. It's the only Heart Shardkin, can be caught only with Binding Shards, and takes any element's shards at the Forge.
 - **120 monsters**, 15 per element, with evolutions and crest-unlocked final forms.
 - **Dice-board levels** with wild battles, healing springs, thorn traps, portals, treasure chests, a wandering merchant and quiet paths, plus a look-ahead and Loaded Dice.
 - **Level bosses**, a **reward wheel**, and **roaming world bosses** that carry damage over between fights and grow with your team, aiming for about five fights at any stage.
@@ -48,6 +50,7 @@ Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; e
   - `progress.js` — experience, evolution, currencies, shards, expeditions, hatchery, quests, the Arena, base management, Trials and Heartcrystal fusion
   - `board.js` — dice-board levels and world bosses
   - `battle.js` — battles, the reward wheel, synthesis and training timers
+  - `story.js` — Rival Sable, the final battle and Kaleidra
   - `screens.js` — drawing every screen and camp area
   - `input.js` — button handling; every action goes through `doAction`
   - `autoplay.js` — auto-play, then starting the game (loads last)

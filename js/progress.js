@@ -73,6 +73,7 @@
     S.teams = S.teams || [null, null, null, null];
     S.items.charms = S.items.charms || {};
     if (S.brief === undefined) S.brief = false;
+    S.sable = S.sable || [];
   }
   // One-time changes for saves made before an update. Runs on load and after importing a save code.
   const UPDATE_STEPS = {
@@ -96,6 +97,10 @@
     },
     battle1(msgs) {
       msgs.push(`New: every species has a trait, and every monster learns its element's support skill at level ${SUPPORT_UNLOCK}${Object.values(S.mons).some(m => m.level >= SUPPORT_UNLOCK) ? ", so yours already know theirs" : ""}. The Shard Forge makes charms${S.ach.includes("heart") ? ", and Trials have a new rule each week" : ""}.`);
+    },
+    story1(msgs) {
+      const w = sableNext();
+      msgs.push(`New: a rival Shardbinder named Sable waits at the end of every world, and the story now runs all the way to the Phantom Rift.${w ? ` Sable is waiting for you at the end of World ${w}. Battle Sable from Levels.` : ""}`);
     }
   };
   function applyUpdates(msgs) {
@@ -152,7 +157,8 @@
   function onExped(uid) { return !!(S.exped && S.exped.list.some(x => x.uid === uid)); }
   function expLeft(x) { return x.start + x.hours * HOUR - now(); }
   function expCollect(i) {
-    const x = S.exped.list[i], m = S.mons[x.uid], msgs = [];
+    // A mythical monster's finds come from the realms you've opened.
+    const x = S.exped.list[i], m = S.mons[x.uid], msgs = [], el = SP[m.id].mythic ? pickFrom(openElements()) : m.el;
     S.exped.list.splice(i, 1);
     const coins = Math.round(x.hours * (10 + m.level) * RARITY_COIN[m.rarity]);
     S.coins += coins; sfx("coin");
@@ -162,9 +168,9 @@
     if (pot) { S.items.potion += pot; msgs.push(`It also brought back ${pot} Potion${pot > 1 ? "s" : ""}.`); }
     if (orb) { S.items.orb += orb; msgs.push(`It found ${orb} Binding Shard${orb > 1 ? "s" : ""}.`); }
     if (die) { S.items.die += die; msgs.push(`It found ${die} Loaded Di${die > 1 ? "ce" : "e"}!`); }
-    if (x.hours >= 8 && Math.random() < 0.15) addEgg(m.el, msgs, `${m.name} also found`);
+    if (x.hours >= 8 && Math.random() < 0.15) addEgg(el, msgs, `${m.name} also found`);
     let sh = 0; for (let h = 0; h < x.hours; h++) if (Math.random() < 0.5) sh++;
-    addShards(m.el, sh, msgs, "It dug up");
+    addShards(el, sh, msgs, "It dug up");
     const amt = Math.ceil(xpNeed(m.level) * 0.05 * x.hours);
     msgs.push(`${m.name} gained ${amt} experience.`);
     levelCheck(m, amt, msgs);
@@ -324,6 +330,8 @@
   // Released monsters stay counted in the collection, which tracks species caught, not monsters kept.
   const BASE_SORT = { newest: "Newest first", level: "Highest level first", rarity: "Rarest first", element: "By element", name: "By name" };
   const RARITY_RANK = { Common: 0, Uncommon: 1, Rare: 2, Epic: 3, Legendary: 4 };
+  // Mythical monsters sort above Legendaries.
+  function rankOf(m) { return SP[m.id].mythic ? 5 : RARITY_RANK[m.rarity]; }
   function baseSort() { return BASE_SORT[S.baseSort] ? S.baseSort : "newest"; }
   function baseFilter() { return S.baseFilter || "all"; }
   function BASE_FILTER_NAME(f) { return f === "all" ? "All" : f === "dupes" ? "Duplicates" : f === "shardborn" ? "Shardborn" : f === "favs" ? "Favorites" : f; }
@@ -351,8 +359,8 @@
     const by = {
       newest: (a, b) => uidNum(b) - uidNum(a),
       level: (a, b) => b.level - a.level || a.name.localeCompare(b.name),
-      rarity: (a, b) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.level - a.level,
-      element: (a, b) => ELEMENTS.indexOf(a.el) - ELEMENTS.indexOf(b.el) || RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.level - a.level,
+      rarity: (a, b) => rankOf(b) - rankOf(a) || b.level - a.level,
+      element: (a, b) => elIndex(a.el) - elIndex(b.el) || rankOf(b) - rankOf(a) || b.level - a.level,
       name: (a, b) => a.name.localeCompare(b.name) || b.level - a.level
     }[baseSort()];
     return baseMatching(baseFilter()).sort(by);
@@ -373,7 +381,7 @@
     return w.join(" ");
   }
   // Favorites are protected: they can't be released, sent away or used up in synthesis until you unfavorite them.
-  function canRelease(m) { return !!m && !m.fav && !S.team.includes(m.uid) && !inTraining(m.uid) && !onExped(m.uid); }
+  function canRelease(m) { return !!m && !m.fav && !SP[m.id].mythic && !S.team.includes(m.uid) && !inTraining(m.uid) && !onExped(m.uid); }
   // Removes a monster from the game and from everything that points at it.
   function dropMon(uid) {
     const m = S.mons[uid];

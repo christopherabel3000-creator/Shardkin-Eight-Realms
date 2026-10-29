@@ -13,7 +13,7 @@
   function monCard(m, prefix, extra) {
     return `<div class="mon">
       <p class="name">${prefix}${m.name}</p>
-      <p class="tags">${chip(m.el)}<span class="chip plain">${m.rarity}</span><span class="chip plain">Level ${m.level}</span>${m.shard ? `<span class="chip" style="color: var(--accent)">Shardborn</span>` : ""}${m.status ? `<span class="chip" style="color: var(--hp-mid)">${cap(STATUS_WORD[m.status.type])}</span>` : ""}</p>
+      <p class="tags">${chip(m.el)}<span class="chip plain">${rarityName(m)}</span><span class="chip plain">Level ${m.level}</span>${m.shard ? `<span class="chip" style="color: var(--accent)">Shardborn</span>` : ""}${m.status ? `<span class="chip" style="color: var(--hp-mid)">${cap(STATUS_WORD[m.status.type])}</span>` : ""}</p>
       <p class="stat">Health ${m.hp} of ${m.maxHp}</p>
       ${hpBar(m)}
       ${extra || ""}
@@ -35,7 +35,7 @@
     if (m.stage + 1 >= f.length) return "";
     return m.stage === 0 ? ` · Evolves into ${f[1]} at level ${EVOLVE_LEVEL}` : ` · Final form ${f[2]} needs the ${crestName(m.id)}`;
   }
-  function monLine(m) { return `${m.nick ? `${speciesName(m)} · ` : ""}${m.el} · ${m.rarity}${m.shard && !m.nick ? " Shardborn" : ""} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${m.infuse ? ` · Infused ${m.infuse} of 5` : ""}${m.charm ? ` · ${charmName(m.charm)}` : ""}${m.fav ? " · Favorite" : ""}${statusText(m)}`; }
+  function monLine(m) { return `${m.nick ? `${speciesName(m)} · ` : ""}${m.el} · ${rarityName(m)}${m.shard && !m.nick ? " Shardborn" : ""} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${m.infuse ? ` · Infused ${m.infuse} of 5` : ""}${m.charm ? ` · ${charmName(m.charm)}` : ""}${m.fav ? " · Favorite" : ""}${statusText(m)}`; }
   // The items you can use on the board. Everything else (eggs, shards, crests, scrolls) is in the Bag area at camp.
   function itemsLine() {
     const items = ["potion", "superpotion", "revive", "tonic", "orb", "gorb", "grorb", "perfect", "fury", "ward", "die"]
@@ -44,6 +44,8 @@
   }
   function menuLine() { return `${fmt(S.coins)} Shard Dust · ${fmt(S.gems || 0)} Coin${S.gems === 1 ? "" : "s"}`; }
   const sumOf = obj => Object.values(obj || {}).reduce((a, b) => a + b, 0);
+  // Species caught out of the 120; Kaleidra, the mythical 121st, is counted on its own.
+  function dexCount() { return S.dex.filter(id => SP[id] && !SP[id].mythic).length; }
 
   const TABS = [
     ["levels", "Levels"], ["trials", "Trials"], ["team", "Team and base"], ["collection", "Collection"], ["quests", "Quests"], ["arena", "Arena"], ["bag", "Bag"],
@@ -76,12 +78,14 @@
     if (lock) return `Locked: ${lock}`;
     if (id === "levels") {
       const w = highestOpen(), notes = [`Up to World ${w}, the ${world(w).title}`];
+      if (sableNext()) notes.push(`Sable waits at World ${sableNext()}`);
+      if (kaleidraOpen()) notes.push("Kaleidra waits at the Heartcrystal");
       if (S.wboss) notes.push(`World boss active, ${S.wfights.count} fight${S.wfights.count === 1 ? "" : "s"} ready`);
       return notes.join(" · ");
     }
     if (id === "arena") return `Best floor ${S.arena.best}`;
     if (id === "trials") return `Best tier ${S.trials.best} · Tier ${S.trials.best + 1} open`;
-    if (id === "collection") return `${S.dex.length} of 120 caught · ${S.shardDex.length} Shardborn`;
+    if (id === "collection") return `${dexCount()} of 120 caught${S.dex.includes("kaleidra") ? " and Kaleidra" : ""} · ${S.shardDex.length} Shardborn`;
     if (id === "bag") {
       const c = S.items.crestChoice;
       return [c ? `${c} Crest Choice${c === 1 ? "" : "s"} to use` : "", `${eggCount() + sumOf(S.items.mythic)} eggs`, `${fmt(shardCount())} elemental shards`, `${sumOf(S.items.crests)} crests`].filter(Boolean).join(" · ");
@@ -141,10 +145,26 @@
       <div class="pair">${btn("suggestyes", "", "Use this team", "", true)}${btn("suggestno", "", "Keep my team")}</div></div>`;
   }
   function suggestBtn(w) { return btn("suggest", w, `Suggest a team for World ${w}`, `Picks your best four against ${world(w).name} monsters`); }
+  // Sable, and after the final battle Kaleidra, wait at the top of Levels when it's their turn in the story.
+  function storyPanel() {
+    let t = "";
+    const w = sableNext();
+    if (w) {
+      const [lo, hi] = sableLevels(w), n = SABLE.teams[w - 1].length + 1;
+      t += `<div class="row"><p class="nm">${sableFinal(w) ? "The final battle" : "Rival Sable"}</p><p>Sable is waiting at the end of World ${w}, the ${world(w).title}.</p>`
+        + btn("sable", "", "Battle Sable", `A team of ${n}, level ${lo} to ${hi} · Your team starts fully healed · Up to ${ITEM_CAP} items · First win: ${sableCoins(w)} Coins and ${fmt(sableDust(w))} Shard Dust`, true) + `</div>`;
+    }
+    if (kaleidraOpen()) {
+      t += `<div class="row"><p class="nm">Kaleidra</p><p>A ninth light waits above the Heartcrystal.</p>`
+        + btn("kaleidra", "", "Approach Kaleidra", `Mythical Heart Shardkin, level ${kaleidraLevel()} · Catch it with Binding Shards; Prism Shards don't work · Your team starts fully healed · Up to ${ITEM_CAP} other items`, true) + `</div>`;
+    }
+    return t;
+  }
   function tabLevels() {
-    let lv = `<div class="actions">` + suggestPanel() + wbPanel();
+    const top = storyPanel() + wbPanel();
+    let lv = `<div class="actions">` + suggestPanel() + top;
     if (!S.worldView || !worldOpen(S.worldView)) S.worldView = highestOpen();
-    lv += sub3("Choose a world", !!S.wboss) + `<div class="pair">`;
+    lv += sub3("Choose a world", !!top) + `<div class="pair">`;
     let shownLocked = false;
     WORLDS.forEach((W, i) => {
       const w = i + 1, sel = S.worldView === w;
@@ -256,7 +276,7 @@
       tm += sub3(`Showing ${shown.length} of ${base.length}: ${BASE_FILTER_NAME(baseFilter())}, ${BASE_SORT[baseSort()].toLowerCase()}`, true);
       if (!shown.length) tm += `<p class="muted">No monsters match. Choose All to see your whole base.</p>`;
       // Sorted by element or rarity, each group gets its own heading, so a screen reader can jump between them.
-      const groupOf = { element: m => m.el, rarity: m => m.rarity }[baseSort()];
+      const groupOf = { element: m => m.el, rarity: m => rarityName(m) }[baseSort()];
       let group = null;
       tm += `<div class="actions">`;
       for (const m of shown) {
@@ -275,7 +295,7 @@
       tm += `</div>`;
     }
     const counts = ELEMENTS.map(el => `${poolIds(el).filter(id => S.dex.includes(id)).length} of 15 ${el}`).join(", ");
-    return tm + `<p class="muted" style="margin-top:12px">Collection: ${S.dex.length} of 120 monsters. ${counts}. Shardborn caught: ${S.shardDex.length} of 120.</p>`;
+    return tm + `<p class="muted" style="margin-top:12px">Collection: ${dexCount()} of 120 monsters. ${counts}. Shardborn caught: ${S.shardDex.length} of 120.</p>`;
   }
   function crestBtns(m) {
     if (m.stage !== 1 || SP[m.id].forms.length < 3) return [];
@@ -449,7 +469,7 @@
 
   // ---------- Collection ----------
   const RARITIES = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
-  function colFilter() { return ["missing", "caught", "all"].includes(S.colFilter) ? S.colFilter : (S.dex.length < 120 ? "missing" : "all"); }
+  function colFilter() { return ["missing", "caught", "all"].includes(S.colFilter) ? S.colFilter : (dexCount() < 120 ? "missing" : "all"); }
   function worldsText(el) { return joinAnd(elementWorlds(el).map(w => `World ${w}${worldOpen(w) ? "" : " (not open yet)"}`)); }
   // How to get each rarity, said once at the top of the Collection rather than for every monster.
   function colRules() {
@@ -480,13 +500,21 @@
     const stage = Math.max(0, ...own.map(m => m.stage || 0));
     return `${id}:${stage}:${own.some(m => m.shard) ? 1 : 0}`;
   }
+  // Kaleidra, the mythical 121st, gets its own heading after the eight elements once the Heartcrystal is whole.
+  function mythicSection(f) {
+    const have = S.dex.includes("kaleidra");
+    if ((!have && !S.ach.includes("heart")) || (f === "caught" && !have) || (f === "missing" && have)) return "";
+    const s = sub3(`Mythical: ${have ? 1 : 0} of 1`, true);
+    if (have) return s + `<div class="actions">${btn("cry", cryArg("kaleidra"), "Kaleidra, Mythical: caught.", `${DESC.kaleidra} Trait: ${TRAITS.prism.name}. Plays its cry.`)}</div>`;
+    return s + `<p class="muted">${kaleidraOpen() ? "Kaleidra: not caught. It waits above the Heartcrystal; approach it from Levels." : "A ninth Shardkin is said to sleep inside the Heartcrystal. Finish the story to find it."}</p>`;
+  }
   function tabCollection() {
-    const f = colFilter(), caught = S.dex.length;
+    const f = colFilter(), caught = dexCount();
     let s = `<div class="actions"><p>${caught} of 120 monsters caught. Shardborn caught: ${S.shardDex.length} of 120.</p>`;
     s += `<p class="muted">${ELEMENTS.map(el => `${el} ${poolIds(el).filter(id => S.dex.includes(id)).length}`).join(", ")}, out of 15 each.</p><div class="pair">`;
     for (const [k, label, n] of [["missing", "Missing", 120 - caught], ["caught", "Caught", caught], ["all", "All", 120]]) s += btn("colfilter", k, label, `${n} monster${n === 1 ? "" : "s"}`, false, f === k);
     s += `</div>`;
-    if (f === "missing" && caught === 120) return s + `<p>You've caught all 120 Shardkin.</p></div>`;
+    if (f === "missing" && caught === 120) return s + `<p>You've caught all 120 Shardkin.</p></div>` + mythicSection(f);
     if (f !== "caught" && caught < 120) s += `<p class="muted">${colRules()}</p>`;
     s += `</div>`;
     for (const el of ELEMENTS) {
@@ -500,7 +528,7 @@
       const missing = RARITIES.filter(r => POOLS[el][r].some(id => !S.dex.includes(id)));
       if (f !== "caught" && missing.length) s += `<p class="muted" style="margin-top:6px">${colWhere(el, missing)}</p>`;
     }
-    return s;
+    return s + mythicSection(f);
   }
 
   // ---------- Bag ----------
@@ -559,7 +587,7 @@
       s += `</div>`;
       const avail = Object.values(S.mons).filter(m => !S.team.includes(m.uid) && !onExped(m.uid) && !inTraining(m.uid));
       if (!avail.length) s += `<p class="muted">No monsters free in your base. Send a monster from your team to base first.</p>`;
-      for (const m of avail) s += btn("expsend", m.uid, `Send ${m.name} for ${S.expDur} hour${S.expDur > 1 ? "s" : ""}`, `${m.rarity} · Level ${m.level} · About ${Math.round(S.expDur * (10 + m.level) * RARITY_COIN[m.rarity])} Shard Dust`);
+      for (const m of avail) s += btn("expsend", m.uid, `Send ${m.name} for ${S.expDur} hour${S.expDur > 1 ? "s" : ""}`, `${rarityName(m)} · Level ${m.level} · About ${Math.round(S.expDur * (10 + m.level) * RARITY_COIN[m.rarity])} Shard Dust`);
     }
     return s + `</div>`;
   }
@@ -604,7 +632,7 @@
       s += n >= FUSE.mythicShards && S.coins >= FUSE.mythicDust ? btn("forgemythic", el, `Forge a Mythic ${el} egg`, `${cost} · Hatches an Epic or Legendary`) : `<p class="muted">A Mythic ${el} egg: ${cost}. Hatches an Epic or Legendary.</p>`;
     }
     s += sub3(`Infuse ${el} monsters`, true);
-    const mons = Object.values(S.mons).filter(m => m.el === el);
+    const mons = Object.values(S.mons).filter(m => m.el === el || SP[m.id].mythic);
     if (!mons.length) s += `<p class="muted">You don't have any ${el} monsters.</p>`;
     for (const m of mons) {
       if ((m.infuse || 0) >= 5) { s += `<p class="muted">${m.name}, level ${m.level}: fully infused.</p>`; continue; }
@@ -639,11 +667,21 @@
     }
     return s;
   }
+  // Each world's chapter, with Sable's part once you've beaten Sable there; the Heartcrystal after World 8;
+  // and the last two chapters after the final battle and after Kaleidra is caught.
   function tabStory() {
     let s = `<div class="actions"><p>${PROLOGUE}</p>`;
-    WORLDS.forEach((W, i) => { if (worldOpen(i + 1)) s += sub3(`World ${i + 1}: The ${W.title}`, true) + `<p>${W.lore}</p>`; });
-    if (S.ach.includes("heart")) s += sub3("The Heartcrystal", true) + `<p>${EPILOGUE}</p>`;
-    const locked = WORLDS.filter((W, i) => !worldOpen(i + 1)).length;
+    WORLDS.forEach((W, i) => {
+      const w = i + 1;
+      if (!worldOpen(w)) return;
+      s += sub3(`World ${w}: The ${W.title}`, true) + `<p>${W.lore}</p>`;
+      if (w === 8 && S.ach.includes("heart")) s += sub3("The Heartcrystal", true) + `<p>${EPILOGUE}</p>`;
+      if (sableBeaten(w)) s += `<p>${SABLE.lines[i].before} ${SABLE.lines[i].after}</p>`;
+    });
+    if (sableBeaten(WORLDS.length)) s += sub3("The Ninth Light", true) + `<p>${FINALE}</p>`;
+    if (S.dex.includes("kaleidra")) s += sub3("Kaleidra", true) + `<p>${KALEIDRA_END}</p>`;
+    const locked = WORLDS.filter((W, i) => !worldOpen(i + 1)).length, next = sableNext();
+    if (next) s += `<p class="muted">Sable is waiting at the end of World ${next}. Battle Sable from Levels to continue the story.</p>`;
     if (locked) s += `<p class="muted">${locked} more chapter${locked === 1 ? "" : "s"} unlock as you open new worlds.</p>`;
     return s + `</div>`;
   }
@@ -771,9 +809,10 @@
   function renderBattle() {
     const B = S.battle, e = foe(), p = you();
     const shownFoe = e || B.enemies[B.enemies.length - 1];
-    const heading = B.wboss ? "World boss" : B.arena ? `Arena floor ${B.floor}: ${B.rival}` : B.boss ? (S.level && S.level.trial ? "Trial boss" : "Level boss") : "Opponent";
-    let h = sec("h-foe", heading, monCard(shownFoe, foeWord() + " ",
-      (B.boss && !B.arena ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`) + battleNotes(shownFoe)));
+    const heading = B.wboss ? "World boss" : B.arena ? `Arena floor ${B.floor}: ${B.rival}` : B.sable ? (B.finale ? "The final battle: Sable" : "Rival Sable")
+      : B.mythic ? "Kaleidra" : B.boss ? (S.level && S.level.trial ? "Trial boss" : "Level boss") : "Opponent";
+    const teamLine = B.mythic || (B.boss && !B.arena && !B.sable) ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`;
+    let h = sec("h-foe", heading, monCard(shownFoe, foeWord() + " ", teamLine + battleNotes(shownFoe)));
     h += sec("h-you", "Your monster", monCard(p, "", xpLine(p) + battleNotes(p)));
     if (autoOn()) return h + sec("h-log", "Battle log", `<ol class="log">${B.log.map(l => `<li>${l}</li>`).join("")}</ol>`);
     if (B.over) {
@@ -783,6 +822,7 @@
       else if (B.over === "wbdone" || B.over === "wbwin") o += btn("camp", "", "Return to camp", "Your team is restored", true);
       else if (B.over === "arenawin") { const alive = teamMons().filter(m => m.hp > 0).length; o += btn("arenanext", "", `Climb to floor ${B.floor + 1}`, `${alive} of ${S.team.length} monsters standing · Health carries over`, true) + btn("camp", "", "Leave the arena", "Your team is restored"); }
       else if (B.over === "arenalose") o += btn("camp", "", "Return to camp", "Your team is restored", true);
+      else if (["sablewin", "sablelose", "mythicend", "mythiccaught"].includes(B.over)) o += btn("camp", "", "Return to camp", "Your team is restored", true);
       else o += btn("camp", "", "Return to camp", "Your team is restored. Captures and experience are kept.", true);
       return h + sec("h-over", B.wboss ? "Fight over" : "Battle over", o + `</div>`);
     }
@@ -808,7 +848,7 @@
     h += sec("h-switch", "Switch monster (free)", sw + `</div>`);
     if (!B.forced) {
       let it = `<div class="actions">`;
-      if (B.boss) it += `<p class="muted">${B.wboss ? "World bosses" : B.arena ? "Rival monsters" : S.level && S.level.trial ? "Trial bosses" : "Level bosses"} can't be captured.</p>`;
+      if (B.boss) it += `<p class="muted">${B.wboss ? "World bosses" : B.arena || B.sable ? "Rival monsters" : S.level && S.level.trial ? "Trial bosses" : "Level bosses"} can't be captured.</p>`;
       else {
         let any = false;
         for (const id of ["orb", "gorb", "grorb"]) {
@@ -817,7 +857,8 @@
           const pct = Math.round(captureChance(e, id) * 100);
           it += btn("capture", id, `Throw ${an(iname(id, 1))}`, `${S.items[id]} left · ${pct}% chance on ${e.name}${e.status ? ` (boosted, it's ${STATUS_WORD[e.status.type]})` : ""} · Uses your turn`);
         }
-        if (S.items.perfect > 0) { any = true; it += btn("capture", "perfect", "Throw a Prism Shard", `${S.items.perfect} left · 100% chance`); }
+        if (B.mythic) it += `<p class="muted">Prism Shards scatter in ${e.name}'s light, so only Binding Shards work.</p>`;
+        else if (S.items.perfect > 0) { any = true; it += btn("capture", "perfect", "Throw a Prism Shard", `${S.items.perfect} left · 100% chance`); }
         if (!any) it += `<p class="muted">No capture items left.</p>`;
       }
       const can = itemsLeft() > 0;
@@ -842,7 +883,9 @@
       if (!autoOn()) w += btn("spin", "", "Spin the wheel", "", true);
     } else {
       w += `<p>You won ${S.wheel.prize}.</p>`;
-      if (!autoOn()) w += btn("camp", "", "Return to camp", "Your team is restored for the next level", true);
+      const sable = !autoOn() && S.level && !S.level.trial && sableNext() === S.level.w;
+      if (sable) w += `<p>Sable is waiting at the end of this world.</p>` + btn("sable", "", "Battle Sable", "Your team starts fully healed", true);
+      if (!autoOn()) w += btn("camp", "", "Return to camp", sable ? "Your team is restored. Sable will wait for you in Levels." : "Your team is restored for the next level", !sable);
     }
     return sec("h-wheel", "Reward wheel", w + `</div>`);
   }
@@ -851,7 +894,7 @@
     document.getElementById("result").textContent = S.result;
     const L = S.level, B = S.battle;
     const where = L ? (L.trial ? `Trial tier ${L.trial} · World ${L.w}, ${world(L.w).title}` : `World ${L.w}, ${world(L.w).title} · Level ${L.n}`) : "";
-    const sub = { camp: S.campTab ? `Camp · ${tabLabel(S.campTab)}` : "Camp · Main menu", level: where, battle: B && B.wboss ? "World boss fight" : B && B.arena ? `Arena · Floor ${B.floor}` : `${where} · Battle`, wheel: `${where} complete` };
+    const sub = { camp: S.campTab ? `Camp · ${tabLabel(S.campTab)}` : "Camp · Main menu", level: where, battle: B && B.wboss ? "World boss fight" : B && B.arena ? `Arena · Floor ${B.floor}` : B && B.sable ? `Rival Sable · World ${B.sable}` : B && B.mythic ? "The Heartcrystal · Kaleidra" : `${where} · Battle`, wheel: `${where} complete` };
     document.getElementById("subtitle").textContent = sub[S.screen];
     const r = { camp: renderCamp, level: renderLevel, battle: renderBattle, wheel: renderWheel };
     document.getElementById("screen").innerHTML = r[S.screen]();

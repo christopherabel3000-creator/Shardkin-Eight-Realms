@@ -6,7 +6,9 @@
   const STRONG = {
     Fire: ["Plant"], Water: ["Fire", "Earth"], Earth: ["Fire", "Electric"],
     Electric: ["Water"], Plant: ["Water", "Earth"], Physical: [],
-    Psychic: ["Ghost"], Ghost: ["Psychic"]
+    Psychic: ["Ghost"], Ghost: ["Psychic"],
+    // Heart belongs to Kaleidra, the Heartcrystal's own Shardkin: nothing is strong or weak against it.
+    Heart: []
   };
   function mult(skillEl, defEl) {
     if (STRONG[skillEl].includes(defEl)) return 1.5;
@@ -209,6 +211,14 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   }
   // Cindercub, the starter, is one of the Fire element's two Epics.
   EXTRA_POOLS.Fire.Epic.unshift("cindercub");
+  // Kaleidra, the mythical 121st Shardkin, wakes in the Heartcrystal after the final battle with Sable. It's in no
+  // element's pool, so it never appears in the wild, in eggs, in synthesis, in Trials or in the Arena.
+  SP.kaleidra = { el: "Heart", rarity: "Legendary", mythic: true, trait: "prism", forms: ["Kaleidra"], base: { hp: 130, atk: 125, def: 120, spd: 115 },
+    skills: [["Stone Facet", "Earth", 90, 100], ["Verdant Facet", "Plant", 90, 100], ["Dream Facet", "Psychic", 90, 95, ["sleep", 20]], ["Heartlight", "Heart", 110, 90]] };
+  // Mythical monsters show as Mythical wherever a rarity is shown; their rarity is Legendary for everything else.
+  function rarityName(m) { return SP[m.id] && SP[m.id].mythic ? "Mythical" : m.rarity; }
+  // Element order for sorting, with Heart after the eight elements.
+  function elIndex(el) { const i = ELEMENTS.indexOf(el); return i < 0 ? ELEMENTS.length : i; }
   function crestName(id) { return `${SP[id].forms[2]} Crest`; }
   const POOLS = {
     Plant: { Common: ["mossling", "sproutle", "fernkit", "budlet", "twiglet"], Uncommon: ["thornback", "petalwing", "mushwick", "briarfox"],
@@ -295,7 +305,8 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     momentum: { name: "Momentum", desc: "Each attack it makes in a row deals 10% more, up to 30%." },
     grudge: { name: "Grudge", desc: "The monster that knocks it out loses a quarter of its health." },
     mender: { name: "Mending", desc: "Recovers a quarter of its health when it switches out." },
-    potent: { name: "Potent", desc: "Its sleep, stun and poison chances are doubled." }
+    potent: { name: "Potent", desc: "Its sleep, stun and poison chances are doubled." },
+    prism: { name: "Prismatic Heart", desc: "Can't be put to sleep, stunned or poisoned." }
   };
   const SPECIES_TRAIT = {
     mossling: "regrowth", sproutle: "momentum", fernkit: "mender", budlet: "shell", twiglet: "quick", thornback: "thornhide", petalwing: "phase",

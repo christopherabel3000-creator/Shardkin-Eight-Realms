@@ -555,6 +555,43 @@ One rule a week for everyone, picked from the week: a Surge for each element (th
 - World bosses: support skills make a team about 30% more effective per fight, so boss health counts the team monsters that have one. The playtest team needs about 4 fights with items (6 or 7 without), and a team at the end of World 1 about 6.
 - New games: 8 of 200 failed World 1 Level 1 at least once; World 2 averages under one failure in ten games.
 
+## Story Update
+### Rival Sable
+Sable is a Shardbinder from the Hollow Shard, afraid that restoring the Heartcrystal will make the Shardkin fade, since they were born from its splinters. Sable tests you at the end of every world, learns after World 8 that the Shardkin are fine, and leads you through the rifts toward the voice waking inside the crystal.
+
+- Sable waits at the end of one world at a time, in order: the first world you've cleared without beating Sable there. The battle starts from Levels, where a panel shows Sable's team size and levels, or from the reward wheel right after that world's last level, including replays. It's never auto-played.
+- Your team starts fully healed, and up to 5 items can be used, not counting capture items, like world boss fights. Rival monsters can't be captured. Losing costs nothing; Sable waits to be battled again.
+- Teams: one monster from each realm Sable crossed, then Sable's own Shadelet, which becomes Shadewyrm in World 2, wears a Hollow Charm from World 7 and rises as Umbradragon in World 8. Two monsters in Worlds 1 and 2, three in Worlds 3 to 8, four in the rifts, where Sable's Epics and Legendaries are final forms and infused (1 in World 9 rising to 5 in the final battle).
+
+| World | Sable's team | Levels |
+|---|---|---|
+| 1 | Mushwick, Shadelet | 10 to 12 |
+| 2 | Mistnewt, Shadewyrm | 14 to 16 |
+| 3 | Smoulderbat, Salamancer, Shadewyrm | 27 to 29 |
+| 4 | Sandviper, Amberlord, Shadewyrm | 37 to 39 |
+| 5 | Glowmoth, Plasmalynx, Shadewyrm | 56 to 58 |
+| 6 | Mesmoth, Dreamstag, Shadewyrm | 72 to 74 |
+| 7 | Cryptbat, Eeriseraph, Shadewyrm | 82 to 84 |
+| 8 | Flexfrog, Blitztail, Umbradragon | 91 to 93 |
+| 9 | Pyrewing, Abyssalisk, Forgetitan, Umbradragon | 133 to 135 |
+| 10 | Tempestalon, Omnicerebra, Stormtyrant, Umbradragon | 155 to 157 |
+| 11 | Golemon, Eclipse Moth, Crystalking, Umbradragon | 171 to 173 |
+| 12, the final battle | Hexsovereign, Grandfist, Soulmonarch, Umbradragon | 172 to 174 |
+
+- First win in each world: 300 Shard Dust per world number, Shardbinder experience of 50 + 25 per world number, and 10 Coins (20 in the rifts, 30 for the final battle). Sable's lines before and after each battle become that world's chapter in the Story, after the world's own; the Heartcrystal chapter now sits after World 8.
+- The final battle in the Phantom Rift adds The Ninth Light, the ending, to the Story, and wakes Kaleidra.
+- Levels were tuned in simulation. A reasonable new player (Suggest a team, crests, infusions, potions from the Shop, auto-play's battle choices) beat Sable on the first try 96%, 100%, 98%, 92%, 95%, 99%, 94% and 83% of the time in Worlds 1 to 8. The playtest save, played forward through the rifts, won every time through World 10, 90% in World 11 and 80% in the final battle. A player who never changes their first four monsters, uses no crests and buys nothing struggles from World 3 on.
+- Achievements: Rival in Every Realm (beat Sable in all eight element worlds: a Crest Choice) and The Ninth Light (win the final battle: 5 Prism Shards and 10,000 Shard Dust).
+
+### Kaleidra
+- The mythical 121st Shardkin and the only Heart Shardkin. Heart skills are neutral against every element, and every element is neutral against Heart. Legendary rarity for everything rarity decides, shown as Mythical. One form. Base stats 130 health, 125 attack, 120 defense, 115 speed, about a Legendary in its final form but faster.
+- Skills: Stone Facet (Earth 90), Verdant Facet (Plant 90), Dream Facet (Psychic 90, 20% sleep), Heartlight (Heart 110, 90% accuracy), and Prismatic Mend, its support skill (clears its status and heals a third of its health).
+- Trait: Prismatic Heart, which blocks sleep, stun and poison.
+- After the final battle it waits above the Heartcrystal, approached from Levels with your team fully healed. It's 3 levels above your strongest team monster (at least level 100) and fully infused. Prism Shards don't work; Binding Shards have 0.12 times the usual chance (Legendaries have 0.15), and up to 5 other items can be used. If it's knocked out, or your team falls, it drifts back into the Heartcrystal for another try. On the playtest save after the final battle, auto-play caught it in its first battle with 2 to 11 Grand Binding Shards.
+- It can't be released. At the Shard Forge it appears under every element and is infused with whichever element's shards are open. Its expedition finds come from realms you've opened.
+- Achievement: Heart of the Shards (catch it: 2 Crest Choices and 20,000 Shard Dust). The Collection lists it under its own Mythical heading once the Heartcrystal is whole; it doesn't count toward the 120.
+- Sound: Heart attacks are a rising major chord with a crystal shimmer, as loud as the other elements, and Kaleidra's cry sings in three voices.
+
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.
@@ -565,6 +602,7 @@ One rule a week for everyone, picked from the week: a Surge for each element (th
 7. **Combination worlds** — done (prototype): four to start; more can be added.
 8. **Endgame** — done (prototype): Trials, Collection, Bag, Heartcrystal fusion and world bosses that grow with your team.
 9. **Comfort, sound and deeper battles** — done: install as an app, Manage and favorites, saved and suggested teams, brief messages, cries and health tones, traits, support skills, charms and weekly Trial rules.
-10. **Multiplayer:** co-op, then PvP and base raids.
+10. **Story** — done: Rival Sable in every world, the final battle in the Phantom Rift, and Kaleidra.
+11. **Multiplayer:** co-op, then PvP and base raids.
 
 Progress will save on the device between sessions.

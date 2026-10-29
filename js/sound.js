@@ -162,6 +162,14 @@
         hiss(c, o, t, { f0: 900, f1: 500, q: 4, dur: d, peak: 0.25 * v, a: 0.2 });
         if (h) tone(c, o, t + 0.12, { type: "triangle", f0: 1100, f1: 300, dur: d * 0.9, peak: 0.16 * v, a: 0.08, vib: 4, depth: 35 });
         return d;
+      },
+      // Heart, Kaleidra's element: a rising major chord, one bright note at a time, with a crystal shimmer.
+      Heart(c, o, t, k, v, h) {
+        const notes = h ? [523, 659, 784, 1047, 1319] : [523, 659, 784, 1047], step = 0.05 * k;
+        notes.forEach((f, i) => tone(c, o, t + i * step, { type: "triangle", f0: f, dur: 0.24 * k, peak: 0.22 * v, a: 0.01 }));
+        hiss(c, o, t + 0.04, { ft: "highpass", f0: 5200, dur: (0.3 + 0.2 * h) * k, peak: 0.16 * v, a: 0.05 });
+        if (h) tone(c, o, t, { f0: 262, f1: 392, dur: 0.6 * k, peak: 0.18 * v, a: 0.08, vib: 5, depth: 6 });
+        return notes.length * step + 0.2 * k;
       }
     };
     const WORDS = {
@@ -175,7 +183,7 @@
     function attack(c, out, t, it) {
       const size = it.power <= 45 ? 0 : it.power <= 75 ? 1 : 2;
       // Per-element loudness balance, measured so every element sounds about equally loud.
-      const ELGAIN = { Plant: 1.5, Water: 1.1, Fire: 1.6, Earth: 0.7, Electric: 1.25, Psychic: 1.4, Ghost: 1.3, Physical: 0.6 };
+      const ELGAIN = { Plant: 1.5, Water: 1.1, Fire: 1.6, Earth: 0.7, Electric: 1.25, Psychic: 1.4, Ghost: 1.3, Physical: 0.6, Heart: 1.2 };
       const k = [0.75, 1, 1.4][size], v = [0.55, 0.75, 0.95][size] * (ELGAIN[it.el] || 1), h = size === 2 ? 1 : 0;
       const pitch = 0.95 + R() * 0.1;
       let s = t;
@@ -195,7 +203,7 @@
         for (const x of [0, 0.07]) { tone(c, out, s + x, { type: "square", f0: 1800, f1: 900, dur: 0.02, peak: 0.25 * v }); hiss(c, out, s + x, { ft: "highpass", f0: 2000, dur: 0.03, peak: 0.3 * v }); }
         s += 0.08;
       }
-      s += EL[it.el](c, out, s, k, v, h);
+      s += (EL[it.el] || EL.Physical)(c, out, s, k, v, h);
       if (WORDS.sweep.test(it.name)) { hiss(c, out, s - 0.15, { ft: "lowpass", f0: 400, f1: 1400, q: 0.8, dur: 0.45 * k, peak: 0.4 * v, a: 0.18 }); s += 0.25 * k; }
       if (WORDS.heavy.test(it.name) && it.el !== "Physical" && it.el !== "Earth") s += thump(c, out, s - 0.05, k, v, 170) - 0.05;
       if (it.result === "strong") {

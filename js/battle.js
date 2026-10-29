@@ -17,7 +17,7 @@
   // Brief messages: shorter battle lines without the tips you've long since learned (Settings).
   function brief() { return !!S.brief; }
   const TEAM_WORD = { 2: "two", 3: "three", 4: "four" };
-  function introLine(e) { return brief() ? `${e.name}, ${e.rarity} ${e.el}, level ${e.level}` : `${an(e.rarity)} ${e.el} monster at level ${e.level}`; }
+  function introLine(e) { return brief() ? `${e.name}, ${rarityName(e)} ${e.el}, level ${e.level}` : `${an(rarityName(e))} ${e.el} monster at level ${e.level}`; }
   function startBattle(boss, msgs) {
     const { w, n, trial } = S.level;
     const enemies = trial ? (boss ? [pickTrialBoss(w, trial)] : [pickTrialWild(w, trial), pickTrialWild(w, trial), pickTrialWild(w, trial)])
@@ -47,7 +47,7 @@
   function foesLeft() { return S.battle.enemies.filter(e => e.hp > 0 && !e.caught).length; }
   function an(word) { return (/^[AEIOU]/i.test(word) ? "an " : "a ") + word; }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-  function foeWord() { return S.battle.wboss ? "World boss" : S.battle.arena ? "Rival" : S.battle.boss ? "Boss" : "Wild"; }
+  function foeWord() { const B = S.battle; return B.wboss ? "World boss" : B.arena || B.sable ? "Rival" : B.mythic ? "Mythical" : B.boss ? "Boss" : "Wild"; }
   function label(m, isYou) { return isYou ? `your ${m.name}` : `${foeWord().toLowerCase()} ${m.name}`; }
   const STATUS_WORD = { sleep: "asleep", stun: "stunned", poison: "poisoned" };
 
@@ -92,6 +92,7 @@
   // Sleep, stun or poison, unless a trait blocks it. short: a boss you put to sleep wakes after one turn.
   function applyStatus(m, type, isYou, msgs, short) {
     const who = cap(label(m, isYou));
+    if (hasTrait(m, "prism")) { msgs.push(`${who}'s Prismatic Heart keeps it ${type === "sleep" ? "awake" : type === "stun" ? "steady" : "pure"}.`); return; }
     if ((type === "sleep" || type === "stun") && hasTrait(m, "ironwill")) { msgs.push(`${who}'s Iron Will keeps it ${type === "sleep" ? "awake" : "steady"}.`); return; }
     if (type === "poison" && hasTrait(m, "purity")) { msgs.push(`${who}'s Pure Spirit shrugs off the poison.`); return; }
     m.status = { type, turns: type === "sleep" ? (short ? 1 : rand(1, 3)) : 1 };
@@ -210,7 +211,7 @@
       if (B.wboss) { wbVictory(msgs); return; }
       msgs.push(`${foeWord()} ${cur.name} fainted.`); sfx("faint");
       teamXp(Math.round(cur.level * 10 * XP_MULT[cur.rarity] * (B.boss && !B.arena ? 2 : 1)), msgs, false, cur.level);
-      if (!B.boss && Math.random() < 0.5) addShards(cur.el, SHARD_DROP[cur.rarity] * (cur.shard ? 3 : 1), msgs, "It left behind");
+      if (!B.boss && !B.mythic && Math.random() < 0.5) addShards(cur.el, SHARD_DROP[cur.rarity] * (cur.shard ? 3 : 1), msgs, "It left behind");
     }
     const next = foe();
     if (!next) { endBattle("win", msgs); return; }
@@ -220,12 +221,14 @@
       if (teamMons().some(m => m.hp > 0)) { B.forced = true; msgs.push(brief() ? "Choose who goes next." : "Choose a monster to send out."); }
       else if (B.wboss) { msgs.push("Your whole team has fainted."); wbFinish(msgs, false); }
       else if (B.arena) { B.over = "arenalose"; for (const m of teamMons()) m.status = null; sfx("lose"); msgs.push(`Your whole team has fainted on Arena floor ${B.floor}. Your best is floor ${S.arena.best}. Return to camp to heal up and climb again.`); }
+      else if (B.sable) sableLose(msgs);
+      else if (B.mythic) kaleidraEnd(false, msgs);
       else endBattle("lose", msgs);
     }
   }
   // The next opponent stepping in, after one faints or is caught.
   function nextLine(next) {
-    const B = S.battle, who = B.arena ? B.rival : null;
+    const B = S.battle, who = B.arena || B.sable ? B.rival : null;
     crySfx(next, false);
     if (brief()) return `${who ? `${who}'s next` : "Next"}: ${introLine(next)}.`;
     return who ? `${who} sends out ${next.name}, ${introLine(next)}.` : `Wild ${next.name} steps forward, ${introLine(next)}.`;
@@ -236,6 +239,8 @@
     for (const m of teamMons()) m.status = null;
     if (kind === "win") bump("wins");
     if (kind === "win" && B.arena) { arenaWin(msgs); return; }
+    if (kind === "win" && B.sable) { sableWin(msgs); return; }
+    if (kind === "win" && B.mythic) { kaleidraEnd(true, msgs); return; }
     if (kind === "win") {
       sfx("win");
       if (B.boss && S.level && S.level.trial) trialClear(msgs);
@@ -266,7 +271,7 @@
   function captureChance(e, kind) {
     if (kind === "perfect") return 1;
     const st = e.status ? STATUS_CAPTURE[e.status.type] : 1, binder = S.battle && you() && you().charm === "binder" ? 1.25 : 1;
-    return Math.min(1, (1 - e.hp / e.maxHp) * CAPTURE_MULT[e.rarity] * st * (BIND_MULT[kind] || 1) * binder);
+    return Math.min(1, (1 - e.hp / e.maxHp) * (SP[e.id].mythic ? MYTHIC_CAPTURE : CAPTURE_MULT[e.rarity]) * st * (BIND_MULT[kind] || 1) * binder);
   }
   function act(type, arg) {
     const B = S.battle;
@@ -296,7 +301,8 @@
       else { theirMove(); if (p.hp > 0 && e.hp > 0) yourMove(); }
     } else if (type === "capture") {
       const e = foe();
-      if (B.boss || !(S.items[arg] > 0) || !(arg in BIND_MULT || arg === "perfect")) return null;
+      // Prism Shards scatter in a mythical monster's light.
+      if (B.boss || !(S.items[arg] > 0) || !(arg in BIND_MULT || arg === "perfect") || (B.mythic && arg === "perfect")) return null;
       S.items[arg]--;
       const orbName = iname(arg, 1);
       if (Math.random() < captureChance(e, arg)) {
@@ -304,18 +310,19 @@
         const isNew = !S.dex.includes(e.id);
         addMon(makeMon(e.id, e.level, e.shard), false);
         S.stats.caught++; bump("caps"); S.counts.capEl[e.el] = (S.counts.capEl[e.el] || 0) + 1;
-        msgs.push(brief() ? `Caught ${e.name}${isNew ? ", new to your collection" : ""}!` : `You threw a ${orbName}. Success! You captured wild ${e.name}${isNew ? ", a new monster for your collection" : ""}. It was sent to your base.`); sfx("catch");
+        msgs.push(brief() ? `Caught ${e.name}${isNew ? ", new to your collection" : ""}!` : `You threw a ${orbName}. Success! You captured ${B.mythic ? "" : "wild "}${e.name}${isNew ? ", a new monster for your collection" : ""}. It was sent to your base.`); sfx("catch");
         // The first catch of a new game says where catches go, once.
         if (S.stats.caught === 1 && S.team.length < 4) msgs.push("Catches wait in your base. Add them to your team from Team and base before your next level.");
         if (e.shard) { bump("shardcaps"); msgs.push(brief() ? "A Shardborn!" : "You caught a Shardborn! Its crystal body makes it stronger than others of its kind."); sfx("shardborn"); giveGems(GEM.shardborn, msgs, "You earned"); }
         teamXp(Math.round(e.level * 5 * XP_MULT[e.rarity]), msgs, false, e.level);
         givePxp(10, msgs);
+        if (B.mythic) { kaleidraCaught(msgs); return msgs; }
         const next = foe();
         if (!next) endBattle("win", msgs);
         else msgs.push(nextLine(next));
         return msgs;
       }
-      msgs.push(brief() ? `${e.name} broke free.` : `You threw a ${orbName}, but wild ${e.name} broke free.`); sfx("fail");
+      msgs.push(brief() ? `${e.name} broke free.` : `You threw a ${orbName}, but ${B.mythic ? "" : "wild "}${e.name} broke free.`); sfx("fail");
       foeTurn(msgs);
     } else if (type === "potion") {
       if (!usePotion(you(), msgs)) return null;
@@ -330,19 +337,25 @@
     return msgs;
   }
   function usePotion(m, msgs) { return useItem("potion", m.uid, msgs, false); }
-  // Trials and world boss fights allow a few items: ITEM_CAP per Trial run, or per world boss fight.
+  // Trials, world boss fights and the story's battles allow a few items: ITEM_CAP per Trial run, or per fight.
   // Healing items, Fury and Ward Shards and Loaded Dice count; capture items don't.
   const ITEM_CAP = 5;
-  function capHolder() { return S.battle && S.battle.wboss ? S.battle : S.level && S.level.trial ? S.level : null; }
+  function capFight() { const B = S.battle; return !!(B && (B.wboss || B.sable || B.mythic)); }
+  function capHolder() { return capFight() ? S.battle : S.level && S.level.trial ? S.level : null; }
   function itemCap() { return S.battle && S.battle.wboss ? ITEM_CAP : ruleVal("cap", ITEM_CAP); }
   function itemsLeft() { const h = capHolder(); return h ? Math.max(0, itemCap() - (h.itemsUsed || 0)) : Infinity; }
   function spendCap(msgs) {
     const h = capHolder();
     if (!h) return;
     h.itemsUsed = (h.itemsUsed || 0) + 1;
-    msgs.push(`${itemsLeft()} of ${itemCap()} items left for this ${S.battle && S.battle.wboss ? "fight" : "Trial"}.`);
+    msgs.push(`${itemsLeft()} of ${itemCap()} items left for this ${capFight() ? "fight" : "Trial"}.`);
   }
-  function capLine() { const h = capHolder(); return h ? `${S.battle && S.battle.wboss ? "World boss fights" : "This Trial"} allow${S.battle && S.battle.wboss ? "" : "s"} ${itemCap()} items, not counting capture items: ${itemsLeft()} left.` : ""; }
+  function capLine() {
+    const h = capHolder(), B = S.battle;
+    if (!h) return "";
+    const who = B && B.wboss ? "World boss fights allow" : B && B.sable ? "Battles with Sable allow" : B && B.mythic ? "This battle allows" : "This Trial allows";
+    return `${who} ${itemCap()} items, not counting capture items: ${itemsLeft()} left.`;
+  }
   // Healing, reviving and battle boosts. Returns false (and changes nothing) if the item can't be used.
   function useItem(id, target, msgs, inBattle) {
     if (itemsLeft() <= 0 || !applyItem(id, target, msgs, inBattle)) return false;

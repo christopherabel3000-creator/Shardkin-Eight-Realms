@@ -22,6 +22,7 @@ body { margin: 0; }
   --el-physical: #5f6072;
   --el-psychic: #b3337f;
   --el-ghost: #574694;
+  --el-heart: #0d7c84;
   --font-display: "Chakra Petch", "Trebuchet MS", system-ui, sans-serif;
   --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -32,6 +33,7 @@ body { margin: 0; }
     --hp-good: #4cc382; --hp-mid: #e3ae3c; --hp-low: #f0705f;
     --el-fire: #ff8a5c; --el-water: #6eaaff; --el-earth: #d3a271; --el-electric: #f2cd4a;
     --el-plant: #6fd27b; --el-physical: #b4b5c6; --el-psychic: #f07bbf; --el-ghost: #a897ee;
+    --el-heart: #62d9df;
     color-scheme: dark;
   }
 }
@@ -41,6 +43,7 @@ body { margin: 0; }
   --hp-good: #4cc382; --hp-mid: #e3ae3c; --hp-low: #f0705f;
   --el-fire: #ff8a5c; --el-water: #6eaaff; --el-earth: #d3a271; --el-electric: #f2cd4a;
   --el-plant: #6fd27b; --el-physical: #b4b5c6; --el-psychic: #f07bbf; --el-ghost: #a897ee;
+    --el-heart: #62d9df;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }

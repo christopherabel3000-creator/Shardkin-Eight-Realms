@@ -157,12 +157,13 @@
         break;
       }
       case "infuse": {
-        const m = S.mons[arg];
-        if (m && (m.infuse || 0) < 5 && (S.items.shards[m.el] || 0) >= infuseCost(m)) {
+        // A mythical monster takes shards of whichever element is open at the Forge.
+        const m = S.mons[arg], el = m && (SP[m.id].mythic ? S.forgeEl : m.el);
+        if (m && ELEMENTS.includes(el) && (m.infuse || 0) < 5 && (S.items.shards[el] || 0) >= infuseCost(m)) {
           const c = infuseCost(m), oldMax = m.maxHp;
-          S.items.shards[m.el] -= c; m.infuse = (m.infuse || 0) + 1; calc(m); m.hp = Math.min(m.maxHp, m.hp + m.maxHp - oldMax);
+          S.items.shards[el] -= c; m.infuse = (m.infuse || 0) + 1; calc(m); m.hp = Math.min(m.maxHp, m.hp + m.maxHp - oldMax);
           sfx("forge"); bump("forged");
-          msgs = [`You infused ${m.name} with ${c} ${m.el} Shards. Infusion ${m.infuse} of 5: its health is now ${m.maxHp}, attack ${m.atk}, defense ${m.def} and speed ${m.spd}.`];
+          msgs = [`You infused ${m.name} with ${c} ${el} Shards. Infusion ${m.infuse} of 5: its health is now ${m.maxHp}, attack ${m.atk}, defense ${m.def} and speed ${m.spd}.`];
         }
         break;
       }
@@ -212,6 +213,13 @@
       case "train": if (!S.training.session && S.mons[arg]) { S.training.session = { uid: arg, start: now(), pxpAt: S.pxpLife, need: trainPxp() }; msgs = [`${S.mons[arg].name} started training. ${trainingStatus().text}`]; } break;
       case "trainclaim": { const s = S.training.session, st = trainingStatus(); if (s && st.done) { const m = S.mons[s.uid], amt = trainAmount(m); msgs = [`${m.name} finished training and gained ${fmt(amt)} experience.`]; S.training.session = null; S.stats.trained++; levelCheck(m, amt, msgs); givePxp(15, msgs); } break; }
       case "wbfight": if (S.wboss && S.wfights.count > 0 && S.screen === "camp") msgs = wbBattle(false); break;
+      // The story: Sable waits at camp (Levels), or right after the reward wheel of the world where Sable is waiting.
+      case "sable": {
+        const w = sableNext(), fromWheel = S.screen === "wheel" && S.wheel && S.wheel.spun && S.level && !S.level.trial && S.level.w === w;
+        if (w && S.team.length && (S.screen === "camp" || fromWheel)) msgs = sableBattle(w);
+        break;
+      }
+      case "kaleidra": if (kaleidraOpen() && S.team.length && S.screen === "camp") msgs = kaleidraBattle(); break;
       case "reset": S.confirm = "reset"; msgs = ["Are you sure? Choose Yes to erase your saved game, or Keep my game."]; break;
       case "resetyes": newGame(); msgs = [S.result]; break;
       case "cancel": S.confirm = null; S.swapIn = null; S.releaseId = null; S.renaming = false; pendingImport = null; msgs = ["Okay, nothing changed."]; break;
