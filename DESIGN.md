@@ -490,6 +490,71 @@ Crest fusion is offered only for lines you own that still need their crest, and 
 - **Health tones** (Settings, off by default): after every hit, poison tick, spring, trap or healing item, a tone for that monster's health, two octaves from 220 Hz (nearly out) to 880 Hz (full), yours on the right and your opponent's on the left. A two-note warning plays when your monster drops below a quarter. The sound test has a demo.
 - **Descriptions:** one line for each of the 120 species, in `js/lore.js`.
 
+## Deeper Battles Update
+### Traits
+Every species has one trait, shared by all its forms, listed in battle (under each monster), in Manage and in the Collection. Traits are spread so each element has a mix.
+
+| Trait | Effect |
+|---|---|
+| Regrowth | Recovers a sixteenth of its health at the end of every turn (a two-hundredth for world bosses) |
+| Thorn Hide, Searing Body, Jagged Body | Attackers that hit it take a tenth of the damage back |
+| Venom Skin | Attackers that hit it are poisoned one time in five |
+| Static Coat | Attackers that hit it are stunned one time in five |
+| Hard Shell | Takes 10% less damage from every skill |
+| Weathered | Takes a quarter less damage from skills it's weak against |
+| Phase | Dodges one skill in seven completely |
+| Sturdy | Once per battle, survives a knockout blow with 1 health |
+| Quick Start | Acts first on its first turn in a battle |
+| Iron Will | Can't be put to sleep or stunned |
+| Pure Spirit | Can't be poisoned |
+| Keen Eye | Its skills never miss |
+| Siphon | Heals a fifth of the damage it deals |
+| Element Pride | Skills of its own element get a 40% bonus instead of 20% |
+| Last Stand | Deals 30% more damage below a third of its health |
+| Momentum | Each attack in a row deals 10% more, up to 30%; using a support skill or switching out resets it |
+| Grudge | The monster that knocks it out loses a quarter of its health |
+| Mending | Recovers a quarter of its health when it switches out |
+| Potent | Its sleep, stun and poison chances are doubled |
+
+### Support skills
+At level 25 every monster learns its element's support skill, after its four attacks. Each can be used twice per battle, it uses the turn, and its effects last for the rest of the battle, even after switching out. Stacking effects stack up to twice.
+
+| Element | Skill | Effect |
+|---|---|---|
+| Plant | Photosynthesis | Heals 40% of its health |
+| Water | Tide Veil | The next two hits against it deal half damage |
+| Fire | Kindle | Its skills deal 30% more damage |
+| Earth | Stone Skin | Takes 25% less damage |
+| Electric | Overcharge | Acts first from now on, and its next hit deals 50% more |
+| Psychic | Clarity | Clears its status and heals a quarter of its health |
+| Ghost | Hex Shroud | The opponent deals 25% less damage |
+| Physical | Bulk Up | Deals 20% more and takes 15% less damage |
+
+Opponents use them too: healing below 40% health (60% of the time), cleansing poison below 70%, and other skills only on their first turn while healthy (a quarter of the time, half for bosses). World bosses don't use support skills. Auto-play heals below 35%, cleanses poison below 60%, and uses its other support skill on the first turn when the fight looks long.
+
+### Charms
+Forged at the Shard Forge for 3,000 Shard Dust plus shards: 80 of an element for that element's charm, or 60 of the element chosen at the Forge for the rest. A monster wears one charm, given from Manage; swapping or taking one off returns it to the Bag, and so does releasing the monster.
+
+| Charm | Effect |
+|---|---|
+| Vital Charm | 10% more health |
+| Swift Charm | 10% more speed |
+| Guard Charm | Takes 10% less damage |
+| Focus Charm | Its skills are 10 points more accurate |
+| Binder's Charm | While it's battling, capture chances are 25% better |
+| Scholar's Charm | Earns 30% more experience |
+| Verdant, Tidal, Ember, Stone, Storm, Dream, Hollow and Iron Charms | 15% more damage with skills of that element |
+
+### Weekly Trial rules
+One rule a week for everyone, picked from the week: a Surge for each element (that element's skills deal 30% more damage, for both sides), Lean Supplies (3 items instead of 5), Shard Rain (Shardborn twice as likely), Titan Week (bosses have 30% more health, Trials pay 50% more Shard Dust) and Bounty Week (double Shard Dust and shards). A Trial keeps the rule it started with. The Trials area shows the week's rule.
+
+### Measured
+- Campaign: the playtest save still clears every remaining level on the first try.
+- Trials on the playtest save: tiers 1 to 5 every time, 6 about 90%, 7 about 70%, 8 half, 9 and 10 about a third, 11 to 13 about one in ten, 14 not yet.
+- Arena: runs end on floors 86 to 95 (95 to 99 before), since opposing trainers now heal and guard.
+- World bosses: support skills make a team about 30% more effective per fight, so boss health counts the team monsters that have one. The playtest team needs about 4 fights with items (6 or 7 without), and a team at the end of World 1 about 6.
+- New games: 8 of 200 failed World 1 Level 1 at least once; World 2 averages under one failure in ten games.
+
 ## Build Plan
 1. **Core battle** — done (prototype): skills, free switching, element chart, capturing, items, experience.
 2. **Levels** — done (prototype): camp with team selection and base, five World 1 levels on 36-space dice boards (battle, healing, trap, portal and quiet spaces), level boss, reward wheel, automatic saving.
@@ -499,6 +564,7 @@ Crest fusion is offered only for lines you own that still need their crest, and 
 6. **World bosses** — done (prototype).
 7. **Combination worlds** — done (prototype): four to start; more can be added.
 8. **Endgame** — done (prototype): Trials, Collection, Bag, Heartcrystal fusion and world bosses that grow with your team.
-9. **Multiplayer:** co-op, then PvP and base raids.
+9. **Comfort, sound and deeper battles** — done: install as an app, Manage and favorites, saved and suggested teams, brief messages, cries and health tones, traits, support skills, charms and weekly Trial rules.
+10. **Multiplayer:** co-op, then PvP and base raids.
 
 Progress will save on the device between sessions.

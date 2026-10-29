@@ -35,7 +35,7 @@
     if (m.stage + 1 >= f.length) return "";
     return m.stage === 0 ? ` · Evolves into ${f[1]} at level ${EVOLVE_LEVEL}` : ` · Final form ${f[2]} needs the ${crestName(m.id)}`;
   }
-  function monLine(m) { return `${m.nick ? `${speciesName(m)} · ` : ""}${m.el} · ${m.rarity}${m.shard && !m.nick ? " Shardborn" : ""} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${m.infuse ? ` · Infused ${m.infuse} of 5` : ""}${m.fav ? " · Favorite" : ""}${statusText(m)}`; }
+  function monLine(m) { return `${m.nick ? `${speciesName(m)} · ` : ""}${m.el} · ${m.rarity}${m.shard && !m.nick ? " Shardborn" : ""} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${m.infuse ? ` · Infused ${m.infuse} of 5` : ""}${m.charm ? ` · ${charmName(m.charm)}` : ""}${m.fav ? " · Favorite" : ""}${statusText(m)}`; }
   // The items you can use on the board. Everything else (eggs, shards, crests, scrolls) is in the Bag area at camp.
   function itemsLine() {
     const items = ["potion", "superpotion", "revive", "tonic", "orb", "gorb", "grorb", "perfect", "fury", "ward", "die"]
@@ -200,7 +200,13 @@
   }
   // Everything you can do with one monster, gathered in one place so each row in the list stays short.
   function managePanel(m) {
-    let p = `<div class="row"><p class="nm">Manage ${m.name}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>${DESC[m.id] ? `<p>${DESC[m.id]}</p>` : ""}`;
+    let p = `<div class="row"><p class="nm">Manage ${m.name}</p><p class="muted">${monLine(m)} · Experience ${m.xp} of ${xpNeed(m.level)}${nextForm(m)}</p>${DESC[m.id] ? `<p>${DESC[m.id]}</p>` : ""}<p class="muted">Trait: ${traitText(m)}</p>`;
+    if (S.charmPick) {
+      const owned = Object.entries(S.items.charms).filter(([, n]) => n > 0);
+      p += `<p>${m.charm ? `${m.name} wears the ${charmName(m.charm)}. Choose another to swap it, or cancel.` : `Choose a charm for ${m.name}.`}</p><div class="actions">`;
+      for (const [id, n] of owned) p += btn("wearcharm", `${m.uid}:${id}`, `Give ${m.name} the ${charmName(id)}`, `${CHARMS[id].desc} · You have ${n}`);
+      return p + btn("charmcancel", "", "Cancel", "", true) + `</div></div>`;
+    }
     if (S.renaming) {
       p += `<label class="field" for="namebox">New name for ${m.name}</label><input id="namebox" type="text" maxlength="16" autocomplete="off" autocapitalize="words" spellcheck="false" value="${m.nick || ""}">`;
       p += `<div class="pair">${btn("namesave", m.uid, "Save name", "", true)}${m.nick ? btn("nameclear", m.uid, "Remove nickname", `Goes back to ${speciesName(m)}`) : btn("cancel", "", "Cancel")}</div>`;
@@ -210,6 +216,8 @@
     const b = [btn("cry", `${m.id}:${m.stage || 0}:${m.shard ? 1 : 0}`, `Hear ${m.name}'s cry`, ""),
       btn("rename", m.uid, m.nick ? `Rename ${m.name}` : `Give ${m.name} a nickname`, m.nick ? `Its species is ${speciesName(m)}` : "Up to 16 letters"),
       btn("fav", m.uid, `Favorite: ${m.fav ? "on" : "off"}`, "Favorites can't be released or used up in synthesis", false, !!m.fav), ...crestBtns(m)];
+    if (charmCount()) b.push(btn("charmpick", m.uid, m.charm ? `Swap ${m.name}'s charm` : `Give ${m.name} a charm`, m.charm ? `Wearing the ${charmName(m.charm)}` : `${charmCount()} in your Bag`));
+    if (m.charm) b.push(btn("charmoff", m.uid, `Take off the ${charmName(m.charm)}`, "It goes back to your Bag"));
     if (canRelease(m)) b.push(btn("release", m.uid, `Release ${m.name}`, releaseText(m)));
     b.push(btn("managedone", "", "Done", "", true));
     return p + `<div class="actions">${b.join("")}</div></div>`;
@@ -424,7 +432,9 @@
   function tabTrials() {
     const best = S.trials.best, next = best + 1, w = trialWorld(), [lo, hi] = trialRange(next), inf = trialInfuse(next);
     let s = `<div class="actions">${suggestPanel()}<p>${best ? `Highest tier cleared: ${best}.` : "No tiers cleared yet."} Tier ${next} is open, with monsters at level ${lo} to ${hi}${inf ? `, infused ${inf} of 5` : ""}.</p>`;
-    s += `<p class="muted">Trials have three-monster wild teams with more Rares, Epics and Legendaries, and an infused final-form boss. Each run allows ${ITEM_CAP} items, not counting capture items. Shardborn are three times as likely, and you can catch Trial monsters as usual. First clears pay Coins, plus a Mythic egg every ${TRIAL.mythicEvery} tiers and a Crest Choice every ${TRIAL.choiceEvery}. Prizes come in the host world's element.</p>`;
+    const R = weekRule();
+    s += `<p>This week's rule: ${R.name}. ${R.desc} A new rule comes each Monday.</p>`;
+    s += `<p class="muted">Trials have three-monster wild teams with more Rares, Epics and Legendaries, and an infused final-form boss. Each run allows ${R.cap || ITEM_CAP} items, not counting capture items. Shardborn are three times as likely, and you can catch Trial monsters as usual. First clears pay Coins, plus a Mythic egg every ${TRIAL.mythicEvery} tiers and a Crest Choice every ${TRIAL.choiceEvery}. Prizes come in the host world's element.</p>`;
     s += sub3("Host world", true) + `<div class="pair">`;
     for (const x of trialWorlds()) s += btn("trialworld", x, `World ${x}: The ${world(x).title}${x === w ? " (chosen)" : ""}`, `${world(x).name} monsters`, x === w, x === w);
     s += `</div>` + suggestBtn(w) + sub3("Play", true);
@@ -486,7 +496,7 @@
       s += sub3(`${el}: ${have} of 15${have === 15 ? ", complete" : ""}`, true);
       // Caught species are buttons that play their cry; their description is the button's second line.
       if (f === "missing") s += `<ul class="clean">${shown.map(id => `<li>${colLine(id)}.</li>`).join("")}</ul>`;
-      else s += `<div class="actions">${shown.map(id => S.dex.includes(id) ? btn("cry", cryArg(id), `${colLine(id)}.`, `${DESC[id] || ""} Plays its cry.`) : `<p class="muted">${colLine(id)}.</p>`).join("")}</div>`;
+      else s += `<div class="actions">${shown.map(id => S.dex.includes(id) ? btn("cry", cryArg(id), `${colLine(id)}.`, `${DESC[id] || ""} Trait: ${TRAITS[SPECIES_TRAIT[id]].name}. Plays its cry.`) : `<p class="muted">${colLine(id)}.</p>`).join("")}</div>`;
       const missing = RARITIES.filter(r => POOLS[el][r].some(id => !S.dex.includes(id)));
       if (f !== "caught" && missing.length) s += `<p class="muted" style="margin-top:6px">${colWhere(el, missing)}</p>`;
     }
@@ -524,6 +534,10 @@
       if (!opts.length) s += `<p class="muted">None of your monsters is waiting on a crest right now, so your Crest Choice will keep until one is.</p>`;
       for (const id of opts) s += btn("choosecrest", id, `Take the ${crestName(id)}`, `For your ${lineOwners(id)} · You have ${S.items.crests[crestName(id)] || 0}`);
     }
+    const charms = Object.entries(S.items.charms || {}).filter(([, n]) => n > 0), worn = Object.values(S.mons).filter(m => m.charm);
+    s += sub3(`Charms: ${charmCount()} in the Bag, ${worn.length} worn`, true);
+    s += charms.length ? li(charms.map(([id, n]) => `${n === 1 ? charmName(id) : `${n} ${charmName(id)}s`}: ${CHARMS[id].desc}`)) : none("charms in the Bag");
+    if (worn.length) s += `<p class="muted">Worn: ${joinAnd(worn.map(m => `${m.name} has the ${charmName(m.charm)}`))}.</p>`;
     s += sub3("Scrolls of Synthesis", true) + (S.items.scrolls.length ? li(S.items.scrolls.filter(r => RECIPES[r]).map(r => RECIPES[r].name.replace("Scroll of Synthesis: ", ""))) : none("scrolls"));
     return s + `</div>`;
   }
@@ -597,7 +611,17 @@
       const c = infuseCost(m);
       s += n >= c ? btn("infuse", m.uid, `Infuse ${m.name} for ${c} ${el} Shards`, `Infusion ${m.infuse || 0} of 5 · Level ${m.level} · 3% stronger`) : `<p class="muted">${m.name}, level ${m.level}: infusion ${m.infuse || 0} of 5. The next costs ${c} ${el} Shards.</p>`;
     }
-    return s + fusionSection(el) + `</div>`;
+    return s + charmSection(el) + fusionSection(el) + `</div>`;
+  }
+  function charmSection(el) {
+    let s = sub3("Charms", true) + `<p class="muted">A monster wears one charm at a time; give charms from Manage in Team and base. Each costs ${fmt(CHARM_COST.dust)} Shard Dust plus shards: ${CHARM_COST.el} of an element for its own charm, or ${CHARM_COST.other} of any element for the rest.</p>`;
+    const n = S.items.shards[el] || 0;
+    for (const id of [el, ...Object.keys(CHARMS).filter(x => !CHARMS[x].el)]) {
+      const c = CHARMS[id], cost = charmShards(id), have = S.items.charms[id] || 0;
+      const sub = `${c.desc} · ${cost} ${el} Shards and ${fmt(CHARM_COST.dust)} Shard Dust${have ? ` · You have ${have}` : ""}`;
+      s += n >= cost && S.coins >= CHARM_COST.dust ? btn("forgecharm", `${id}:${el}`, `Forge ${an(c.name)}`, sub) : `<p class="muted">${c.name}: ${sub}. You don't have enough.</p>`;
+    }
+    return s;
   }
   // Heartcrystal fusion: eggs into a Mythic egg of the chosen element, and spare crests into one a monster needs.
   function fusionSection(el) {
@@ -727,13 +751,30 @@
     return h + sec("h-leave", "Leave level", lv);
   }
 
+  // A monster's trait, charm and support skill effects, under its card in battle.
+  function effectsText(m) {
+    const A = m.bt, out = [];
+    if (!A) return "";
+    if (A.pow) out.push(`skills deal ${30 * A.pow}% more`);
+    if (A.bulk) out.push(`deals ${20 * A.bulk}% more and takes ${15 * A.bulk}% less`);
+    if (A.guard) out.push(`takes ${25 * A.guard}% less`);
+    if (A.weak) out.push(`deals ${25 * A.weak}% less, hexed`);
+    if (A.veil) out.push(`next ${A.veil === 1 ? "hit" : "two hits"} halved`);
+    if (A.first) out.push("acts first");
+    if (A.charged) out.push("next attack 50% stronger");
+    return out.length ? `Effects: ${out.join(", ")}.` : "";
+  }
+  function battleNotes(m) {
+    const t = TRAITS[traitOf(m)], fx = effectsText(m);
+    return `${t ? `<p class="muted">Trait: ${t.name}. ${t.desc}</p>` : ""}${m.charm ? `<p class="muted">Charm: ${charmName(m.charm)}, ${CHARMS[m.charm].desc}.</p>` : ""}${fx ? `<p>${fx}</p>` : ""}`;
+  }
   function renderBattle() {
     const B = S.battle, e = foe(), p = you();
     const shownFoe = e || B.enemies[B.enemies.length - 1];
     const heading = B.wboss ? "World boss" : B.arena ? `Arena floor ${B.floor}: ${B.rival}` : B.boss ? (S.level && S.level.trial ? "Trial boss" : "Level boss") : "Opponent";
     let h = sec("h-foe", heading, monCard(shownFoe, foeWord() + " ",
-      B.boss && !B.arena ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`));
-    h += sec("h-you", "Your monster", monCard(p, "", xpLine(p)));
+      (B.boss && !B.arena ? "" : `<p class="muted">Opponent team: ${B.enemies.length} monsters, ${foesLeft()} still standing.${S.dex.includes(shownFoe.id) ? "" : " Not in your collection yet."}</p>`) + battleNotes(shownFoe)));
+    h += sec("h-you", "Your monster", monCard(p, "", xpLine(p) + battleNotes(p)));
     if (autoOn()) return h + sec("h-log", "Battle log", `<ol class="log">${B.log.map(l => `<li>${l}</li>`).join("")}</ol>`);
     if (B.over) {
       let o = `<div class="actions">`;
@@ -748,7 +789,10 @@
     let sk = `<div class="actions">`;
     if (B.forced) sk += `<p>${p.name} has fainted. Choose a monster under Switch monster.</p>`;
     else {
-      unlocked(p).forEach((s, i) => { sk += btn("skill", i, s.name, `${s.el} · Power ${s.power} · Accuracy ${s.acc}%${s.st ? ` · ${s.stc}% chance to ${s.st === "sleep" ? "put it to sleep" : s.st}` : ""} · ${effWord(mult(s.el, e.el))} against ${e.name}`); });
+      unlocked(p).forEach((s, i) => {
+        if (s.support) { sk += supportLeft(p) > 0 ? btn("skill", i, s.name, `${s.el} support · ${s.desc} · ${supportLeft(p)} of ${SUPPORT_USES} uses left this battle`) : `<p class="muted">${s.name}: used twice this battle.</p>`; return; }
+        sk += btn("skill", i, s.name, `${s.el} · Power ${s.power} · Accuracy ${hasTrait(p, "keeneye") ? "never misses" : `${Math.min(100, s.acc + (p.charm === "focus" ? 10 : 0))}%`}${s.st ? ` · ${s.stc * (hasTrait(p, "potent") ? 2 : 1)}% chance to ${s.st === "sleep" ? "put it to sleep" : s.st}` : ""} · ${effWord(mult(s.el, e.el))} against ${e.name}`);
+      });
       const locked = skillsOf(p).filter(s => p.level < s.unlock);
       if (locked.length) sk += `<ul class="clean muted">${locked.map(s => `<li>Locked: ${s.name}, unlocks at level ${s.unlock}</li>`).join("")}</ul>`;
     }
@@ -758,7 +802,7 @@
       if (m.uid === B.active) continue;
       others++;
       if (m.hp <= 0) { sw += `<p class="muted">${m.name} has fainted.</p>`; continue; }
-      sw += btn("switch", m.uid, `Send out ${m.name}`, `${m.el} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${statusText(m)} · ${effWord(Math.max(...unlocked(m).map(s => mult(s.el, e.el))))} matchup`, B.forced);
+      sw += btn("switch", m.uid, `Send out ${m.name}`, `${m.el} · Level ${m.level} · Health ${m.hp} of ${m.maxHp}${statusText(m)} · ${effWord(Math.max(...attacks(m).map(s => mult(s.el, e.el))))} matchup`, B.forced);
     }
     if (!others) sw += `<p class="muted">No other monsters on your team.</p>`;
     h += sec("h-switch", "Switch monster (free)", sw + `</div>`);

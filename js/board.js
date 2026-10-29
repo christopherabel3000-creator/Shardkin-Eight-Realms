@@ -51,7 +51,7 @@
     restoreAll();
     const n = world(w).levels;
     S.level = { w, n, trial: t, board: genBoard(w, n), pos: 0, used: Array(BOARD_SIZE).fill(false), lead: S.team[0], failed: false,
-      replay: t <= S.trials.best, wb: null, shopOpen: false, encounter: false, lure: !!S.lure };
+      replay: t <= S.trials.best, wb: null, shopOpen: false, encounter: false, lure: !!S.lure, rule: weekRule().id };
     const lureMsg = S.lure ? " Your Shardborn Lure glimmers: Shardborn are ten times more likely on this Trial." : "";
     S.lure = false;
     S.trials.world = w;
@@ -190,8 +190,10 @@
   // Health for a world boss: enough that your team needs about WB.fights fights to bring it down, estimated from how hard
   // each team monster hits it and how long each one lasts against it. fightCal corrects the estimate, which runs a little high.
   function wbHealth(m, team) {
-    const best = (a, d) => Math.max(1, ...unlocked(a).map(s => estDmg(a, d, s) * s.acc / 100));
-    const perFight = team.reduce((sum, p) => sum + best(p, m) * Math.max(1, p.maxHp / best(m, p)), 0);
+    const best = (a, d) => Math.max(1, ...attacks(a).map(s => estDmg(a, d, s) * s.acc / 100));
+    // Support skills make a team about 30% more effective per fight; count the monsters that have one.
+    const withSupport = team.filter(p => unlocked(p).some(s => s.support)).length;
+    const perFight = team.reduce((sum, p) => sum + best(p, m) * Math.max(1, p.maxHp / best(m, p)), 0) * (1 + 0.3 * withSupport / team.length);
     return Math.round(Math.max(m.maxHp * WB.minHpMult, perFight * WB.fights * WB.fightCal));
   }
   function wbBattle(fromLevel) {
@@ -201,6 +203,7 @@
     e.maxHp = W.maxHp; e.hp = W.hp; e.name = W.name;
     S.wfights.count--; bump("wbfights");
     if (S.wfights.count === WB.maxFights - 1) S.wfights.last = now();
+    teamMons().forEach(clearBattleState);
     S.battle = { boss: true, wboss: true, enemies: [e], active: fromLevel ? S.level.lead : S.team[0], forced: false, over: null, log: [], startHp: W.hp, fromLevel };
     if (!fromLevel) { restoreAll(); S.level = null; }
     S.screen = "battle";

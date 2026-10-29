@@ -24,6 +24,7 @@
       : boss ? [pickBoss(w, n)] : gentleLevel() ? [pickWild(w, n)] : [pickWild(w, n), pickWild(w, n)];
     S.battle = { boss, enemies, active: S.level.lead, forced: false, over: null, log: [] };
     S.screen = "battle";
+    teamMons().forEach(clearBattleState);
     const e = foe();
     if (boss) {
       sfx("boss");
@@ -50,6 +51,12 @@
   function label(m, isYou) { return isYou ? `your ${m.name}` : `${foeWord().toLowerCase()} ${m.name}`; }
   const STATUS_WORD = { sleep: "asleep", stun: "stunned", poison: "poisoned" };
 
+  // ---------- Battle core ----------
+  // Shared by every kind of battle. Monsters carry battle-only state in m.bt (support skill buffs, uses, Quick Start,
+  // Momentum and Sturdy); it's cleared when a battle starts and when the team is restored.
+  function bst(m) { return m.bt || (m.bt = { pow: 0, guard: 0, bulk: 0, weak: 0, veil: 0, first: false, charged: false, uses: 0, acted: false, streak: 0, sturdy: false }); }
+  function clearBattleState(m) { if (m) delete m.bt; }
+  function supportLeft(m) { return SUPPORT_USES - ((m.bt && m.bt.uses) || 0); }
   // Returns false if the monster loses its turn to sleep or stun.
   function canAct(m, isYou, msgs) {
     const st = m.status;
@@ -60,15 +67,52 @@
     if (st.turns <= 0) { m.status = null; msgs.push(st.type === "sleep" ? `${cap(label(m, isYou))} woke up.` : `${cap(label(m, isYou))} shook off the stun.`); }
     return false;
   }
+  // Who moves first: Overcharge or an unused Quick Start beats speed; otherwise the faster monster.
+  function prio(m) { const A = bst(m); return A.first || (hasTrait(m, "quick") && !A.acted) ? 1 : 0; }
+  function goesFirst(p, e) { const a = prio(p), b = prio(e); return a !== b ? a > b : p.spd > e.spd || (p.spd === e.spd && Math.random() < 0.5); }
+  // Everything that scales a hit: element, own-element bonus, support skill buffs, traits, charms, Fury and Ward Shards,
+  // and the week's Trial rule.
+  function damageMult(att, def, sk, isYou) {
+    const A = bst(att), D = bst(def), el = mult(sk.el, def.el), B = S.battle;
+    let k = el * (sk.el === att.el ? (hasTrait(att, "pride") ? 1.4 : 1.2) : 1);
+    k *= (1 + 0.3 * A.pow) * (1 + 0.2 * A.bulk) * (1 - 0.25 * A.weak) * (A.charged ? 1.5 : 1);
+    if (hasTrait(att, "laststand") && att.hp < att.maxHp / 3) k *= 1.3;
+    if (hasTrait(att, "momentum")) k *= 1 + 0.1 * Math.min(3, A.streak);
+    if (CHARMS[att.charm] && CHARMS[att.charm].el === sk.el) k *= 1.15;
+    k *= (1 - 0.25 * D.guard) * (1 - 0.15 * D.bulk) * (D.veil > 0 ? 0.5 : 1);
+    if (hasTrait(def, "shell")) k *= 0.9;
+    if (hasTrait(def, "weathered") && el > 1) k *= 0.75;
+    if (def.charm === "guard") k *= 0.9;
+    if (B && isYou && B.fury) k *= 1.5;
+    if (B && !isYou && B.ward) k *= 0.67;
+    const R = trialRuleNow();
+    if (R && R.surge === sk.el) k *= 1.3;
+    return { k, el };
+  }
+  // Sleep, stun or poison, unless a trait blocks it. short: a boss you put to sleep wakes after one turn.
+  function applyStatus(m, type, isYou, msgs, short) {
+    const who = cap(label(m, isYou));
+    if ((type === "sleep" || type === "stun") && hasTrait(m, "ironwill")) { msgs.push(`${who}'s Iron Will keeps it ${type === "sleep" ? "awake" : "steady"}.`); return; }
+    if (type === "poison" && hasTrait(m, "purity")) { msgs.push(`${who}'s Pure Spirit shrugs off the poison.`); return; }
+    m.status = { type, turns: type === "sleep" ? (short ? 1 : rand(1, 3)) : 1 };
+    msgs.push(`${who} is now ${STATUS_WORD[type]}!`); sfx("status");
+  }
+  function hurt(m, n, isYou) { const before = m.hp / m.maxHp; m.hp = Math.max(0, m.hp - n); hpSfx(m, isYou, before); }
+  function mend(m, n, isYou) { const h = Math.min(m.maxHp - m.hp, n), before = m.hp / m.maxHp; m.hp += h; if (h) hpSfx(m, isYou, before); return h; }
   function attack(att, def, sk, isYou, msgs) {
-    const who = cap(label(att, isYou)), target = label(def, !isYou);
-    if (Math.random() * 100 >= sk.acc) { msgs.push(brief() ? `${who}, ${sk.name}: missed.` : `${who} used ${sk.name}, but it missed.`); atkSfx(sk, isYou, "miss"); return; }
-    const m = mult(sk.el, def.el);
-    const stab = sk.el === att.el ? 1.2 : 1;
+    const A = bst(att), D = bst(def), who = cap(label(att, isYou)), target = label(def, !isYou);
+    const { k, el: m } = damageMult(att, def, sk, isYou);
+    A.acted = true; A.streak++;
+    const acc = hasTrait(att, "keeneye") ? 101 : Math.min(100, sk.acc + (att.charm === "focus" ? 10 : 0));
+    if (Math.random() * 100 >= acc) { msgs.push(brief() ? `${who}, ${sk.name}: missed.` : `${who} used ${sk.name}, but it missed.`); atkSfx(sk, isYou, "miss"); return; }
+    if (hasTrait(def, "phase") && Math.random() < 1 / 7) { msgs.push(`${cap(target)} phases through ${sk.name}${brief() ? "" : ", taking no damage"}.`); atkSfx(sk, isYou, "miss"); return; }
     const base = ((2 * att.level / 5 + 2) * sk.power * att.atk / def.def) / 50 + 2;
-    let dmg = Math.max(1, Math.round(base * stab * m * (0.85 + Math.random() * 0.15)));
-    if (isYou && S.battle.fury) dmg = Math.round(dmg * 1.5);
-    if (!isYou && S.battle.ward) dmg = Math.max(1, Math.round(dmg * 0.67));
+    let dmg = Math.max(1, Math.round(base * k * (0.85 + Math.random() * 0.15)));
+    A.charged = false;
+    if (D.veil > 0) D.veil--;
+    // Sturdy: once per battle, a knockout blow leaves 1 health.
+    let endured = false;
+    if (dmg >= def.hp && def.hp > 1 && hasTrait(def, "sturdy") && !D.sturdy) { dmg = def.hp - 1; D.sturdy = true; endured = true; }
     const before = def.hp / def.maxHp;
     def.hp = Math.max(0, def.hp - dmg);
     let t;
@@ -82,34 +126,80 @@
     atkSfx(sk, isYou, m > 1 ? "strong" : m < 1 ? "weak" : "hit");
     hpSfx(def, !isYou, before);
     msgs.push(t);
-    if (def.hp > 0 && sk.st && !def.status && Math.random() * 100 < sk.stc) {
-      const bossy = !isYou ? false : S.battle.boss;
-      const turns = sk.st === "sleep" ? (bossy ? 1 : rand(1, 3)) : 1;
-      def.status = { type: sk.st, turns };
-      msgs.push(`${cap(target)} is now ${STATUS_WORD[sk.st]}!`); sfx("status");
+    if (endured) msgs.push(`${cap(target)} holds on with Sturdy!`);
+    if (hasTrait(att, "siphon") && att.hp > 0) { const h = mend(att, Math.max(1, Math.floor(dmg / 5)), isYou); if (h) msgs.push(`${who} siphons ${h} health.`); }
+    if (def.hp > 0 && sk.st && !def.status && Math.random() * 100 < sk.stc * (hasTrait(att, "potent") ? 2 : 1)) applyStatus(def, sk.st, !isYou, msgs, isYou && S.battle.boss);
+    // The defender's trait answers back.
+    const t2 = traitOf(def);
+    if (att.hp > 0 && (t2 === "thornhide" || t2 === "searing" || t2 === "jagged")) {
+      const n = Math.max(1, Math.floor(dmg / 10)); hurt(att, n, isYou);
+      msgs.push(brief() ? `${TRAITS[t2].name}: ${label(att, isYou)} takes ${n}.` : `${cap(target)}'s ${TRAITS[t2].name} hurts ${label(att, isYou)} for ${n}.`);
+    }
+    if (att.hp > 0 && !att.status && (t2 === "venomskin" || t2 === "staticcoat") && Math.random() < 0.2) applyStatus(att, t2 === "venomskin" ? "poison" : "stun", isYou, msgs, false);
+    if (def.hp <= 0 && t2 === "grudge" && att.hp > 0) {
+      const n = Math.ceil(att.maxHp / 4); hurt(att, n, isYou);
+      msgs.push(`${cap(target)}'s Grudge drains ${label(att, isYou)} for ${n}.`);
     }
   }
-  function poisonTick(msgs) {
+  // Support skills: heals, shields and buffs. Each monster can use its support skill twice per battle.
+  function support(att, def, sk, isYou, msgs) {
+    const A = bst(att), who = cap(label(att, isYou)), b = brief(), them = label(def, !isYou);
+    A.acted = true; A.streak = 0; A.uses++;
+    sfx("heal");
+    const twice = n => (n === 2 ? ", the most it can stack" : "");
+    if (sk.support === "heal" || sk.support === "cleanse" || sk.support === "mend") {
+      const cleared = sk.support !== "heal" && att.status ? att.status.type : null;
+      if (sk.support !== "heal") att.status = null;
+      const h = mend(att, Math.ceil(att.maxHp * { heal: 0.4, cleanse: 0.25, mend: 1 / 3 }[sk.support]), isYou);
+      msgs.push(b ? `${who}, ${sk.name}: heals ${h}${cleared ? `, no longer ${STATUS_WORD[cleared]}` : ""}, ${att.hp} of ${att.maxHp}.`
+        : `${who} used ${sk.name}${cleared ? `, is no longer ${STATUS_WORD[cleared]},` : ""} and recovered ${h} health. It has ${att.hp} of ${att.maxHp}.`);
+    } else if (sk.support === "veil") { A.veil = 2; msgs.push(b ? `${who}, ${sk.name}: the next two hits are halved.` : `${who} used ${sk.name}. The next two hits against it deal half damage.`); }
+    else if (sk.support === "power") { A.pow = Math.min(2, A.pow + 1); msgs.push(b ? `${who}, ${sk.name}: damage up ${30 * A.pow}%.` : `${who} used ${sk.name}. Its skills deal ${30 * A.pow}% more damage for the rest of this battle${twice(A.pow)}.`); }
+    else if (sk.support === "guard") { A.guard = Math.min(2, A.guard + 1); msgs.push(b ? `${who}, ${sk.name}: damage taken down ${25 * A.guard}%.` : `${who} used ${sk.name}. It takes ${25 * A.guard}% less damage for the rest of this battle${twice(A.guard)}.`); }
+    else if (sk.support === "bulk") { A.bulk = Math.min(2, A.bulk + 1); msgs.push(b ? `${who}, ${sk.name}: damage up ${20 * A.bulk}%, taken down ${15 * A.bulk}%.` : `${who} used ${sk.name}. It deals ${20 * A.bulk}% more and takes ${15 * A.bulk}% less damage for the rest of this battle${twice(A.bulk)}.`); }
+    else if (sk.support === "charge") { A.first = true; A.charged = true; msgs.push(b ? `${who}, ${sk.name}: acts first, next attack 50% stronger.` : `${who} used ${sk.name}. It acts first for the rest of this battle, and its next attack deals 50% more.`); }
+    else if (sk.support === "weaken") { const D = bst(def); D.weak = Math.min(2, D.weak + 1); msgs.push(b ? `${who}, ${sk.name}: ${them} deals ${25 * D.weak}% less.` : `${who} used ${sk.name}. ${cap(them)} deals ${25 * D.weak}% less damage for the rest of this battle${twice(D.weak)}.`); }
+  }
+  function useSkill(att, def, sk, isYou, msgs) { if (sk.support) support(att, def, sk, isYou, msgs); else attack(att, def, sk, isYou, msgs); }
+  // The end of each round: poison, then Regrowth (much smaller for world bosses, like poison).
+  function endOfRound(msgs) {
     for (const [m, isYou] of [[you(), true], [foe(), false]]) {
-      if (!m || m.hp <= 0 || !m.status || m.status.type !== "poison") continue;
-      const dmg = Math.max(1, Math.floor(m.maxHp / (S.battle.wboss && !isYou ? 60 : 10))), before = m.hp / m.maxHp;
-      m.hp = Math.max(0, m.hp - dmg);
-      hpSfx(m, isYou, before);
-      msgs.push(brief() ? `Poison: ${label(m, isYou)} takes ${dmg}${m.hp > 0 ? `, ${m.hp} left` : ""}.` : `Poison hurts ${label(m, isYou)} for ${dmg} damage.` + (m.hp > 0 ? ` It has ${m.hp} of ${m.maxHp} left.` : ""));
+      if (!m || m.hp <= 0) continue;
+      const giant = S.battle.wboss && !isYou;
+      if (m.status && m.status.type === "poison") {
+        const dmg = Math.max(1, Math.floor(m.maxHp / (giant ? 60 : 10)));
+        hurt(m, dmg, isYou);
+        msgs.push(brief() ? `Poison: ${label(m, isYou)} takes ${dmg}${m.hp > 0 ? `, ${m.hp} left` : ""}.` : `Poison hurts ${label(m, isYou)} for ${dmg} damage.` + (m.hp > 0 ? ` It has ${m.hp} of ${m.maxHp} left.` : ""));
+      }
+      if (m.hp > 0 && hasTrait(m, "regrowth") && m.hp < m.maxHp) {
+        const h = mend(m, Math.max(1, Math.floor(m.maxHp / (giant ? 200 : 16))), isYou);
+        msgs.push(`${cap(label(m, isYou))} regrows ${h}${brief() ? "" : " health"}.`);
+      }
     }
   }
-  function aiSkill(e, target) {
+  // The opponent's choice: usually its best attack, sometimes its support skill (never for world bosses).
+  function aiAttack(e, target) {
     let best = null, score = -1;
-    for (const s of unlocked(e)) {
+    for (const s of attacks(e)) {
       let v = s.power * mult(s.el, target.el) * (s.el === e.el ? 1.2 : 1) * (s.acc / 100) * (0.8 + Math.random() * 0.4);
       if (s.st && !target.status) v *= 1 + s.stc / 100;
       if (v > score) { score = v; best = s; }
     }
     return best;
   }
+  function aiPick(e, target) {
+    const B = S.battle, sup = unlocked(e).find(s => s.support);
+    if (sup && !B.wboss && supportLeft(e) > 0) {
+      const hp = e.hp / e.maxHp, r = Math.random(), heals = sup.support === "heal" || sup.support === "cleanse" || sup.support === "mend";
+      if (heals && hp < 0.4 && r < 0.6) return sup;
+      if (heals && sup.support !== "heal" && e.status && e.status.type === "poison" && hp < 0.7 && r < 0.5) return sup;
+      if (!heals && !bst(e).acted && hp > 0.6 && r < (B.boss ? 0.5 : 0.25)) return sup;
+    }
+    return aiAttack(e, target);
+  }
   function foeTurn(msgs) {
     const e = foe(), p = you();
-    if (e && p.hp > 0 && canAct(e, false, msgs)) attack(e, p, aiSkill(e, p), false, msgs);
+    if (e && p.hp > 0) { if (canAct(e, false, msgs)) useSkill(e, p, aiPick(e, p), false, msgs); bst(e).acted = true; }
   }
   function settle(msgs) {
     const B = S.battle;
@@ -175,8 +265,8 @@
   }
   function captureChance(e, kind) {
     if (kind === "perfect") return 1;
-    const st = e.status ? STATUS_CAPTURE[e.status.type] : 1;
-    return Math.min(1, (1 - e.hp / e.maxHp) * CAPTURE_MULT[e.rarity] * st * (BIND_MULT[kind] || 1));
+    const st = e.status ? STATUS_CAPTURE[e.status.type] : 1, binder = S.battle && you() && you().charm === "binder" ? 1.25 : 1;
+    return Math.min(1, (1 - e.hp / e.maxHp) * CAPTURE_MULT[e.rarity] * st * (BIND_MULT[kind] || 1) * binder);
   }
   function act(type, arg) {
     const B = S.battle;
@@ -184,20 +274,25 @@
     if (B.forced && type !== "switch") return null;
     const msgs = [];
     if (type === "switch") {
-      const m = S.mons[arg];
+      const m = S.mons[arg], out = you();
       if (!m || arg === B.active || m.hp <= 0) return null;
+      // Leaving the field ends a Momentum streak, and Mending heals the one stepping back.
+      if (out && out.hp > 0) {
+        bst(out).streak = 0;
+        if (hasTrait(out, "mender")) { const h = mend(out, Math.ceil(out.maxHp / 4), true); if (h) msgs.push(`${out.name} mends ${h} health as it steps back.`); }
+      }
       B.active = arg; B.forced = false;
       msgs.push(brief() ? `${m.name} is out.` : `You sent out ${m.name}. Switching is free, so you can still act this turn.`); sfx("swap"); crySfx(m, true);
       return msgs;
     }
     if (type === "retreat") { if (!B.wboss) return null; wbFinish(msgs, true); return msgs; }
     if (type === "skill") {
-      const p = you(), e = foe();
-      const sk = unlocked(p)[arg], esk = aiSkill(e, p);
-      const youFirst = p.spd > e.spd || (p.spd === e.spd && Math.random() < 0.5);
-      const yourMove = () => { if (canAct(p, true, msgs)) attack(p, e, sk, true, msgs); };
-      const theirMove = () => { if (canAct(e, false, msgs)) attack(e, p, esk, false, msgs); };
-      if (youFirst) { yourMove(); if (e.hp > 0 && p.hp > 0) theirMove(); }
+      const p = you(), e = foe(), sk = unlocked(p)[arg];
+      if (!sk || (sk.support && supportLeft(p) <= 0)) return null;
+      const esk = aiPick(e, p);
+      const yourMove = () => { if (canAct(p, true, msgs)) useSkill(p, e, sk, true, msgs); bst(p).acted = true; };
+      const theirMove = () => { if (canAct(e, false, msgs)) useSkill(e, p, esk, false, msgs); bst(e).acted = true; };
+      if (goesFirst(p, e)) { yourMove(); if (e.hp > 0 && p.hp > 0) theirMove(); }
       else { theirMove(); if (p.hp > 0 && e.hp > 0) yourMove(); }
     } else if (type === "capture") {
       const e = foe();
@@ -230,7 +325,7 @@
       if (!useItem(id, target, msgs, true)) return null;
       foeTurn(msgs);
     }
-    if (you().hp > 0 && foe() && foe().hp > 0) poisonTick(msgs);
+    if (you().hp > 0 && foe() && foe().hp > 0) endOfRound(msgs);
     settle(msgs);
     return msgs;
   }
@@ -239,14 +334,15 @@
   // Healing items, Fury and Ward Shards and Loaded Dice count; capture items don't.
   const ITEM_CAP = 5;
   function capHolder() { return S.battle && S.battle.wboss ? S.battle : S.level && S.level.trial ? S.level : null; }
-  function itemsLeft() { const h = capHolder(); return h ? Math.max(0, ITEM_CAP - (h.itemsUsed || 0)) : Infinity; }
+  function itemCap() { return S.battle && S.battle.wboss ? ITEM_CAP : ruleVal("cap", ITEM_CAP); }
+  function itemsLeft() { const h = capHolder(); return h ? Math.max(0, itemCap() - (h.itemsUsed || 0)) : Infinity; }
   function spendCap(msgs) {
     const h = capHolder();
     if (!h) return;
     h.itemsUsed = (h.itemsUsed || 0) + 1;
-    msgs.push(`${itemsLeft()} of ${ITEM_CAP} items left for this ${S.battle && S.battle.wboss ? "fight" : "Trial"}.`);
+    msgs.push(`${itemsLeft()} of ${itemCap()} items left for this ${S.battle && S.battle.wboss ? "fight" : "Trial"}.`);
   }
-  function capLine() { const h = capHolder(); return h ? `${S.battle && S.battle.wboss ? "World boss fights" : "Trials"} allow ${ITEM_CAP} items, not counting capture items: ${itemsLeft()} left.` : ""; }
+  function capLine() { const h = capHolder(); return h ? `${S.battle && S.battle.wboss ? "World boss fights" : "This Trial"} allow${S.battle && S.battle.wboss ? "" : "s"} ${itemCap()} items, not counting capture items: ${itemsLeft()} left.` : ""; }
   // Healing, reviving and battle boosts. Returns false (and changes nothing) if the item can't be used.
   function useItem(id, target, msgs, inBattle) {
     if (itemsLeft() <= 0 || !applyItem(id, target, msgs, inBattle)) return false;
@@ -292,7 +388,7 @@
   // ---------- Reward wheel ----------
   // 25% of what each monster needs for its next level, reduced if it has outgrown this board.
   function quarterXp(msgs) {
-    const parts = teamMons().map(m => [m, Math.max(1, Math.ceil(xpNeed(m.level) / 4 * outgrowMult(m.level, levelRef())))]);
+    const parts = teamMons().map(m => [m, Math.max(1, Math.ceil(xpNeed(m.level) / 4 * outgrowMult(m.level, levelRef()) * (m.charm === "scholar" ? 1.3 : 1)))]);
     msgs.push(parts.map(([m, amt]) => `${m.name} gained ${amt} experience`).join(", ") + ".");
     for (const [m, amt] of parts) levelCheck(m, amt, msgs);
   }

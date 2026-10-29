@@ -262,13 +262,92 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
   function wildRange(w, n) { const lo = 3 + levelIndex(w, n) + (w - 1); return [lo, lo + 1]; }
 
   function calc(m) {
-    // Evolution adds 20% per stage, Shardborn add 10%, and each Forge infusion adds 3%.
+    // Evolution adds 20% per stage, Shardborn add 10%, and each Forge infusion adds 3%. A Vital Charm adds 10% health
+    // and a Swift Charm 10% speed.
     const b = SP[m.id].base, L = m.level, k = (1 + 0.2 * (m.stage || 0)) * (m.shard ? 1.1 : 1) * (1 + 0.03 * (m.infuse || 0));
-    m.maxHp = Math.floor(b.hp * k * L / 20) + L + 10;
+    m.maxHp = Math.floor(Math.floor(b.hp * k * L / 20) * (m.charm === "vital" ? 1.1 : 1)) + L + 10;
     m.atk = Math.floor(b.atk * k * L / 25) + 5;
     m.def = Math.floor(b.def * k * L / 25) + 5;
-    m.spd = Math.floor(b.spd * k * L / 25) + 5;
+    m.spd = Math.floor(Math.floor(b.spd * k * L / 25) * (m.charm === "swift" ? 1.1 : 1)) + 5;
   }
+
+  // ---------- Traits ----------
+  // Every species has one trait, a passive effect that works in every battle, for you and against you.
+  // Thorn Hide, Searing Body and Jagged Body work the same way; their names fit the element.
+  const TRAITS = {
+    regrowth: { name: "Regrowth", desc: "Recovers a sixteenth of its health at the end of every turn." },
+    thornhide: { name: "Thorn Hide", desc: "Attackers that hit it take a tenth of the damage back." },
+    searing: { name: "Searing Body", desc: "Attackers that hit it take a tenth of the damage back." },
+    jagged: { name: "Jagged Body", desc: "Attackers that hit it take a tenth of the damage back." },
+    venomskin: { name: "Venom Skin", desc: "Attackers that hit it may be poisoned, one time in five." },
+    staticcoat: { name: "Static Coat", desc: "Attackers that hit it may be stunned, one time in five." },
+    shell: { name: "Hard Shell", desc: "Takes 10% less damage from every skill." },
+    weathered: { name: "Weathered", desc: "Takes a quarter less damage from skills it's weak against." },
+    phase: { name: "Phase", desc: "Dodges one skill in seven completely." },
+    sturdy: { name: "Sturdy", desc: "Once per battle, survives a knockout blow with 1 health." },
+    quick: { name: "Quick Start", desc: "Always acts first on its first turn in a battle." },
+    ironwill: { name: "Iron Will", desc: "Can't be put to sleep or stunned." },
+    purity: { name: "Pure Spirit", desc: "Can't be poisoned." },
+    keeneye: { name: "Keen Eye", desc: "Its skills never miss." },
+    siphon: { name: "Siphon", desc: "Heals a fifth of the damage it deals." },
+    pride: { name: "Element Pride", desc: "Skills of its own element get a 40% bonus instead of 20%." },
+    laststand: { name: "Last Stand", desc: "Deals 30% more damage below a third of its health." },
+    momentum: { name: "Momentum", desc: "Each attack it makes in a row deals 10% more, up to 30%." },
+    grudge: { name: "Grudge", desc: "The monster that knocks it out loses a quarter of its health." },
+    mender: { name: "Mending", desc: "Recovers a quarter of its health when it switches out." },
+    potent: { name: "Potent", desc: "Its sleep, stun and poison chances are doubled." }
+  };
+  const SPECIES_TRAIT = {
+    mossling: "regrowth", sproutle: "momentum", fernkit: "mender", budlet: "shell", twiglet: "quick", thornback: "thornhide", petalwing: "phase",
+    mushwick: "venomskin", briarfox: "siphon", bramblehorn: "pride", lilypaw: "keeneye", cactling: "weathered", seedrake: "regrowth", mothbloom: "potent", saplord: "sturdy",
+    puddlepup: "laststand", bubblet: "potent", driftling: "purity", shellkin: "shell", splashrat: "quick", tidecrab: "sturdy", reefwing: "venomskin",
+    mistnewt: "phase", coralhound: "momentum", rippleray: "staticcoat", frostfin: "ironwill", kelpling: "regrowth", tidalisk: "pride", pearlcalf: "mender", deepcrown: "shell",
+    emberling: "laststand", ashmouse: "potent", kindlet: "momentum", flarefly: "phase", coalpup: "searing", magmole: "ironwill", pyrofox: "quick",
+    smoulderbat: "siphon", cinderhorn: "momentum", blazewing: "sturdy", lavaback: "shell", salamandrite: "venomskin", cindercub: "pride", kilnling: "searing", solkit: "pride",
+    pebblet: "momentum", dustmite: "phase", burrowbun: "quick", claypod: "mender", rocklet: "jagged", quarryhog: "laststand", sandviper: "venomskin",
+    cragowl: "potent", geodemite: "shell", golemite: "weathered", tremorhound: "keeneye", amberix: "ironwill", quakelet: "momentum", glintmole: "pride", pebblord: "sturdy",
+    sparkit: "quick", zappip: "potent", voltbug: "shell", wattling: "laststand", fizzlet: "staticcoat", thunderpaw: "momentum", ampereel: "siphon",
+    dynamole: "regrowth", glowmoth: "potent", stormhawk: "keeneye", voltigon: "staticcoat", plasmink: "phase", boltling: "quick", coilbot: "ironwill", fulmit: "pride",
+    mindlet: "ironwill", dozepuff: "mender", hootwit: "keeneye", prismite: "shell", gazekin: "potent", seerling: "phase", mesmoth: "potent",
+    levitoad: "weathered", runefox: "siphon", astralynx: "pride", sagebeak: "keeneye", dreamdeer: "purity", cerebrix: "momentum", lunakit: "regrowth", aethling: "quick",
+    wispling: "potent", gloomkit: "quick", murkmoth: "potent", boneling: "sturdy", sheetsy: "shell", ghoulcrow: "grudge", lanternwisp: "purity",
+    cryptbat: "siphon", mournhound: "laststand", specterfox: "phase", gravekeep: "ironwill", eeriel: "mender", shadelet: "pride", hexling: "potent", soulkin: "grudge",
+    pugilet: "momentum", scrapcat: "laststand", buffbun: "pride", gruntle: "sturdy", kickit: "quick", brawlbear: "ironwill", staffmonk: "keeneye",
+    ironhorn: "shell", flexfrog: "phase", cubrawl: "laststand", wrestlotl: "regrowth", swiftail: "quick", oxling: "jagged", fistling: "momentum", atlaslet: "sturdy"
+  };
+  function traitOf(m) { return SPECIES_TRAIT[m.id] || SP[m.id].trait || null; }
+  function hasTrait(m, t) { return traitOf(m) === t; }
+  function traitText(m) { const t = TRAITS[traitOf(m)]; return t ? `${t.name}: ${t.desc}` : ""; }
+
+  // ---------- Support skills ----------
+  // Every monster learns its element's support skill at level 25, as a fifth skill. Each can be used twice per battle.
+  const SUPPORT_UNLOCK = 25, SUPPORT_USES = 2;
+  const SUPPORT = {
+    Plant: { name: "Photosynthesis", kind: "heal", desc: "Heals 40% of its health" },
+    Water: { name: "Tide Veil", kind: "veil", desc: "The next two hits against it deal half damage" },
+    Fire: { name: "Kindle", kind: "power", desc: "Its skills deal 30% more damage for the rest of the battle, up to twice" },
+    Earth: { name: "Stone Skin", kind: "guard", desc: "Takes 25% less damage for the rest of the battle, up to twice" },
+    Electric: { name: "Overcharge", kind: "charge", desc: "Acts first for the rest of the battle, and its next attack deals 50% more" },
+    Psychic: { name: "Clarity", kind: "cleanse", desc: "Clears its status and heals a quarter of its health" },
+    Ghost: { name: "Hex Shroud", kind: "weaken", desc: "The opponent deals 25% less damage for the rest of the battle, up to twice" },
+    Physical: { name: "Bulk Up", kind: "bulk", desc: "Deals 20% more and takes 15% less damage for the rest of the battle, up to twice" },
+    Heart: { name: "Prismatic Mend", kind: "mend", desc: "Clears its status and heals a third of its health" }
+  };
+
+  // ---------- Charms ----------
+  // Forged at the Shard Forge and worn one per monster. Element charms take 80 of their element's shards;
+  // the others can be paid with any element's shards. All also cost Shard Dust.
+  const CHARMS = {
+    vital: { name: "Vital Charm", desc: "10% more health" },
+    swift: { name: "Swift Charm", desc: "10% more speed" },
+    guard: { name: "Guard Charm", desc: "Takes 10% less damage" },
+    focus: { name: "Focus Charm", desc: "Its skills are 10 points more accurate" },
+    binder: { name: "Binder's Charm", desc: "While it's battling, capture chances are 25% better" },
+    scholar: { name: "Scholar's Charm", desc: "Earns 30% more experience" }
+  };
+  const CHARM_TITLES = { Plant: "Verdant", Water: "Tidal", Fire: "Ember", Earth: "Stone", Electric: "Storm", Psychic: "Dream", Ghost: "Hollow", Physical: "Iron" };
+  for (const [el, title] of Object.entries(CHARM_TITLES)) CHARMS[el] = { name: `${title} Charm`, desc: `${el} skills deal 15% more damage`, el };
+  function charmName(id) { return CHARMS[id] ? CHARMS[id].name : ""; }
   // A monster's species and form, and the name it goes by: its nickname if you gave it one.
   function speciesName(m) { return (m.shard ? "Shardborn " : "") + SP[m.id].forms[m.stage]; }
   function formName(m) { return m.nick || speciesName(m); }
@@ -285,9 +364,14 @@ atlaslet|Atlaslet/Atlasaur/Worldbearer|Legendary|98,96,90,60|Atlas Punch;Earthsh
     calc(m); m.hp = m.maxHp; return m;
   }
   function skillsOf(m) {
-    return SP[m.id].skills.map((s, i) => ({ name: s[0], el: s[1], power: s[2], acc: s[3], unlock: SKILL_UNLOCK[i], st: s[4] ? s[4][0] : null, stc: s[4] ? s[4][1] : 0 }));
+    const list = SP[m.id].skills.map((s, i) => ({ name: s[0], el: s[1], power: s[2], acc: s[3], unlock: SKILL_UNLOCK[i], st: s[4] ? s[4][0] : null, stc: s[4] ? s[4][1] : 0 }));
+    const sup = SUPPORT[SP[m.id].el];
+    if (sup) list.push({ name: sup.name, el: SP[m.id].el, power: 0, acc: 100, unlock: SUPPORT_UNLOCK, st: null, stc: 0, support: sup.kind, desc: sup.desc });
+    return list;
   }
   function unlocked(m) { return skillsOf(m).filter(s => m.level >= s.unlock); }
+  // The skills that deal damage, for anything that compares attacks.
+  function attacks(m) { return unlocked(m).filter(s => !s.support); }
   function xpNeed(L) { return 10 * L + 3 * L * L; }
   function rand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
   function pickFrom(list) { return list[Math.floor(Math.random() * list.length)]; }

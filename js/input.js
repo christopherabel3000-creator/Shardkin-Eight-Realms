@@ -25,7 +25,7 @@
     flushSound(false);
   }
   // Closes any open prompt or panel: confirmations, swaps, synthesis, Manage, renaming and team suggestions.
-  function clearPrompts() { S.confirm = null; S.synth = null; S.swapIn = null; S.releaseId = null; S.manageId = null; S.renaming = false; S.suggest = null; }
+  function clearPrompts() { S.confirm = null; S.synth = null; S.swapIn = null; S.releaseId = null; S.manageId = null; S.renaming = false; S.charmPick = false; S.suggest = null; }
   // Swaps the current game for another one (an imported code or a backup), keeping the current game as the backup.
   function swapGame(next, msgs) {
     try { localStorage.setItem(BACKUP_KEY, JSON.stringify(Object.assign({}, S, { confirm: null }))); } catch (e) { /* backup is best-effort */ }
@@ -45,8 +45,14 @@
       case "tab": clearPrompts(); S.campTab = arg; msgs = (msgs || []).concat([`${tabLabel(arg)}.`]); break;
       case "menu": clearPrompts(); S.campTab = null; msgs = (msgs || []).concat(["Main menu."]); break;
       // Team and base: Manage, nicknames, favorites, extras, saved teams and suggestions
-      case "manage": if (S.mons[arg]) { S.manageId = arg; S.renaming = false; S.swapIn = null; S.confirm = null; msgs = [`Managing ${S.mons[arg].name}.`]; } break;
-      case "managedone": S.manageId = null; S.renaming = false; msgs = ["Done."]; break;
+      case "manage": if (S.mons[arg]) { S.manageId = arg; S.renaming = false; S.charmPick = false; S.swapIn = null; S.confirm = null; msgs = [`Managing ${S.mons[arg].name}.`]; } break;
+      case "managedone": S.manageId = null; S.renaming = false; S.charmPick = false; msgs = ["Done."]; break;
+      // Charms
+      case "forgecharm": { const [id, el] = String(arg).split(":"); msgs = forgeCharm(id, el); break; }
+      case "charmpick": if (S.mons[arg] && charmCount()) { S.manageId = arg; S.charmPick = true; S.renaming = false; msgs = [`Choose a charm for ${S.mons[arg].name}.`]; } break;
+      case "wearcharm": { const [uid, id] = String(arg).split(":"); const r = wearCharm(uid, id); if (r) { S.charmPick = false; msgs = r; } break; }
+      case "charmcancel": S.charmPick = false; msgs = ["Okay, no change."]; break;
+      case "charmoff": msgs = removeCharm(arg); break;
       case "rename": if (S.mons[arg]) { S.manageId = arg; S.renaming = true; msgs = [`Type a new name for ${S.mons[arg].name}, up to 16 letters, then choose Save name.`]; } break;
       case "namesave": {
         const m = S.mons[arg], box = document.getElementById("namebox"), name = cleanName(box ? box.value : "");
@@ -103,7 +109,7 @@
       case "fillincub": if (S.hatch) msgs = fillIncubators(); break;
       case "hatchall": if (S.hatch) msgs = hatchAllReady(); break;
       case "arenastart": { const f = Number(arg); if (S.player.level >= ARENA.unlock && (f === 1 || f <= S.arena.best + 1)) msgs = arenaFloor(f, true); break; }
-      case "arenanext": if (S.battle && S.battle.over === "arenawin") msgs = arenaFloor(S.battle.floor + 1, false); break;
+      case "arenanext": if (S.battle && S.battle.over === "arenawin" && teamMons().some(m => m.hp > 0)) msgs = arenaFloor(S.battle.floor + 1, false); break;
       case "builddock": if (!S.exped && S.player.level >= DOCK.unlock && S.coins >= DOCK.cost) { S.coins -= DOCK.cost; S.exped = { list: [] }; sfx("coin"); msgs = ["You built the Expedition Dock. Open the Expeditions tab to send monsters out."]; } break;
       case "buildhatch": if (!S.hatch && S.player.level >= HATCHERY.unlock && S.coins >= HATCHERY.cost) { S.coins -= HATCHERY.cost; S.hatch = { slots: 1, incub: [] }; sfx("coin"); msgs = ["You built the Hatchery. Open the Hatchery tab to incubate eggs."]; } break;
       case "upyard": { const yl = yardLvl(); if (yl >= 1 && yl < 3 && S.coins >= YARD.up[yl + 1]) { S.coins -= YARD.up[yl + 1]; S.yardLvl = yl + 1; sfx("coin"); msgs = [`Training Yard upgraded to level ${yl + 1}. Sessions now train ${yl + 1} levels' worth of experience in ${trainHours()} hours.`]; } break; }
@@ -261,7 +267,12 @@
       case "use": msgs = act("use", arg); break;
       case "leave": S.confirm = "leave"; msgs = ["Leave the level? Choose Yes, leave, or Keep playing."]; break;
       case "leaveyes": msgs = backToCamp("You left the level and returned to camp. Your team is restored."); break;
-      case "continue": S.battle = null; S.screen = "level"; fixLead(); msgs = [S.brief ? `Space ${S.level.pos + 1}. ${leadMon().name} leads.` : `Back on the board at space ${S.level.pos + 1} of ${BOARD_SIZE}. ${leadMon().name} leads. Roll when ready.`]; break;
+      case "continue": {
+        S.battle = null; S.screen = "level";
+        if (!fixLead()) { msgs = ["Your last monster fell as the battle was won."]; failLevel(msgs); break; }
+        msgs = [S.brief ? `Space ${S.level.pos + 1}. ${leadMon().name} leads.` : `Back on the board at space ${S.level.pos + 1} of ${BOARD_SIZE}. ${leadMon().name} leads. Roll when ready.`];
+        break;
+      }
       case "towheel": S.battle = null; S.wheel = { spun: false }; S.screen = "wheel"; msgs = [S.brief ? "Reward wheel." : "Spin the reward wheel to claim your prize."]; break;
       case "spin": if (!S.wheel.spun) msgs = spin(); break;
       case "camp": msgs = backToCamp(S.battle && S.battle.wboss && S.battle.fromLevel ? "Back at camp. That level attempt has ended, and your team is fully restored." : S.brief ? "Back at camp." : "Back at camp. Your team is fully restored."); break;

@@ -65,7 +65,7 @@
   // ---------- Save ----------
   const SAVE_KEY = "shardkin-save-v1";
   // Saves remember which one-time updates they've had (see applyUpdates in progress.js); new games start with all of them.
-  const UPDATES = ["endgame1", "comfort1", "sound1"];
+  const UPDATES = ["endgame1", "comfort1", "sound1", "battle1"];
   // A copy of the game as it was when you first opened it today, so a bad day can be undone from Settings.
   const DAILY_KEY = "shardkin-daily-backup";
   let S;
@@ -186,7 +186,7 @@
     if (toTeam && S.team.length < 4) S.team.push(m.uid);
     return m;
   }
-  function restoreAll() { for (const id in S.mons) { S.mons[id].hp = S.mons[id].maxHp; S.mons[id].status = null; } }
+  function restoreAll() { for (const id in S.mons) { const m = S.mons[id]; m.hp = m.maxHp; m.status = null; delete m.bt; } }
   function teamMons() { return S.team.map(id => S.mons[id]); }
   function inTraining(uid) { return S.training.session && S.training.session.uid === uid; }
   function prog(w) { if (!S.prog[w]) S.prog[w] = { unlocked: 1, cleared: [] }; return S.prog[w]; }

@@ -11,11 +11,15 @@ A playable single-player campaign:
 - **120 monsters**, 15 per element, with evolutions and crest-unlocked final forms.
 - **Dice-board levels** with wild battles, healing springs, thorn traps, portals, treasure chests, a wandering merchant and quiet paths, plus a look-ahead and Loaded Dice.
 - **Level bosses**, a **reward wheel**, and **roaming world bosses** that carry damage over between fights and grow with your team, aiming for about five fights at any stage.
-- **Trials**, the endgame: once the Heartcrystal is restored, climb endless tiers on any cleared world, against three-monster wild teams with more Rares, Epics and Legendaries and an infused final-form boss, with five items allowed per run. First clears pay Coins, Mythic eggs and Crest Choices.
+- **Trials**, the endgame: once the Heartcrystal is restored, climb endless tiers on any cleared world, against three-monster wild teams with more Rares, Epics and Legendaries and an infused final-form boss, with five items allowed per run and a new rule each week. First clears pay Coins, Mythic eggs and Crest Choices.
 - **Collection:** all 120 monsters by element, with what you've caught, Shardborn, and how to get the ones you're missing.
 - **Bag:** every item, egg, elemental shard, crest and scroll in one place, with what each crest fits.
 - **Heartcrystal fusion** at the Shard Forge: forge Mythic eggs from shards, fuse ten eggs into a Mythic egg, and fuse three spare crests into the one a monster needs.
 - **Battles** with element strengths, sleep, stun and poison, free switching, capturing and team-wide experience.
+- **Traits:** every species has one, such as Thorn Hide, Sturdy, Phase or Element Pride, shown in battle, in Manage and in the Collection.
+- **Support skills:** at level 25 each monster learns its element's support skill, usable twice per battle: Photosynthesis heals, Tide Veil halves the next two hits, Kindle powers up, Stone Skin hardens, Overcharge acts first, Clarity cleanses, Hex Shroud weakens the opponent, and Bulk Up does a bit of both. Opponents use them too.
+- **Charms**, forged at the Shard Forge and worn one per monster: more health, speed, protection, accuracy, capture chance or experience, or 15% more damage for one element.
+- **Weekly Trial rules:** each week brings one rule to every Trial, such as a Fire Surge, Lean Supplies (three items), Shard Rain, Titan Week or Bounty Week.
 - **Camp:** player levels, a shop, synthesis, daily training, the Shard Mine for passive Shard Dust, expeditions, a hatchery, and achievements.
 - **Daily and weekly quests**, and an endless **Arena tower** of rival trainers.
 - **Auto-play** for cleared levels, with speed, repeat, potion and catching settings.

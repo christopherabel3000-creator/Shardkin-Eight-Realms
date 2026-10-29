@@ -35,7 +35,7 @@
   function teamXp(amount, msgs, everyone, foeLevel) {
     const team = teamMons().filter(m => everyone || m.hp > 0);
     if (!team.length || amount <= 0) return;
-    const parts = team.map(m => { const k = foeLevel ? outgrowMult(m.level, foeLevel) : 1; return [m, Math.max(1, Math.round(amount * k)), k < 1]; });
+    const parts = team.map(m => { const k = foeLevel ? outgrowMult(m.level, foeLevel) : 1; return [m, Math.max(1, Math.round(amount * k * (m.charm === "scholar" ? 1.3 : 1))), k < 1]; });
     const who = everyone ? "Each monster on your team" : "Each standing monster on your team";
     if (parts.every(x => x[1] === parts[0][1] && x[2] === parts[0][2])) {
       const note = parts[0][2] ? (S.brief ? ", outgrown" : " (reduced: outgrown this level)") : "";
@@ -71,6 +71,7 @@
     if (typeof S.items.crestChoice !== "number") S.items.crestChoice = 0;
     S.updates = S.updates || [];
     S.teams = S.teams || [null, null, null, null];
+    S.items.charms = S.items.charms || {};
     if (S.brief === undefined) S.brief = false;
   }
   // One-time changes for saves made before an update. Runs on load and after importing a save code.
@@ -92,6 +93,9 @@
     },
     sound1(msgs) {
       msgs.push("New: every species has its own cry when it enters battle. In the Collection, caught monsters have descriptions and play their cry. Health tones are in Settings.");
+    },
+    battle1(msgs) {
+      msgs.push(`New: every species has a trait, and every monster learns its element's support skill at level ${SUPPORT_UNLOCK}${Object.values(S.mons).some(m => m.level >= SUPPORT_UNLOCK) ? ", so yours already know theirs" : ""}. The Shard Forge makes charms${S.ach.includes("heart") ? ", and Trials have a new rule each week" : ""}.`);
     }
   };
   function applyUpdates(msgs) {
@@ -289,6 +293,7 @@
     if (fresh) { restoreAll(); S.level = null; }
     for (const m of teamMons()) m.status = null;
     const alive = teamMons().find(m => m.hp > 0);
+    teamMons().forEach(clearBattleState);
     S.battle = { boss: true, arena: true, floor, rival: pickFrom(RIVALS), enemies: arenaTeam(floor), active: alive.uid, forced: false, over: null, log: [] };
     S.screen = "battle";
     const B = S.battle, e = foe();
@@ -310,6 +315,8 @@
       else { S.items.die++; msgs.push(`Milestone reward for floor ${f}: a Loaded Die.`); }
     }
     B.over = "arenawin";
+    // If your last monster fell in the same exchange, the floor still counts, but the climb ends here.
+    if (!teamMons().some(m => m.hp > 0)) { B.over = "arenalose"; msgs.push("Your last monster fell as the floor was won, so this climb ends here."); }
   }
 
   // ---------- Base management ----------
@@ -369,6 +376,8 @@
   function canRelease(m) { return !!m && !m.fav && !S.team.includes(m.uid) && !inTraining(m.uid) && !onExped(m.uid); }
   // Removes a monster from the game and from everything that points at it.
   function dropMon(uid) {
+    const m = S.mons[uid];
+    if (m && m.charm) S.items.charms[m.charm] = (S.items.charms[m.charm] || 0) + 1;
     delete S.mons[uid];
     S.team = S.team.filter(x => x !== uid);
     if (S.synth) S.synth.picks = S.synth.picks.filter(x => x !== uid);
@@ -429,7 +438,7 @@
   // Pits every monster you could use against the world's Uncommon and Rare monsters at the level you'd meet them:
   // how many of their hits it can take, divided by how many of its hits they can take. The best four make the team.
   function avgOf(list) { return list.reduce((a, b) => a + b, 0) / Math.max(1, list.length); }
-  function bestHit(a, d) { return Math.max(1, ...unlocked(a).map(s => estDmg(a, d, s) * s.acc / 100)); }
+  function bestHit(a, d) { return Math.max(1, ...attacks(a).map(s => estDmg(a, d, s) * s.acc / 100)); }
   function suggestScore(m, foes) {
     return avgOf(foes.map(f => (m.maxHp / bestHit(f, m)) / (f.maxHp / bestHit(m, f))));
   }
@@ -462,14 +471,29 @@
     m.infuse = infuse; m.name = formName(m); calc(m); m.hp = m.maxHp;
     return m;
   }
+  // ---------- Weekly Trial rules ----------
+  // One rule a week, picked from the date the week starts, so it's the same for everyone. It changes every Monday
+  // and applies to Trials only. A run keeps the rule it started with.
+  const WEEK_RULES = [
+    ...ELEMENTS.map(el => ({ id: "surge" + el, name: `${el} Surge`, desc: `${el} skills deal 30% more damage, for both sides.`, surge: el })),
+    { id: "lean", name: "Lean Supplies", desc: "Trials allow 3 items instead of 5.", cap: 3 },
+    { id: "rain", name: "Shard Rain", desc: "Shardborn are twice as likely in Trials.", shard: 2 },
+    { id: "titan", name: "Titan Week", desc: "Trial bosses have 30% more health, and Trials pay 50% more Shard Dust.", bossHp: 1.3, dust: 1.5 },
+    { id: "bounty", name: "Bounty Week", desc: "Trials pay double Shard Dust and elemental shards.", dust: 2, shards: 2 }
+  ];
+  function weekRule() { let h = 7; for (const ch of weekKey()) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0; return WEEK_RULES[h % WEEK_RULES.length]; }
+  function trialRuleNow() { const L = S.level; return L && L.trial && L.rule ? WEEK_RULES.find(r => r.id === L.rule) || null : null; }
+  function ruleVal(key, dflt) { const R = trialRuleNow(); return R && R[key] !== undefined ? R[key] : dflt; }
   function pickTrialWild(w, t) {
     const L = S.level, [lo, hi] = trialRange(t);
-    const mult = TRIAL.shardMult * (L && L.storm ? SHARDBORN.stormMult : 1) * (L && L.lure ? 10 : 1);
+    const mult = TRIAL.shardMult * ruleVal("shard", 1) * (L && L.storm ? SHARDBORN.stormMult : 1) * (L && L.lure ? 10 : 1);
     return trialPrep(makeMon(pickFrom(worldPool(w, pickWeighted(TRIAL.weights))), rand(lo, hi), shardRoll(mult)), trialInfuse(t), false);
   }
   function pickTrialBoss(w, t) {
     const tier = Math.random() < 0.25 ? "Legendary" : "Epic";
-    return trialPrep(makeMon(pickFrom(worldPool(w, tier)), trialRange(t)[1] + 3), Math.min(5, t), true);
+    const m = trialPrep(makeMon(pickFrom(worldPool(w, tier)), trialRange(t)[1] + 3), Math.min(5, t), true);
+    m.maxHp = Math.round(m.maxHp * ruleVal("bossHp", 1)); m.hp = m.maxHp;
+    return m;
   }
   function addMythic(el) { S.items.mythic[el] = (S.items.mythic[el] || 0) + 1; }
   // The element a Trial's prizes come in. Rifts pick one of their two elements once per run.
@@ -477,9 +501,9 @@
   function trialClear(msgs) {
     const L = S.level, t = L.trial, el = trialEl(), first = t > S.trials.best;
     if (first) S.trials.best = t;
-    const dust = (first ? 2 : 1) * (1000 + 250 * t);
+    const dust = Math.round((first ? 2 : 1) * (1000 + 250 * t) * ruleVal("dust", 1));
     S.coins += dust;
-    addShards(el, (first ? 2 : 1) * (8 + t), msgs, "The boss shattered into");
+    addShards(el, (first ? 2 : 1) * (8 + t) * ruleVal("shards", 1), msgs, "The boss shattered into");
     msgs.push(`You cleared Trial tier ${t}${first ? ` for the first time! Tier ${t + 1} is now open` : ""}. You earned ${fmt(dust)} Shard Dust.`);
     if (first) {
       giveGems(TRIAL.coins, msgs, "You also earned");
@@ -492,7 +516,7 @@
     msgs.push("Spin the reward wheel.");
   }
   function trialPrizes() {
-    const t = S.level.trial, el = trialEl(), dust = 500 + 200 * t, n = 10 + t;
+    const t = S.level.trial, el = trialEl(), dust = Math.round((500 + 200 * t) * ruleVal("dust", 1)), n = (10 + t) * ruleVal("shards", 1);
     return [
       { w: 20, label: `${fmt(dust)} Shard Dust`, give: () => { S.coins += dust; } },
       { w: 18, label: `${n} ${el} Shards`, give: () => addShards(el, n) },
@@ -504,6 +528,40 @@
       { w: 4, label: `a Mythic ${el} egg`, give: () => addMythic(el) },
       { w: 2, label: "a Crest Choice", give: () => { S.items.crestChoice++; } }
     ];
+  }
+
+  // ---------- Charms ----------
+  // Forged at the Shard Forge: an element's charm costs 80 of that element's shards; the others cost 60 shards of
+  // whichever element you choose. Every charm also costs 3,000 Shard Dust. A monster wears one at a time.
+  const CHARM_COST = { el: 80, other: 60, dust: 3000 };
+  function charmShards(id) { return CHARMS[id].el ? CHARM_COST.el : CHARM_COST.other; }
+  function forgeCharm(id, payEl) {
+    const c = CHARMS[id];
+    if (!c || !S.forge) return null;
+    const el = c.el || payEl, n = charmShards(id);
+    if (!ELEMENTS.includes(el) || (S.items.shards[el] || 0) < n || S.coins < CHARM_COST.dust) return null;
+    S.items.shards[el] -= n; S.coins -= CHARM_COST.dust;
+    S.items.charms[id] = (S.items.charms[id] || 0) + 1;
+    bump("forged"); sfx("forge");
+    return [`You forged ${an(c.name)} from ${n} ${el} Shards and ${fmt(CHARM_COST.dust)} Shard Dust. ${c.desc}. Give it to a monster from Manage in Team and base.`];
+  }
+  function charmCount() { return Object.values(S.items.charms || {}).reduce((a, b) => a + b, 0); }
+  // Health changes with a Vital Charm; the monster keeps the same share of its health.
+  function recalcKeepingHealth(m) { const f = m.hp / m.maxHp; calc(m); m.hp = Math.max(m.hp > 0 ? 1 : 0, Math.round(m.maxHp * f)); }
+  function wearCharm(uid, id) {
+    const m = S.mons[uid];
+    if (!m || !(S.items.charms[id] > 0)) return null;
+    const old = m.charm;
+    if (old) S.items.charms[old] = (S.items.charms[old] || 0) + 1;
+    S.items.charms[id]--; m.charm = id; recalcKeepingHealth(m);
+    return [`${m.name} now wears the ${charmName(id)}: ${CHARMS[id].desc}.${old ? ` The ${charmName(old)} went back to your Bag.` : ""}`];
+  }
+  function removeCharm(uid) {
+    const m = S.mons[uid];
+    if (!m || !m.charm) return null;
+    const old = m.charm;
+    S.items.charms[old] = (S.items.charms[old] || 0) + 1; delete m.charm; recalcKeepingHealth(m);
+    return [`You took the ${charmName(old)} off ${m.name}. It's back in your Bag.`];
   }
 
   // ---------- Heartcrystal fusion ----------

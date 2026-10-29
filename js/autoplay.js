@@ -15,19 +15,31 @@
     A[k] = !A[k];
     return { repeat: "Repeat the level", potions: "Use Potions", capture: "Catch new monsters" }[k] + `: ${A[k] ? "on" : "off"}.`;
   }
-  function bestMult(m, e) { return Math.max(...unlocked(m).map(s => mult(s.el, e.el))); }
+  function bestMult(m, e) { return Math.max(...attacks(m).map(s => mult(s.el, e.el))); }
+  // Attack skills come first in a monster's list, so their positions are the same in attacks() and unlocked().
   function autoSkill(p, e) {
     let bi = 0, bv = -1;
-    unlocked(p).forEach((s, i) => {
-      let v = s.power * mult(s.el, e.el) * (s.el === p.el ? 1.2 : 1) * s.acc / 100;
+    attacks(p).forEach((s, i) => {
+      let v = s.power * mult(s.el, e.el) * (s.el === p.el ? (hasTrait(p, "pride") ? 1.4 : 1.2) : 1) * s.acc / 100;
       if (s.st && !e.status) v *= 1 + s.stc / 200;
       if (v > bv) { bv = v; bi = i; }
     });
     return bi;
   }
+  // Support skills: heal when low, clear poison, and buff at the start of a fight that will take a while.
+  function autoSupport(p, e) {
+    const i = unlocked(p).findIndex(s => s.support);
+    if (i < 0 || supportLeft(p) <= 0) return -1;
+    const kind = unlocked(p)[i].support, hp = p.hp / p.maxHp, heals = kind === "heal" || kind === "cleanse" || kind === "mend";
+    if (heals && hp < 0.35) return i;
+    if (heals && kind !== "heal" && p.status && p.status.type === "poison" && hp < 0.6) return i;
+    const hits = e.hp / Math.max(1, ...attacks(p).map(s => estDmg(p, e, s)));
+    if (!heals && !bst(p).acted && hp > 0.7 && hits >= 3) return i;
+    return -1;
+  }
   // When trying to catch a monster: the hardest-hitting skill that should leave it standing, or the softest one.
   function gentleSkill(p, e) {
-    const sk = unlocked(p).map((s, i) => [i, estDmg(p, e, s)]);
+    const sk = attacks(p).map((s, i) => [i, estDmg(p, e, s)]);
     const safe = sk.filter(x => x[1] < e.hp * 0.8).sort((a, b) => b[1] - a[1]);
     return safe.length ? safe[0][0] : sk.sort((a, b) => a[1] - b[1])[0][0];
   }
@@ -65,6 +77,8 @@
         if (captureChance(e, bindItem) >= 0.5 || e.hp <= e.maxHp * 0.35) return ["capture", bindItem];
         return ["skill", gentleSkill(p, e)];
       }
+      const sup = autoSupport(p, e);
+      if (sup >= 0) return ["skill", sup];
       return ["skill", autoSkill(p, e)];
     }
     if (S.screen === "wheel") return S.wheel.spun ? (A.repeat ? ["autorepeat", ""] : null) : ["spin", ""];
