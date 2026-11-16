@@ -58,16 +58,28 @@ Camp opens on a main menu grouped under Adventure, Monsters and Camp headings; e
   - `autoplay.js` — auto-play, then starting the game (loads last)
 
 When you change a file, bump the `?v=` number on its line in `index.html` so phones don't keep an old copy. The service worker saves each file under its `?v=` address, so a new number is also what makes the installed app pick up the change.
-- `manifest.webmanifest`, `icons/` — the app name and icons used when the game is installed
-- `sw.js` — the service worker: keeps the game playable offline. The page is always fetched fresh when online; everything it lists is saved as it's used.
+- `fonts/` — the game's two fonts (Atkinson Hyperlegible and Chakra Petch, both under the SIL Open Font License), kept with the game so it looks right offline
+- `vendor/firebase/` — the Firebase library (version 10.12.2), kept with the game and loaded only when an online feature is first used
+- `manifest.webmanifest`, `icons/` — the app name and icons used when the game is installed from the website
+- `sw.js` — the service worker: keeps the website playable offline. The page is always fetched fresh when online; everything it lists is saved as it's used. The App Store app doesn't use it.
+- `privacy.html`, `support.html` — the privacy policy and the support page, linked from Friends and used as the App Store's Privacy Policy URL and Support URL
 - `database.rules.json` — the Firebase Realtime Database rules for live duels and cloud saves (see Online play below)
+- `package.json`, `capacitor.config.json`, `scripts/build-www.js`, `ios/`, `.github/workflows/ios.yml` — the iPhone app (see App Store below)
+- `appstore/` — the App Store listing text and screenshots. Not part of the game or the app.
 - `DESIGN.md` — the full game design and build plan
+- `tools/icon.py` — redraws the gem icon at 1024 pixels and the app's launch image. `tools/screenshots.py` — takes the App Store screenshots from a showcase game: `node scripts/build-www.js`, serve `www/` on port 8765, then `python3 tools/screenshots.py appstore/screenshots`.
 - `tools/sim.js` — a balance simulator, not loaded by the game. It plays a saved game forward with the real game code and auto-play's choices: `node tools/sim.js <file with a save code> <campaign|trials|wboss|arena> [runs]`. Use it to check a balance change against a real save before it ships.
 
 ## Online play
-Live duels and cloud saves use the Firebase Realtime Database project shared with Gridiron Duel, Hidden Ranks and Friday to Sunday (call-sheet-football). Duels live under `shardkinDuels/<CODE>` and cloud saves under `shardkinSaves/<KEY>`. The Firebase library loads only when an online feature is first used, so the rest of the game stays fast and works offline. Rival codes and trade codes are plain text and don't need it.
+Live duels and cloud saves use the game's own Firebase project, `shardkin-8747e` (Realtime Database, US). Duels live under `shardkinDuels/<CODE>` and cloud saves under `shardkinSaves/<KEY>`. The Firebase library loads only when an online feature is first used, so the rest of the game never needs a connection.
 
-The rules are in `database.rules.json`, with a section for each game, and the Gridiron Duel, Hidden Ranks and Friday to Sunday repos have identical copies. To switch online play on, paste the whole file into the Firebase console: Realtime Database, then Rules, then Publish. Keep the four copies the same, or the other games will stop working online. Until the rules are published, the game says online play isn't switched on yet.
+The rules are in `database.rules.json` and are published in the Firebase console (Realtime Database, then Rules). Change the file and the console together.
 
-The rules only accept well-formed records, require every change to be exactly one version newer than the last (so a duel or save can't be rewound or wiped), allow deleting a duel nobody has touched in 7 days, and never allow deleting a cloud save. Nobody can list the saves; a save can only be read with its 12-character key.
+Until November 2026 the game used the call-sheet-football project shared with the other games. A cloud key from then is still found there, read only, and saving it again moves it to the new project under the same key (js/friends.js). Duels in progress at the changeover aren't carried across.
 
+The rules only accept well-formed records and require every change to be exactly one version newer than the last, so a duel or save can't be rewound or wiped. A duel nobody has touched in 7 days can be deleted, which the game does when its code comes up again. A cloud save is never deleted outright: Delete the cloud save (Friends) replaces it with `{ ver, t, gone: true }`, so the game and device code are gone and the marker keeps the key from loading an old copy or being reused. Nobody can list the saves or duels; each can only be read with its key or code.
+
+## App Store
+The App Store version wraps the same files with [Capacitor](https://capacitorjs.com). Nothing about the game changes: `scripts/build-www.js` copies the page, the two extra pages, `css/`, `js/`, `fonts/`, `icons/` and `vendor/` into `www/`, and `npx cap sync ios` puts them in the Xcode project in `ios/`. In the app the save is also kept as a file in the app's Documents folder (js/state.js), which iOS never clears; if the web view's storage comes up empty at startup, the game is restored from that file.
+
+There's no Mac needed: `.github/workflows/ios.yml` builds the app on GitHub's Macs. Every push that touches the game checks that it still builds; running the workflow by hand (Actions, iPhone app, Run workflow) signs it and sends it to TestFlight. Signing needs four repo secrets, listed at the top of the workflow. The app is `com.playbyear.shardkin`.

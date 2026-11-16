@@ -149,11 +149,22 @@
   }
 
   // ---------- Online ----------
-  // Live duels and cloud saves use the Firebase Realtime Database of the call-sheet-football project, shared with
-  // Christopher's other games. These values identify the project; they are not passwords. Access is controlled by the
-  // rules in database.rules.json, which have to be published in the Firebase console. The Firebase library loads only
-  // when an online feature is first used.
+  // Live duels and cloud saves use the game's own Firebase project, shardkin-8747e (Realtime Database). These values
+  // identify the project; they are not passwords. Access is controlled by the rules in database.rules.json, which have
+  // to be published in the Firebase console. The Firebase library (vendor/firebase) loads only when an online feature
+  // is first used.
   const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBw8qqzvVZbY1W7Gg5dzamcOMFDp9vem-E",
+    authDomain: "shardkin-8747e.firebaseapp.com",
+    databaseURL: "https://shardkin-8747e-default-rtdb.firebaseio.com",
+    projectId: "shardkin-8747e",
+    storageBucket: "shardkin-8747e.firebasestorage.app",
+    messagingSenderId: "539122863898",
+    appId: "1:539122863898:web:a2f64c9dc46a569df4e6a3"
+  };
+  // Until November 2026 cloud saves lived in the call-sheet-football project, shared with Christopher's other games.
+  // A key from then is still found there, read only; saving it again moves it to the new project under the same key.
+  const LEGACY_CONFIG = {
     apiKey: "AIzaSyCY2-1Q7F5GJmrIs33-emT0_rwYN-TfiAw",
     authDomain: "call-sheet-football.firebaseapp.com",
     databaseURL: "https://call-sheet-football-default-rtdb.firebaseio.com",
@@ -162,9 +173,9 @@
     messagingSenderId: "448422352869",
     appId: "1:448422352869:web:4eb76ce7d666c4ed02410c"
   };
-  const FB_LIB = "https://www.gstatic.com/firebasejs/10.12.2/";
+  const FB_LIB = "vendor/firebase/";
   const NET = { db: null, ref: null, code: null, side: null, st: null, seq: -1, busy: false, connected: null, everConnected: false, log: [] };
-  const ONLINE_OFF = "Online play isn't switched on for Shardkin yet: its database rules still need to be published in the Firebase console. Rival codes and trade codes work without it.";
+  const ONLINE_OFF = "Online play isn't available right now. Rival codes and trade codes work without it.";
   const CONN_ERR = "Couldn't reach the online server. Check your internet connection and try again.";
   const DEVICE = (() => {
     let id = null;
@@ -172,7 +183,15 @@
     if (!id) { id = randId(12); try { localStorage.setItem("shardkin-device", id); } catch (e) { /* a new id next time */ } }
     return id;
   })();
-  let fbLoading = null;
+  let fbLoading = null, legacyDb = null;
+  function oldDb() {
+    if (legacyDb) return legacyDb;
+    try {
+      const app = (firebase.apps || []).find(a => a.name === "legacy") || firebase.initializeApp(LEGACY_CONFIG, "legacy");
+      legacyDb = app.database();
+    } catch (e) { legacyDb = null; }
+    return legacyDb;
+  }
   function loadFirebase() {
     if (typeof firebase !== "undefined" && firebase.database) return Promise.resolve(true);
     if (!fbLoading) {
@@ -210,7 +229,8 @@
   // ---------- Cloud saves ----------
   // Your whole game under a 12-character key, to load on another device. Anyone with the key can load or replace the
   // save, so it's kept like a password. Saves are numbered, so the game can tell when the cloud copy was changed from
-  // another device since you last saved or loaded it here, and asks before replacing it.
+  // another device since you last saved or loaded it here, and asks before replacing it. A deleted save becomes
+  // { ver, t, gone: true }: the game is gone, and the marker stops the key from loading an old copy or being reused.
   const KEY_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let pendingCloud = null;
   function keyText(k) { return `${k.slice(0, 4)} ${k.slice(4, 8)} ${k.slice(8)}`; }
@@ -218,16 +238,18 @@
     const db = await netDb();
     if (!db) return [CONN_ERR];
     const C = S.cloud || {}, fresh = !C.key, key = C.key || randId(12, KEY_CHARS);
-    let conflict = false, ver = 0, at = 0;
+    let conflict = false, gone = false, ver = 0, at = 0;
     try {
       const res = await db.ref("shardkinSaves/" + key).transaction(cur => {
-        conflict = false;
+        conflict = false; gone = false;
+        if (cur && cur.gone && !fresh) { gone = true; return; }
         if (cur && (fresh || (!force && cur.ver !== C.ver))) { conflict = true; return; }
         ver = cur ? cur.ver + 1 : 1; at = Date.now();
         const copy = Object.assign({}, S, { cloud: { key, ver, at }, confirm: null, auto: null });
         return { ver, state: JSON.stringify(copy), t: at, by: DEVICE, act: "save" };
       }, null, false);
       if (!res.committed) {
+        if (gone) { S.cloud = null; S.confirm = null; return [`The cloud save ${keyText(key)} was deleted, maybe on another device. Save to the cloud again to get a new key.`]; }
         if (conflict && fresh) return cloudSave(force);
         if (conflict) { S.confirm = "cloudconflict"; return ["The cloud save was changed from another device since you last saved or loaded it here. Replace it with this game, or load the cloud save instead."]; }
         return [CONN_ERR];
@@ -244,14 +266,32 @@
     const db = await netDb();
     if (!db) return [CONN_ERR];
     try {
-      const v = (await db.ref("shardkinSaves/" + key).once("value")).val();
+      let v = (await db.ref("shardkinSaves/" + key).once("value")).val(), old = false;
+      if (v && v.gone) return [`The cloud save ${keyText(key)} was deleted.`];
+      // A key from before the game had its own project
+      if (!v) { const odb = oldDb(); try { v = odb ? (await odb.ref("shardkinSaves/" + key).once("value")).val() : null; } catch (e) { v = null; } old = !!v; }
       if (!v) return [`There's no cloud save with the key ${keyText(key)}.`];
       let d = null;
       try { d = upgradeSave(JSON.parse(v.state)); } catch (e) { d = null; }
       if (!d) return ["That cloud save couldn't be read."];
-      d.cloud = { key, ver: v.ver, at: v.t };
+      d.cloud = { key, ver: old ? 0 : v.ver, at: v.t };
       pendingCloud = d; S.confirm = "cloudload";
       return [`Found a cloud save from ${new Date(v.t).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}: ${saveSummary(d)}. Choose Yes, load it, or Keep my game.`];
+    } catch (e) { return [netErr(e)]; }
+  }
+  // Deletes your cloud save: the saved game and device code go, and a marker stays so the key can't load anything again.
+  // The game on this device isn't touched.
+  async function cloudDelete() {
+    const C = S.cloud;
+    S.confirm = null;
+    if (!C || !C.key) return ["There's no cloud save to delete."];
+    const db = await netDb();
+    if (!db) return [CONN_ERR];
+    try {
+      const res = await db.ref("shardkinSaves/" + C.key).transaction(cur => (cur && cur.gone ? undefined : { ver: cur ? cur.ver + 1 : 1, t: Date.now(), gone: true }), null, false);
+      if (!res.committed && !(res.snapshot && res.snapshot.val() && res.snapshot.val().gone)) return [CONN_ERR];
+      S.cloud = null;
+      return [`Your cloud save ${keyText(C.key)} is deleted. The game on this device isn't affected.`];
     } catch (e) { return [netErr(e)]; }
   }
 
@@ -372,6 +412,8 @@
     try {
       for (let i = 0; i < 6; i++) {
         const code = randId(4, CODE_CHARS), ref = db.ref("shardkinDuels/" + code);
+        // A duel nobody has touched in a week is cleared away, so its code can be used again.
+        try { const cur = (await ref.once("value")).val(); if (cur && cur.t < Date.now() - 7 * 24 * HOUR - 60000) await ref.remove(); } catch (e) { /* the code is just taken */ }
         const st = { v: 1, id: randId(10), fair: !!S.friends.fair, p: [duelMe(), null], phase: "lobby", turn: 0, act: [null, null], need: [0, 0], active: [0, 0], mons: null, log: [], ev: [], seq: 0, winner: null, why: "" };
         const res = await ref.transaction(cur => (cur ? undefined : { ver: 1, state: JSON.stringify(st), t: Date.now(), by: DEVICE, act: "create" }), null, false);
         if (res.committed) { duelEnter(code, 0, ref, true); return null; }

@@ -100,7 +100,7 @@
     if (id === "quests") { ensureQuests(); const ready = [...S.quests.daily, ...S.quests.weekly].filter(q => !q.claimed && questProgress(q) >= q.n).length; return ready ? `${ready} reward${ready === 1 ? "" : "s"} ready to claim` : "No rewards ready yet"; }
     if (id === "build") { const p = minePending(); return p > 0 ? `${p} Shard Dust ready at the Shard Mine` : ""; }
     if (id === "ach") return `${S.ach.length} of ${ACH.length} earned`;
-    if (id === "save") return `Brief messages ${S.brief ? "on" : "off"} · Install, sound test and backups`;
+    if (id === "save") return `Brief messages ${S.brief ? "on" : "off"} · ${isNativeApp() ? "Sound test" : "Install, sound test"} and backups`;
     if (id === "forge") return `${fmt(shardCount())} elemental shards${fusionOpen() ? " · Heartcrystal fusion open" : ""}`;
     if (id === "story") return "The tale of the Heartcrystal";
     if (id === "friends") { const d = duelSession(); return d ? `Duel ${spell(d.code)} to rejoin` : "Rival codes, trade codes, live duels and cloud saves"; }
@@ -692,6 +692,7 @@
     return s + `</ul>`;
   }
   function appSection() {
+    if (isNativeApp()) return sub3("Your saved game", true) + `<div class="actions"><p>You're playing the App Store app. It works offline, and your game is also kept as a file in the app, so it's included in your phone's backups.</p></div>`;
     let s = sub3("Install as an app", true) + `<div class="actions">`;
     if (isStandalone()) s += `<p>You're playing the installed app. Safari doesn't clear an installed app's storage for going unused, and it works offline.</p>`;
     else s += `<p class="muted">On iPhone, open this page in Safari, choose Share, then Add to Home Screen. On a computer, Chrome and Edge offer Install in the address bar. The installed app opens full screen, works offline, and isn't cleared by Safari when you take a break. It has its own storage, so copy your save code first, then load it in the app.</p>`;
@@ -780,10 +781,13 @@
     if (S.cloud && S.cloud.key) s += `<p>Your cloud key is ${keyText(S.cloud.key)}. Last saved or loaded on this device ${new Date(S.cloud.at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}.</p>`;
     if (S.confirm === "cloudconflict") s += `<div class="pair">${btn("cloudmine", "", "Load the cloud save", "You'll be asked to confirm", true)}${btn("cloudforce", "", "Replace it with this game")}</div>`;
     else if (S.confirm === "cloudload" && pendingCloud) s += `<p>Loading it replaces your current game at ${saveSummary(S)}. Your current game is kept as a backup in Settings.</p><div class="pair">${btn("cloudyes", "", "Yes, load it")}${btn("cancel", "", "Keep my game", "", true)}</div>`;
+    else if (S.confirm === "clouddelete") s += `<p>Delete your cloud save? The game on this device stays, but the key will never load anything again.</p><div class="pair">${btn("clouddeleteyes", "", "Yes, delete the cloud save")}${btn("cancel", "", "Keep the cloud save", "", true)}</div>`;
     else {
       s += btn("cloudsave", "", S.cloud && S.cloud.key ? "Save to the cloud again" : "Save to the cloud", S.cloud && S.cloud.key ? "Under your key" : "Makes your private key");
       s += field("cloudbox", "Cloud key, 12 letters and numbers", false, `maxlength="16" autocapitalize="characters"`) + btn("cloudcheck", "", "Load from the cloud", "You'll be asked to confirm before anything changes");
+      if (S.cloud && S.cloud.key) s += btn("clouddelete", "", "Delete the cloud save", "You'll be asked to confirm");
     }
+    s += `<p class="muted">What online features send, and what stays on this device: <a href="privacy.html">privacy policy</a>. Help and contact: <a href="support.html">support</a>.</p>`;
     return s + `</div>`;
   }
   // A live duel: both monsters, then your choices, or what you're waiting for.

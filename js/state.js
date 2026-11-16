@@ -69,7 +69,66 @@
   // A copy of the game as it was when you first opened it today, so a bad day can be undone from Settings.
   const DAILY_KEY = "shardkin-daily-backup";
   let S;
-  function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* saving is optional */ } }
+  function save() {
+    let text;
+    try { text = JSON.stringify(S); } catch (e) { return; }
+    try { localStorage.setItem(SAVE_KEY, text); } catch (e) { /* saving is optional */ }
+    nativeWrite(text);
+  }
+  // ---------- The iPhone app's own copy ----------
+  // In the App Store app (Capacitor), iOS can clear a web view's storage when the phone runs short of space. So the
+  // app also keeps the save as a file in its Documents folder, which iOS never clears and which goes into the phone's
+  // backups. In a browser there's no such folder and this does nothing. The file is written a moment after the last
+  // tap (only the newest text is kept), to a spare name first and then moved into place, so a half-written file is
+  // never the one loaded. Nothing is written until the startup check below has finished, so a new game can't replace
+  // a file that's about to be restored.
+  const NATIVE_FILE = "shardkin-save.json", NATIVE_SPARE = "shardkin-save.writing.json", NATIVE_DIR = "DOCUMENTS";
+  const nativeQ = { busy: false, next: null, timer: null, ready: false };
+  function nativeFiles() {
+    try { const C = typeof window !== "undefined" && window.Capacitor; return (C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.Filesystem) || null; } catch (e) { return null; }
+  }
+  function isNativeApp() { return !!nativeFiles(); }
+  function nativeWrite(text) {
+    if (!nativeFiles()) return;
+    nativeQ.next = text;
+    clearTimeout(nativeQ.timer);
+    nativeQ.timer = setTimeout(nativeFlush, 800);
+  }
+  function nativeFlush() {
+    const fs = nativeFiles();
+    if (!fs || !nativeQ.ready || nativeQ.busy || nativeQ.next == null) return;
+    const text = nativeQ.next;
+    nativeQ.next = null; nativeQ.busy = true;
+    fs.writeFile({ path: NATIVE_SPARE, data: text, directory: NATIVE_DIR, encoding: "utf8" })
+      .then(() => fs.rename({ from: NATIVE_SPARE, to: NATIVE_FILE, directory: NATIVE_DIR, toDirectory: NATIVE_DIR }))
+      .catch(() => { /* localStorage still has it */ })
+      .then(() => { nativeQ.busy = false; if (nativeQ.next != null) nativeFlush(); });
+  }
+  function nativeRead() {
+    const fs = nativeFiles();
+    if (!fs) return Promise.resolve(null);
+    return fs.readFile({ path: NATIVE_FILE, directory: NATIVE_DIR, encoding: "utf8" }).then(r => (r && typeof r.data === "string" ? r.data : null), () => null);
+  }
+  // At startup in the app: if the web view's storage came up empty but the file holds a game, the storage was
+  // cleared, so the file is put back and the game starts again from it. hadSave says whether a save was found.
+  function nativeStartup(hadSave) {
+    if (!nativeFiles()) return;
+    const done = () => { nativeQ.ready = true; nativeFlush(); };
+    if (hadSave) { done(); return; }
+    Promise.race([nativeRead(), new Promise(res => setTimeout(() => res(null), 2500))]).then(text => {
+      let ok = null;
+      try { ok = text && upgradeSave(JSON.parse(text)); } catch (e) { ok = null; }
+      if (!ok) { done(); return; }
+      // If the storage won't take it, carry on with the new game: starting again would only come back here.
+      try { localStorage.setItem(SAVE_KEY, text); if (localStorage.getItem(SAVE_KEY) !== text) throw 0; } catch (e) { done(); return; }
+      nativeQ.next = null; clearTimeout(nativeQ.timer);
+      location.reload();
+    }, done);
+  }
+  // Leaving the app writes what's waiting right away.
+  if (typeof document !== "undefined" && document.addEventListener) {
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { clearTimeout(nativeQ.timer); nativeFlush(); } });
+  }
   function load() {
     try {
       const t = localStorage.getItem(SAVE_KEY);

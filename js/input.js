@@ -278,6 +278,8 @@
       case "cloudforce": if (S.confirm === "cloudconflict") { S.confirm = null; later(cloudSave(true)); msgs = ["Replacing the cloud save."]; } break;
       case "cloudmine": if (S.cloud && S.cloud.key) { S.confirm = null; later(cloudCheck(S.cloud.key)); msgs = ["Looking up your cloud save."]; } break;
       case "cloudcheck": { const box = document.getElementById("cloudbox"); later(cloudCheck(box ? box.value : "")); msgs = ["Looking for that cloud save."]; break; }
+      case "clouddelete": if (S.cloud && S.cloud.key) { S.confirm = "clouddelete"; msgs = ["Delete your cloud save? Choose Yes, delete the cloud save, or Keep the cloud save."]; } break;
+      case "clouddeleteyes": if (S.confirm === "clouddelete") { S.confirm = null; later(cloudDelete()); msgs = ["Deleting the cloud save."]; } break;
       case "cloudyes": {
         if (S.confirm !== "cloudload" || !pendingCloud) break;
         const next = pendingCloud; pendingCloud = null;

@@ -162,6 +162,7 @@
   document.getElementById("soundBtn").addEventListener("click", () => { S.sound = !S.sound; render(); });
 
   S = load();
+  nativeStartup(!!S);
   let autoWasOn = false;
   if (S) {
     ensureExtras();
@@ -196,5 +197,5 @@
   checkStorage();
   if (isStandalone()) requestPersist(false);
   try {
-    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+    if (!isNativeApp() && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
   } catch (e) { /* offline support is optional */ }

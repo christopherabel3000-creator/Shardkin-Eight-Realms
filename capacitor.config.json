@@ -1,0 +1,10 @@
+{
+  "appId": "com.playbyear.shardkin",
+  "appName": "Shardkin",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#12131d",
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}
