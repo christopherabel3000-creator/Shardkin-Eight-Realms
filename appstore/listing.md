@@ -81,11 +81,11 @@ No, the app does not contain, show, or access third-party content. Every monster
 
 Answer None or No to everything except:
 
-- Cartoon or Fantasy Violence: Frequent. Battles between monsters are the heart of the game. They're described in words and sounds, and monsters faint.
+- Cartoon or Fantasy Violence: Frequent. Battles between monsters are the heart of the game. They're described in words and sounds, and monsters faint. This gives a 13+ rating (12+ or 13+ in a few countries).
 
 Questions to read carefully when filling in the form:
 
-- Loot Boxes: eggs and the reward wheel give random rewards, but they're only ever earned by playing. Nothing in the game can be bought with real money. Answer No if Apple's definition is about purchases; read its wording on the form first.
+- Loot Boxes: No. Apple's definition is random items "for purchase", and nothing in the game can be bought.
 - Simulated Gambling: None. There's no betting or wagering.
 - User-Generated Content: No. A Shardbinder name and a team are seen only by the one friend you share a code with.
 - Messaging and Chat: No.
@@ -110,11 +110,32 @@ Check before marking: Reduced Motion, Larger Text, Sufficient Contrast, Differen
 
 ## Notes for the reviewer
 
-Shardkin: Eight Realms is a complete monster-collecting RPG, built to be fully playable with VoiceOver by a developer who plays with a screen reader. The whole game is bundled in the app and runs offline. Saves are kept on the device (including as a file in the app's Documents folder). There are no purchases; both in-game currencies are earned only by playing.
+Apple asks every new app for six things in this field: a screen recording made on a real iPhone, and answers 2 to 6 below. Only the recording link changes.
 
-To try it: from the main menu tap Levels, then World 1, then Level 1. Tap Roll the die to move along the board, and choose a skill when a battle starts. No account or sign-in is needed.
+Shardkin: Eight Realms is a complete monster-collecting RPG, built to be fully playable with VoiceOver by a developer who plays with a screen reader. The build was tested on a physical iPhone through TestFlight before submission.
 
-The only network use is optional and found under Friends on the main menu: Cloud save, and live duels between two friends who share a four-letter code. Both use Google Firebase. Rival codes and trade codes on the same screen are plain text and work offline. A player's chosen name is shown only to the friend they share a code with.
+1. SCREEN RECORDING
+Recorded on a physical iPhone running the latest iOS, starting from launching the app: (the link to the recording goes here)
+The app has no account registration or login, no paid content or purchases, and no user-generated content beyond a player's chosen name, which is shown only to the one friend they share a duel code with. So those flows don't exist to show.
+
+2. PURPOSE AND AUDIENCE
+A turn-based monster-collecting role-playing game. The player builds a team of up to four monsters, rolls a die through board-game levels, battles and captures 120 original monsters, and restores the Heartcrystal across twelve worlds. It is for fans of monster-collecting and turn-based strategy games, and especially for blind and low-vision players: very few games of this kind work with a screen reader, and this one was designed for VoiceOver from the start, with every screen, action and result exposed as text and standard controls, and sounds that carry information.
+
+3. HOW TO USE IT
+No account, login or sample files are needed. From the main menu tap Levels, then World 1, then Level 1. Tap Roll the die to move along the board, and choose a skill when a battle starts. Everything else is reachable from the main menu.
+
+4. EXTERNAL SERVICES
+Only one, and it is optional: Google Firebase Realtime Database, used under Friends on the main menu for Cloud save (move a game to another device, stored under a random key) and live duels between two friends who share a four-letter code. There are no authentication services, payment processors, ad networks, analytics or AI services. The whole game is bundled in the app and runs offline; saves are kept on the device, including as a file in the app's Documents folder.
+
+5. REGIONS
+The app works the same in every region. It is in English only. There is no region-specific content or behavior.
+
+6. REGULATED INDUSTRIES AND THIRD-PARTY MATERIAL
+Not applicable. The app is not in a regulated industry. It contains no third-party or licensed material: every monster, name, world and story element is original. The two fonts are used under the SIL Open Font License. There are no purchases; both in-game currencies are earned only by playing.
+
+## Price and availability
+
+Free. Every country and region except the 27 European Union countries (selling there needs a trader declaration) and China mainland (games there need extra filings). Released automatically once approved.
 
 ## Encryption
 
