@@ -115,7 +115,8 @@ Apple asks every new app for six things in this field: a screen recording made o
 Shardkin: Eight Realms is a complete monster-collecting RPG, built to be fully playable with VoiceOver by a developer who plays with a screen reader. The build was tested on a physical iPhone through TestFlight before submission.
 
 1. SCREEN RECORDING
-Recorded on a physical iPhone running the latest iOS, starting from launching the app: (the link to the recording goes here)
+Recorded on a physical iPhone running the latest iOS, starting from launching the app: https://youtu.be/CMtRL0N7Brg
+The voice heard in the recording is VoiceOver, since the developer plays the game with a screen reader.
 The app has no account registration or login, no paid content or purchases, and no user-generated content beyond a player's chosen name, which is shown only to the one friend they share a duel code with. So those flows don't exist to show.
 
 2. PURPOSE AND AUDIENCE
