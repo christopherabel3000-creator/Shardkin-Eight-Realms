@@ -101,12 +101,9 @@ Questions to read carefully when filling in the form:
 
 ## Accessibility (App Store accessibility labels)
 
-Mark as supported on iPhone and iPad:
+Published Nov 18 2026 for iPhone and iPad: VoiceOver only.
 
-- VoiceOver: yes
-- Dark Interface: yes (the game follows the system's dark mode)
-
-Check before marking: Reduced Motion, Larger Text, Sufficient Contrast, Differentiate Without Color Alone, Voice Control.
+Christopher chose to list VoiceOver alone. Don't add any other label (such as Dark Interface or Reduced Motion) unless he asks for it.
 
 ## Notes for the reviewer
 
